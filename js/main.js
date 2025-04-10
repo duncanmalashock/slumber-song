@@ -7,8 +7,9 @@ let app = Main.init({
 
 app.ports.toJs.subscribe((data) => {
   switch (data.tag) {
-    case "alert":
-      alert(data.message);
+    case "roomChanged":
+      changeRoom(data.id, data.name);
+      alert(`Room changed: id:${data.id}, name:${data.name}`);
       break;
 
     default:
@@ -16,8 +17,12 @@ app.ports.toJs.subscribe((data) => {
   }
 });
 
+function changeRoom(id, name) {
+  document.getElementById('room').setHTMLUnsafe(name);
+}
+
 function sayHi() {
-  sendToElm("data", "Hello from JavaScript!");
+  sendToElm("data", "Sending to Elm through ports is still working");
 }
 setTimeout(sayHi, 1000);
 

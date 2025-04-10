@@ -1,52 +1,51 @@
 module Main exposing (main)
 
 import Browser
+import Dict exposing (Dict)
 import FromJs
 import Html
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
 import Ports
+import Room exposing (Room)
 import ToJs
 
 
 type alias Model =
-    { currentRoom : String
+    { currentRoom : Room
     }
 
 
 type Msg
     = ReceivedMessageFromJs FromJs.FromJs
-    | ClickedSendButton
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
     let
+        initialRoom : Room
+        initialRoom =
+            Room.new
+                { id = "entrance"
+                , name = "Entrance"
+                }
+
         initialModel : Model
         initialModel =
-            { currentRoom = "entrance" }
+            { currentRoom = initialRoom
+            }
     in
-    ( initialModel, Cmd.none )
+    ( initialModel
+    , Ports.send (ToJs.RoomChanged initialRoom)
+    )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ReceivedMessageFromJs fromJs ->
-            let
-                newMsg : String
-                newMsg =
-                    case fromJs of
-                        FromJs.Data str ->
-                            "Data: " ++ str
-            in
-            ( { model | currentRoom = newMsg }
-            , Cmd.none
-            )
-
-        ClickedSendButton ->
             ( model
-            , Ports.send (ToJs.Alert "Hello from Elm!")
+            , Cmd.none
             )
 
 
@@ -57,11 +56,7 @@ subscriptions _ =
 
 view : Model -> Html.Html Msg
 view model =
-    Html.div []
-        [ Html.button
-            [ onClick ClickedSendButton ]
-            [ Html.text "Send to JS" ]
-        ]
+    Html.text ""
 
 
 main : Program () Model Msg
