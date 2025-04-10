@@ -6,6 +6,6 @@ let app = Main.init({
 });
 
 app.ports.playSound && app.ports.playSound.subscribe(name => {
-  const audio = new Audio(`sfx/${name}.mp3`);
+  const audio = new Audio(`/sfx/${name}.mp3`);
   audio.play();
 });
