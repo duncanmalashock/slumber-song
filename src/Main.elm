@@ -1,10 +1,12 @@
 module Main exposing (main)
 
 import Browser
+import FromJs
 import Html exposing (Html, button, div, text)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
 import Ports
+import ToJs
 
 
 type alias Model =
@@ -13,7 +15,7 @@ type alias Model =
 
 
 type Msg
-    = GotMessageFromJs Ports.JsMessage
+    = GotMessageFromJs FromJs.FromJs
     | SendMessageToJs
 
 
@@ -29,10 +31,10 @@ update msg model =
             let
                 newMsg =
                     case jsMsg of
-                        Ports.Alert str ->
+                        FromJs.Alert str ->
                             "Alert: " ++ str
 
-                        Ports.Data str ->
+                        FromJs.Data str ->
                             "Data: " ++ str
             in
             ( { model | messages = newMsg :: model.messages }, Cmd.none )
@@ -40,7 +42,7 @@ update msg model =
         SendMessageToJs ->
             let
                 toJsPayload =
-                    Ports.Data "Hello from Elm!"
+                    ToJs.Data "Hello from Elm!"
             in
             ( model, Ports.toJs (Ports.encodeMessageToJs toJsPayload) )
 
@@ -71,7 +73,7 @@ fromJsPortSubscription =
                     GotMessageFromJs msg
 
                 Err _ ->
-                    GotMessageFromJs (Ports.Data "Failed to decode")
+                    GotMessageFromJs (FromJs.Data "Failed to decode")
     in
     Ports.fromJs decodeJsMsg
 
