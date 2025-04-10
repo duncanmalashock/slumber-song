@@ -6,8 +6,39 @@
     <title>My app</title>
   </head>
   <body>
+    <canvas id="screen" width="512" height="342"></canvas>
     <div id="app">
-      <script type="module" src="./main.js"></script>
+      <script type="module" src="./js/main.js"></script>
     </div>
+
+    <canvas id="myCanvas" width="300" height="300"></canvas>
+<script>
+function drawDottedRectOutline(ctx, x, y, width, height, step = 2, color = 'black') {
+  ctx.fillStyle = color;
+
+  // Top
+  for (let i = 0; i < width; i += step) {
+    ctx.fillRect(x + i, y, 1, 1);
+  }
+
+  // Bottom
+  for (let i = 0; i < width; i += step) {
+    ctx.fillRect(x + i, y + height - 1, 1, 1);
+  }
+
+  // Left
+  for (let i = 0; i < height; i += step) {
+    ctx.fillRect(x, y + i, 1, 1);
+  }
+
+  // Right
+  for (let i = 0; i < height; i += step) {
+    ctx.fillRect(x + width - 1, y + i, 1, 1);
+  }
+}
+const canvas = document.getElementById("myCanvas");
+const ctx = canvas.getContext("2d");
+drawDottedRectOutline(ctx, 2, 2, 100, 100);
+</script>
   </body>
 </html>
