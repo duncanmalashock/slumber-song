@@ -1,4 +1,4 @@
-module Main exposing (main)
+port module Main exposing (main)
 
 import Browser
 import Html exposing (..)
@@ -7,8 +7,7 @@ import Html.Events
 import Time
 
 
-
--- MAIN
+port playSound : String -> Cmd msg
 
 
 main : Program () Model Msg
@@ -21,19 +20,9 @@ main =
         }
 
 
-
--- INIT
-
-
 type alias Model =
     { current : Int
-    , status : Status
     }
-
-
-type Status
-    = Running
-    | Stopped
 
 
 initialTime : Int
@@ -44,89 +33,33 @@ initialTime =
 init : () -> ( Model, Cmd Msg )
 init flags =
     ( { current = initialTime
-      , status = Stopped
       }
     , Cmd.none
     )
 
 
-
--- UPDATE
-
-
 type Msg
-    = Decrement
-    | Reset
-    | Start
-    | Stop
+    = ClickedBoingButton
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Reset ->
+        ClickedBoingButton ->
             ( { model | current = initialTime }
-            , Cmd.none
+            , playSound "boing"
             )
-
-        Start ->
-            ( { model | status = Running }
-            , Cmd.none
-            )
-
-        Stop ->
-            ( { model | status = Stopped }
-            , Cmd.none
-            )
-
-        Decrement ->
-            case model.current - 1 of
-                0 ->
-                    ( { model
-                        | status = Stopped
-                        , current = initialTime
-                      }
-                    , Cmd.none
-                    )
-
-                newCurrent ->
-                    ( { model | current = newCurrent }
-                    , Cmd.none
-                    )
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    case model.status of
-        Running ->
-            Time.every 1000 (\_ -> Decrement)
-
-        Stopped ->
-            Sub.none
-
-
-
--- VIEW
+    Sub.none
 
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ h1 []
-            [ text ("Timer: " ++ String.fromInt model.current ++ "s")
-            ]
-        , case model.status of
-            Running ->
-                div [ class "row gap_8" ]
-                    [ viewButton "Stop" Stop
-                    ]
-
-            Stopped ->
-                div [ class "row gap_8" ]
-                    [ viewButton "Start" Start
-                    , viewButton "Reset" Reset
-                    ]
-        ]
+    div [ class "row gap_8" ]
+        [ viewButton "Boing" ClickedBoingButton ]
 
 
 viewButton : String -> Msg -> Html Msg
