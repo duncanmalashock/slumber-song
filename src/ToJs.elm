@@ -5,7 +5,6 @@ import Json.Encode as Encode
 
 type ToJs
     = Alert String
-    | Data String
 
 
 encode : ToJs -> Encode.Value
@@ -15,10 +14,4 @@ encode msg =
             Encode.object
                 [ ( "tag", Encode.string "alert" )
                 , ( "message", Encode.string s )
-                ]
-
-        Data s ->
-            Encode.object
-                [ ( "tag", Encode.string "data" )
-                , ( "payload", Encode.string s )
                 ]

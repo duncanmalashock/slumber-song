@@ -2,7 +2,7 @@ module Main exposing (main)
 
 import Browser
 import FromJs
-import Html exposing (Html, button, div, text)
+import Html
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
 import Ports
@@ -10,70 +10,58 @@ import ToJs
 
 
 type alias Model =
-    { messages : List String
+    { currentRoom : String
     }
 
 
 type Msg
-    = GotMessageFromJs FromJs.FromJs
+    = ReceivedMessageFromJs FromJs.FromJs
     | ClickedSendButton
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { messages = [] }, Cmd.none )
+    let
+        initialModel : Model
+        initialModel =
+            { currentRoom = "entrance" }
+    in
+    ( initialModel, Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        GotMessageFromJs jsMsg ->
+        ReceivedMessageFromJs fromJs ->
             let
                 newMsg : String
                 newMsg =
-                    case jsMsg of
+                    case fromJs of
                         FromJs.Data str ->
                             "Data: " ++ str
             in
-            ( { model | messages = newMsg :: model.messages }
+            ( { model | currentRoom = newMsg }
             , Cmd.none
             )
 
         ClickedSendButton ->
             ( model
-            , Ports.toJs (ToJs.encode (ToJs.Data "Hello from Elm!"))
+            , Ports.send (ToJs.Alert "Hello from Elm!")
             )
-
-
-view : Model -> Html Msg
-view model =
-    div []
-        [ div []
-            (List.map text model.messages)
-        , button
-            [ onClick ClickedSendButton ]
-            [ text "Send to JS" ]
-        ]
 
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    fromJsPortSubscription
+    Ports.receive ReceivedMessageFromJs
 
 
-fromJsPortSubscription : Sub Msg
-fromJsPortSubscription =
-    let
-        decodeJsMsg : Decode.Value -> Msg
-        decodeJsMsg val =
-            case Decode.decodeValue FromJs.decoder val of
-                Ok msg ->
-                    GotMessageFromJs msg
-
-                Err _ ->
-                    GotMessageFromJs (FromJs.Data "Failed to decode")
-    in
-    Ports.fromJs decodeJsMsg
+view : Model -> Html.Html Msg
+view model =
+    Html.div []
+        [ Html.button
+            [ onClick ClickedSendButton ]
+            [ Html.text "Send to JS" ]
+        ]
 
 
 main : Program () Model Msg

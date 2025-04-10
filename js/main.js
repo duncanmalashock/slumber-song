@@ -11,10 +11,6 @@ app.ports.toJs.subscribe((data) => {
       alert(data.message);
       break;
 
-    case "data":
-      console.log("Received data from Elm:", data.payload);
-      break;
-
     default:
       console.error("Unknown tag from Elm:", data);
   }
