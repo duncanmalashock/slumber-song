@@ -6,9 +6,7 @@ let app = Main.init({
 });
 
 app.ports.toJs.subscribe((data) => {
-  const tag = data.tag;
-
-  switch (tag) {
+  switch (data.tag) {
     case "alert":
       alert(data.message);
       break;
@@ -18,16 +16,18 @@ app.ports.toJs.subscribe((data) => {
       break;
 
     default:
-      console.warn("Unknown tag from Elm:", data);
+      console.error("Unknown tag from Elm:", data);
   }
 });
 
-// Send message to Elm
-function sendToElm() {
+function sayHi() {
+  sendToElm("data", "Hello from JavaScript!");
+}
+setTimeout(sayHi, 1000);
+
+function sendToElm(tag, payload) {
   app.ports.fromJs.send({
-    tag: "data",
-    payload: "Hello from JavaScript!"
+    tag: tag,
+    payload: payload
   });
 }
-
-setTimeout(sendToElm, 1000);

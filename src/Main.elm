@@ -16,7 +16,7 @@ type alias Model =
 
 type Msg
     = GotMessageFromJs FromJs.FromJs
-    | SendMessageToJs
+    | ClickedSendButton
 
 
 init : () -> ( Model, Cmd Msg )
@@ -32,21 +32,17 @@ update msg model =
                 newMsg : String
                 newMsg =
                     case jsMsg of
-                        FromJs.Alert str ->
-                            "Alert: " ++ str
-
                         FromJs.Data str ->
                             "Data: " ++ str
             in
-            ( { model | messages = newMsg :: model.messages }, Cmd.none )
+            ( { model | messages = newMsg :: model.messages }
+            , Cmd.none
+            )
 
-        SendMessageToJs ->
-            let
-                toJsPayload : ToJs.ToJs
-                toJsPayload =
-                    ToJs.Data "Hello from Elm!"
-            in
-            ( model, Ports.toJs (Ports.encodeMessageToJs toJsPayload) )
+        ClickedSendButton ->
+            ( model
+            , Ports.toJs (ToJs.encode (ToJs.Data "Hello from Elm!"))
+            )
 
 
 view : Model -> Html Msg
@@ -55,7 +51,7 @@ view model =
         [ div []
             (List.map text model.messages)
         , button
-            [ onClick SendMessageToJs ]
+            [ onClick ClickedSendButton ]
             [ text "Send to JS" ]
         ]
 
@@ -70,7 +66,7 @@ fromJsPortSubscription =
     let
         decodeJsMsg : Decode.Value -> Msg
         decodeJsMsg val =
-            case Decode.decodeValue Ports.jsMessageDecoder val of
+            case Decode.decodeValue FromJs.decoder val of
                 Ok msg ->
                     GotMessageFromJs msg
 
