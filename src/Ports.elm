@@ -1,43 +1,40 @@
-module Ports exposing
-    ( FromJs(..)
-    , ToJs(..)
-    , decodeFromJs
-    , encodeToJs
+port module Ports exposing
+    ( JsMessage(..)
+    , encodeMessageToJs
+    , fromJs
+    , jsMessageDecoder
+    , toJs
     )
 
-import Json.Decode as Decode
+import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
 
 
 
--- Msg type you use over the wire
+-- PORTS
 
 
-type FromJs
+port toJs : Encode.Value -> Cmd msg
+
+
+port fromJs : (Decode.Value -> msg) -> Sub msg
+
+
+
+-- TYPES
+
+
+type JsMessage
     = Alert String
     | Data String
 
 
-type ToJs
-    = UpdatedRoom
+
+-- DECODE
 
 
-
--- Decode message from JS
-
-
-decodeFromJs : Decode.Value -> Result String FromJs
-decodeFromJs val =
-    case Decode.decodeValue decoder val of
-        Ok fromJs ->
-            Ok fromJs
-
-        Err _ ->
-            Err "Failed to decode"
-
-
-decoder : Decode.Decoder FromJs
-decoder =
+jsMessageDecoder : Decoder JsMessage
+jsMessageDecoder =
     Decode.field "tag" Decode.string
         |> Decode.andThen
             (\tag ->
@@ -54,14 +51,20 @@ decoder =
 
 
 
--- Encode message to send to JS
+-- ENCODE
 
 
-encodeToJs : ToJs -> Encode.Value
-encodeToJs toJs =
-    case toJs of
-        UpdatedRoom ->
+encodeMessageToJs : JsMessage -> Encode.Value
+encodeMessageToJs msg =
+    case msg of
+        Alert s ->
             Encode.object
                 [ ( "tag", Encode.string "alert" )
-                , ( "message", Encode.string "I am cool" )
+                , ( "message", Encode.string s )
+                ]
+
+        Data s ->
+            Encode.object
+                [ ( "tag", Encode.string "data" )
+                , ( "payload", Encode.string s )
                 ]

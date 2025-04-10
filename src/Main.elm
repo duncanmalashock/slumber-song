@@ -1,89 +1,20 @@
-port module Main exposing (main)
+module Main exposing (main)
 
 import Browser
 import Html exposing (Html, button, div, text)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
-import Json.Encode as Encode
-
-
-
--- TYPES
+import Ports
 
 
 type alias Model =
-    { messages : List String }
+    { messages : List String
+    }
 
 
 type Msg
-    = GotMessageFromJs JsMessage
+    = GotMessageFromJs Ports.JsMessage
     | SendMessageToJs
-
-
-
--- PORTS
-
-
-port toJs : Encode.Value -> Cmd msg
-
-
-port fromJs : (Decode.Value -> msg) -> Sub msg
-
-
-type JsMessage
-    = Alert String
-    | Data String
-
-
-decodeJsMessage : Decode.Value -> Msg
-decodeJsMessage val =
-    case Decode.decodeValue jsMessageDecoder val of
-        Ok msg ->
-            GotMessageFromJs msg
-
-        Err _ ->
-            GotMessageFromJs (Data "Failed to decode")
-
-
-jsMessageDecoder : Decode.Decoder JsMessage
-jsMessageDecoder =
-    Decode.field "tag" Decode.string
-        |> Decode.andThen
-            (\tag ->
-                case tag of
-                    "alert" ->
-                        Decode.map Alert (Decode.field "message" Decode.string)
-
-                    "data" ->
-                        Decode.map Data (Decode.field "payload" Decode.string)
-
-                    _ ->
-                        Decode.fail "Unknown tag"
-            )
-
-
-
--- ENCODE
-
-
-encodeMessageToJs : JsMessage -> Encode.Value
-encodeMessageToJs msg =
-    case msg of
-        Alert s ->
-            Encode.object
-                [ ( "tag", Encode.string "alert" )
-                , ( "message", Encode.string s )
-                ]
-
-        Data s ->
-            Encode.object
-                [ ( "tag", Encode.string "data" )
-                , ( "payload", Encode.string s )
-                ]
-
-
-
--- INIT / UPDATE / VIEW
 
 
 init : () -> ( Model, Cmd Msg )
@@ -98,10 +29,10 @@ update msg model =
             let
                 newMsg =
                     case jsMsg of
-                        Alert str ->
+                        Ports.Alert str ->
                             "Alert: " ++ str
 
-                        Data str ->
+                        Ports.Data str ->
                             "Data: " ++ str
             in
             ( { model | messages = newMsg :: model.messages }, Cmd.none )
@@ -109,9 +40,9 @@ update msg model =
         SendMessageToJs ->
             let
                 toJsPayload =
-                    Data "Hello from Elm!"
+                    Ports.Data "Hello from Elm!"
             in
-            ( model, toJs (encodeMessageToJs toJsPayload) )
+            ( model, Ports.toJs (Ports.encodeMessageToJs toJsPayload) )
 
 
 view : Model -> Html Msg
@@ -127,7 +58,22 @@ view model =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    fromJs decodeJsMessage
+    fromJsPortSubscription
+
+
+fromJsPortSubscription : Sub Msg
+fromJsPortSubscription =
+    let
+        decodeJsMsg : Decode.Value -> Msg
+        decodeJsMsg val =
+            case Decode.decodeValue Ports.jsMessageDecoder val of
+                Ok msg ->
+                    GotMessageFromJs msg
+
+                Err _ ->
+                    GotMessageFromJs (Ports.Data "Failed to decode")
+    in
+    Ports.fromJs decodeJsMsg
 
 
 main : Program () Model Msg
