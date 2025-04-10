@@ -1,4 +1,4 @@
-module Exit exposing (Exit)
+module Exit exposing (Exit, new, toRoomId)
 
 
 type Exit
@@ -8,3 +8,15 @@ type Exit
 type alias Internals =
     { toRoomId : String
     }
+
+
+new : { toRoomId : String } -> Exit
+new params =
+    Exit
+        { toRoomId = params.toRoomId
+        }
+
+
+toRoomId : Exit -> String
+toRoomId (Exit internals) =
+    internals.toRoomId

@@ -1,4 +1,4 @@
-module Room exposing (Room, id, name, new)
+module Room exposing (Room, exits, id, name, new)
 
 import Exit
 
@@ -14,12 +14,12 @@ type alias Internals =
     }
 
 
-new : { id : String, name : String } -> Room
+new : { id : String, name : String, exits : List Exit.Exit } -> Room
 new params =
     Room
         { id = params.id
         , name = params.name
-        , exits = []
+        , exits = params.exits
         }
 
 
@@ -31,3 +31,8 @@ id (Room internals) =
 name : Room -> String
 name (Room internals) =
     internals.name
+
+
+exits : Room -> List Exit.Exit
+exits (Room internals) =
+    internals.exits
