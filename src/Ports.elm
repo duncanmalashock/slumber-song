@@ -32,9 +32,6 @@ jsMessageDecoder =
         |> Decode.andThen
             (\tag ->
                 case tag of
-                    "alert" ->
-                        Decode.map FromJs.Alert (Decode.field "message" Decode.string)
-
                     "data" ->
                         Decode.map FromJs.Data (Decode.field "payload" Decode.string)
 

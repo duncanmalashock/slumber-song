@@ -29,6 +29,7 @@ update msg model =
     case msg of
         GotMessageFromJs jsMsg ->
             let
+                newMsg : String
                 newMsg =
                     case jsMsg of
                         FromJs.Alert str ->
@@ -41,6 +42,7 @@ update msg model =
 
         SendMessageToJs ->
             let
+                toJsPayload : ToJs.ToJs
                 toJsPayload =
                     ToJs.Data "Hello from Elm!"
             in
