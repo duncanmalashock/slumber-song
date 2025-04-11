@@ -5,6 +5,8 @@ let app = Main.init({
   node: document.getElementById('app')
 });
 
+let interactionLock = false;
+
 app.ports.toJs.subscribe((msgs) => {
   msgs.map((data) => {
     switch (data.tag) {
@@ -34,13 +36,23 @@ function changeRoom(id, name, exits) {
 
   newExitElement.setHTMLUnsafe(exits[0].toRoomId);
   newExitElement.addEventListener("mouseup", (e) => {
-    sendToElm("userClickedExit", { toRoomId: exits[0].toRoomId });
+    if (interactionLock) {
+    }
+    else {
+      sendToElm("userClickedExit", { toRoomId: exits[0].toRoomId });
+    }
   });
 }
 
 function playSound(filename) {
+  interactionLock = true;
   const audio = new Audio(filename);
   audio.play();
+  audio.addEventListener("ended", function(){
+    audio.currentTime = 0;
+    console.log("ended");
+    interactionLock = false;
+  });
 }
 
 function sendToElm(tag, payload) {
