@@ -8,8 +8,12 @@ let app = Main.init({
 app.ports.toJs.subscribe((msgs) => {
   msgs.map((data) => {
     switch (data.tag) {
-      case "roomChanged":
+      case "UpdateRoom":
         changeRoom(data.id, data.name, data.exits);
+        break;
+
+      case "PlaySound":
+        playSound(data.file);
         break;
 
       default:
@@ -23,9 +27,20 @@ goButton.addEventListener("mouseup", (e) => { sendToElm("userClickedGoButton", {
 
 function changeRoom(id, name, exits) {
   document.getElementById('room').setHTMLUnsafe(name);
-  const exitElement = document.getElementById('exit')
-  exitElement.setHTMLUnsafe(exits[0].toRoomId);
-  exitElement.addEventListener("mouseup", (e) => { sendToElm("userClickedExit", { toRoomId: exits[0].toRoomId}) });
+
+  const oldExitElement = document.getElementById('exit');
+  const newExitElement = oldExitElement.cloneNode(true);
+  oldExitElement.parentNode.replaceChild(newExitElement, oldExitElement);
+
+  newExitElement.setHTMLUnsafe(exits[0].toRoomId);
+  newExitElement.addEventListener("mouseup", (e) => {
+    sendToElm("userClickedExit", { toRoomId: exits[0].toRoomId });
+  });
+}
+
+function playSound(filename) {
+  const audio = new Audio(filename);
+  audio.play();
 }
 
 function sendToElm(tag, payload) {

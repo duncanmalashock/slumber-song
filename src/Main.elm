@@ -69,7 +69,7 @@ init _ =
             }
     in
     ( initialModel
-    , Ports.send [ ToJs.RoomChanged entrance ]
+    , Ports.send [ ToJs.UpdateRoom entrance ]
     )
 
 
@@ -99,7 +99,15 @@ update msg model =
                                 | currentRoom = newRoom
                                 , selectedCommand = Nothing
                               }
-                            , Ports.send [ ToJs.RoomChanged newRoom ]
+                            , Ports.send <|
+                                [ ToJs.UpdateRoom newRoom
+                                ]
+                                    ++ (if Room.id newRoom == "hallway" then
+                                            [ ToJs.PlaySound "boing" ]
+
+                                        else
+                                            []
+                                       )
                             )
 
                         _ ->

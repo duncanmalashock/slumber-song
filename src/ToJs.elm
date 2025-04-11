@@ -6,7 +6,8 @@ import Room
 
 
 type ToJs
-    = RoomChanged Room.Room
+    = UpdateRoom Room.Room
+    | PlaySound String
 
 
 encodeList : List ToJs -> Encode.Value
@@ -17,9 +18,9 @@ encodeList toJsMsgs =
 encode : ToJs -> Encode.Value
 encode toJsMsg =
     case toJsMsg of
-        RoomChanged newRoom ->
+        UpdateRoom newRoom ->
             Encode.object
-                [ ( "tag", Encode.string "roomChanged" )
+                [ ( "tag", Encode.string "UpdateRoom" )
                 , ( "id", Encode.string (Room.id newRoom) )
                 , ( "name", Encode.string (Room.name newRoom) )
                 , ( "exits"
@@ -31,4 +32,10 @@ encode toJsMsg =
                         )
                         (Room.exits newRoom)
                   )
+                ]
+
+        PlaySound file ->
+            Encode.object
+                [ ( "tag", Encode.string "PlaySound" )
+                , ( "file", Encode.string ("/game/sfx/" ++ file ++ ".mp3") )
                 ]
