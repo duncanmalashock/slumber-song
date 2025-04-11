@@ -28,29 +28,13 @@ type Msg
     = ReceivedMessageFromJs FromJs.FromJs
 
 
-entrance : Room
-entrance =
+emptyRoom : Room
+emptyRoom =
     Room.new
-        { id = "entrance"
-        , name = "Entrance"
+        { id = ""
+        , name = ""
         , exits =
-            [ Exit.new
-                { toRoomId = "hallway"
-                }
-            ]
-        }
-
-
-hallway : Room
-hallway =
-    Room.new
-        { id = "hallway"
-        , name = "Hallway"
-        , exits =
-            [ Exit.new
-                { toRoomId = "entrance"
-                }
-            ]
+            []
         }
 
 
@@ -59,17 +43,14 @@ init _ =
     let
         initialModel : Model
         initialModel =
-            { currentRoom = entrance
-            , map =
-                Map.new
-                    [ entrance
-                    , hallway
-                    ]
+            { currentRoom = emptyRoom
+            , map = Map.new []
             , selectedCommand = Nothing
             }
     in
     ( initialModel
-    , Ports.send [ ToJs.UpdateRoom entrance ]
+    , Ports.send
+        [ ToJs.LoadGameData ]
     )
 
 
@@ -78,6 +59,21 @@ update msg model =
     case msg of
         ReceivedMessageFromJs fromJs ->
             case fromJs of
+                FromJs.GameDataLoaded data ->
+                    case List.head data of
+                        Just newRoom ->
+                            ( { currentRoom = newRoom
+                              , map = Map.new data
+                              , selectedCommand = Nothing
+                              }
+                            , Ports.send <|
+                                [ ToJs.UpdateRoom newRoom
+                                ]
+                            )
+
+                        Nothing ->
+                            ( model, Cmd.none )
+
                 FromJs.UserClickedGoButton ->
                     ( { model
                         | selectedCommand = Just Go
@@ -102,12 +98,7 @@ update msg model =
                             , Ports.send <|
                                 [ ToJs.UpdateRoom newRoom
                                 ]
-                                    ++ (if Room.id newRoom == "hallway" then
-                                            [ ToJs.PlaySound "boing" ]
-
-                                        else
-                                            []
-                                       )
+                                    ++ effectsForRoom newRoom
                             )
 
                         _ ->
@@ -119,6 +110,13 @@ update msg model =
                     ( model
                     , Cmd.none
                     )
+
+
+effectsForRoom : Room -> List ToJs.ToJs
+effectsForRoom room =
+    Room.soundsOnEnter room
+        |> List.map
+            ToJs.PlaySound
 
 
 subscriptions : Model -> Sub Msg

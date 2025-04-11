@@ -1,10 +1,12 @@
 module FromJs exposing (FromJs(..), decoder)
 
 import Json.Decode as Decode exposing (Decoder)
+import Room
 
 
 type FromJs
-    = UserClickedGoButton
+    = GameDataLoaded (List Room.Room)
+    | UserClickedGoButton
     | UserClickedExit String
     | DecodeError Decode.Error
 
@@ -15,6 +17,10 @@ decoder =
         |> Decode.andThen
             (\tag ->
                 case tag of
+                    "gameDataLoaded" ->
+                        Decode.field "payload"
+                            (Decode.map GameDataLoaded (Decode.list Room.decoder))
+
                     "userClickedGoButton" ->
                         Decode.succeed UserClickedGoButton
 

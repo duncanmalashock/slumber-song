@@ -6,7 +6,8 @@ import Room
 
 
 type ToJs
-    = UpdateRoom Room.Room
+    = LoadGameData
+    | UpdateRoom Room.Room
     | PlaySound String
 
 
@@ -18,6 +19,11 @@ encodeList toJsMsgs =
 encode : ToJs -> Encode.Value
 encode toJsMsg =
     case toJsMsg of
+        LoadGameData ->
+            Encode.object
+                [ ( "tag", Encode.string "LoadGameData" )
+                ]
+
         UpdateRoom newRoom ->
             Encode.object
                 [ ( "tag", Encode.string "UpdateRoom" )

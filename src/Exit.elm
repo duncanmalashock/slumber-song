@@ -1,4 +1,6 @@
-module Exit exposing (Exit, new, toRoomId)
+module Exit exposing (Exit, decoder, new, toRoomId)
+
+import Json.Decode as Decode exposing (Decoder)
 
 
 type Exit
@@ -20,3 +22,14 @@ new params =
 toRoomId : Exit -> String
 toRoomId (Exit internals) =
     internals.toRoomId
+
+
+decoder : Decoder Exit
+decoder =
+    Decode.field "toRoomId" Decode.string
+        |> Decode.map
+            (\id ->
+                Exit
+                    { toRoomId = id
+                    }
+            )

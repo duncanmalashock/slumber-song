@@ -10,6 +10,14 @@ let interactionLock = false;
 app.ports.toJs.subscribe((msgs) => {
   msgs.map((data) => {
     switch (data.tag) {
+      case "LoadGameData":
+        fetch("/game/rooms.json")
+          .then(res => res.json())
+          .then(data => {
+            sendToElm("gameDataLoaded", data);
+          });
+        break;
+
       case "UpdateRoom":
         changeRoom(data.id, data.name, data.exits);
         break;
