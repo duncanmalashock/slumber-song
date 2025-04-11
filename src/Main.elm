@@ -16,40 +16,47 @@ import ToJs
 type alias Model =
     { currentRoom : Room
     , map : Map
+    , selectedCommand : Maybe Command
     }
+
+
+type Command
+    = Go
 
 
 type Msg
     = ReceivedMessageFromJs FromJs.FromJs
 
 
+entrance : Room
+entrance =
+    Room.new
+        { id = "entrance"
+        , name = "Entrance"
+        , exits =
+            [ Exit.new
+                { toRoomId = "hallway"
+                }
+            ]
+        }
+
+
+hallway : Room
+hallway =
+    Room.new
+        { id = "hallway"
+        , name = "Hallway"
+        , exits =
+            [ Exit.new
+                { toRoomId = "entrance"
+                }
+            ]
+        }
+
+
 init : () -> ( Model, Cmd Msg )
 init _ =
     let
-        entrance : Room
-        entrance =
-            Room.new
-                { id = "entrance"
-                , name = "Entrance"
-                , exits =
-                    [ Exit.new
-                        { toRoomId = "hallway"
-                        }
-                    ]
-                }
-
-        hallway : Room
-        hallway =
-            Room.new
-                { id = "hallway"
-                , name = "Hallway"
-                , exits =
-                    [ Exit.new
-                        { toRoomId = "entrance"
-                        }
-                    ]
-                }
-
         initialModel : Model
         initialModel =
             { currentRoom = entrance
@@ -58,10 +65,11 @@ init _ =
                     [ entrance
                     , hallway
                     ]
+            , selectedCommand = Nothing
             }
     in
     ( initialModel
-    , Ports.send (ToJs.RoomChanged entrance)
+    , Ports.send [ ToJs.RoomChanged entrance ]
     )
 
 
@@ -69,9 +77,40 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ReceivedMessageFromJs fromJs ->
-            ( model
-            , Cmd.none
-            )
+            case fromJs of
+                FromJs.UserClickedGoButton ->
+                    ( { model
+                        | selectedCommand = Just Go
+                      }
+                    , Cmd.none
+                    )
+
+                FromJs.UserClickedExit toRoomId ->
+                    case model.selectedCommand of
+                        Just Go ->
+                            let
+                                newRoom : Room
+                                newRoom =
+                                    model.map
+                                        |> Map.getRoomById toRoomId
+                                        |> Maybe.withDefault model.currentRoom
+                            in
+                            ( { model
+                                | currentRoom = newRoom
+                                , selectedCommand = Nothing
+                              }
+                            , Ports.send [ ToJs.RoomChanged newRoom ]
+                            )
+
+                        _ ->
+                            ( model
+                            , Cmd.none
+                            )
+
+                FromJs.DecodeError string ->
+                    ( model
+                    , Cmd.none
+                    )
 
 
 subscriptions : Model -> Sub Msg

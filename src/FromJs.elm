@@ -4,20 +4,24 @@ import Json.Decode as Decode exposing (Decoder)
 
 
 type FromJs
-    = Data String
+    = UserClickedGoButton
+    | UserClickedExit String
+    | DecodeError Decode.Error
 
 
 decoder : Decoder FromJs
 decoder =
     Decode.field "tag" Decode.string
-        |> Decode.andThen decodePayload
+        |> Decode.andThen
+            (\tag ->
+                case tag of
+                    "userClickedGoButton" ->
+                        Decode.succeed UserClickedGoButton
 
+                    "userClickedExit" ->
+                        Decode.field "payload"
+                            (Decode.map UserClickedExit (Decode.field "toRoomId" Decode.string))
 
-decodePayload : String -> Decoder FromJs
-decodePayload tag =
-    case tag of
-        "data" ->
-            Decode.map Data (Decode.field "payload" Decode.string)
-
-        _ ->
-            Decode.fail "Unknown tag"
+                    _ ->
+                        Decode.fail "Unknown tag"
+            )

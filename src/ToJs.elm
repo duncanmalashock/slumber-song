@@ -1,4 +1,4 @@
-module ToJs exposing (ToJs(..), encode)
+module ToJs exposing (ToJs(..), encodeList)
 
 import Exit
 import Json.Encode as Encode
@@ -9,9 +9,14 @@ type ToJs
     = RoomChanged Room.Room
 
 
+encodeList : List ToJs -> Encode.Value
+encodeList toJsMsgs =
+    Encode.list encode toJsMsgs
+
+
 encode : ToJs -> Encode.Value
-encode msg =
-    case msg of
+encode toJsMsg =
+    case toJsMsg of
         RoomChanged newRoom ->
             Encode.object
                 [ ( "tag", Encode.string "roomChanged" )

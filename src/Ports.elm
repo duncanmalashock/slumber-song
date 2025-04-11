@@ -9,9 +9,9 @@ import Json.Encode as Encode
 import ToJs
 
 
-send : ToJs.ToJs -> Cmd msg
-send toJsMsg =
-    toJs (ToJs.encode toJsMsg)
+send : List ToJs.ToJs -> Cmd msg
+send toJsMsgs =
+    toJs (ToJs.encodeList toJsMsgs)
 
 
 receive : (FromJs.FromJs -> msg) -> Sub msg
@@ -23,8 +23,8 @@ receive toMsg =
                 Ok msg ->
                     toMsg msg
 
-                Err _ ->
-                    toMsg (FromJs.Data "Failed to decode")
+                Err err ->
+                    toMsg (FromJs.DecodeError err)
     in
     fromJs decodeJsMsg
 
