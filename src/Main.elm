@@ -1,9 +1,11 @@
 module Main exposing (main)
 
 import Browser
+import Command
 import Dict exposing (Dict)
 import Exit
 import FromJs
+import Game
 import Html
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
@@ -14,28 +16,12 @@ import ToJs
 
 
 type alias Model =
-    { currentRoom : Room
-    , map : Map
-    , selectedCommand : Maybe Command
+    { game : Game.Game
     }
-
-
-type Command
-    = Go
 
 
 type Msg
     = ReceivedMessageFromJs FromJs.FromJs
-
-
-emptyRoom : Room
-emptyRoom =
-    Room.new
-        { id = ""
-        , name = ""
-        , exits =
-            []
-        }
 
 
 init : () -> ( Model, Cmd Msg )
@@ -43,9 +29,7 @@ init _ =
     let
         initialModel : Model
         initialModel =
-            { currentRoom = emptyRoom
-            , map = Map.new []
-            , selectedCommand = Nothing
+            { game = Game.dummy
             }
     in
     ( initialModel
@@ -59,46 +43,41 @@ update msg model =
     case msg of
         ReceivedMessageFromJs fromJs ->
             case fromJs of
-                FromJs.GameDataLoaded data ->
-                    case List.head data of
-                        Just newRoom ->
-                            ( { currentRoom = newRoom
-                              , map = Map.new data
-                              , selectedCommand = Nothing
+                FromJs.GameDataLoaded loadedRooms ->
+                    case loadedRooms of
+                        (initialRoom :: _) as rooms ->
+                            let
+                                ( newGame, effects ) =
+                                    Game.new rooms initialRoom
+                            in
+                            ( { game = newGame
                               }
-                            , Ports.send <|
-                                [ ToJs.UpdateRoom newRoom
-                                ]
+                            , List.map effectToJs effects
+                                |> Ports.send
                             )
 
-                        Nothing ->
+                        _ ->
                             ( model, Cmd.none )
 
                 FromJs.UserClickedGoButton ->
                     ( { model
-                        | selectedCommand = Just Go
+                        | game = Game.selectCommand Command.Go model.game
                       }
                     , Cmd.none
                     )
 
                 FromJs.UserClickedExit toRoomId ->
-                    case model.selectedCommand of
-                        Just Go ->
+                    case Game.selectedCommand model.game of
+                        Just Command.Go ->
                             let
-                                newRoom : Room
-                                newRoom =
-                                    model.map
-                                        |> Map.getRoomById toRoomId
-                                        |> Maybe.withDefault model.currentRoom
+                                ( newGame, effects ) =
+                                    Game.goToExit { toRoomId = toRoomId } model.game
                             in
                             ( { model
-                                | currentRoom = newRoom
-                                , selectedCommand = Nothing
+                                | game = newGame
                               }
-                            , Ports.send <|
-                                [ ToJs.UpdateRoom newRoom
-                                ]
-                                    ++ effectsForRoom newRoom
+                            , List.map effectToJs effects
+                                |> Ports.send
                             )
 
                         _ ->
@@ -112,11 +91,14 @@ update msg model =
                     )
 
 
-effectsForRoom : Room -> List ToJs.ToJs
-effectsForRoom room =
-    Room.soundsOnEnter room
-        |> List.map
-            ToJs.PlaySound
+effectToJs : Game.Effect -> ToJs.ToJs
+effectToJs effect =
+    case effect of
+        Game.UpdateRoom room ->
+            ToJs.UpdateRoom room
+
+        Game.PlaySound filename ->
+            ToJs.PlaySound filename
 
 
 subscriptions : Model -> Sub Msg
