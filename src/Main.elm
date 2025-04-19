@@ -15,21 +15,44 @@ import Room exposing (Room)
 import ToJs
 
 
+type alias Flags =
+    { useVDomInterface : Bool
+    }
+
+
+flagsDecoder : Decode.Decoder Flags
+flagsDecoder =
+    Decode.map Flags
+        (Decode.field "useVDomInterface" Decode.bool)
+
+
 type alias Model =
     { game : Game.Game
+    , interfaceMode : InterfaceMode
     }
+
+
+type InterfaceMode
+    = InterfaceJS
+    | InterfaceElmVDom
 
 
 type Msg
     = ReceivedMessageFromJs FromJs.FromJs
 
 
-init : () -> ( Model, Cmd Msg )
-init _ =
+init : Flags -> ( Model, Cmd Msg )
+init flags =
     let
         initialModel : Model
         initialModel =
             { game = Game.dummy
+            , interfaceMode =
+                if flags.useVDomInterface then
+                    InterfaceElmVDom
+
+                else
+                    InterfaceJS
             }
     in
     ( initialModel
@@ -50,10 +73,10 @@ update msg model =
                                 ( newGame, effects ) =
                                     Game.new rooms initialRoom
                             in
-                            ( { game = newGame
+                            ( { model
+                                | game = newGame
                               }
-                            , List.map effectToJs effects
-                                |> Ports.send
+                            , effectsToCmd model.interfaceMode effects
                             )
 
                         _ ->
@@ -76,8 +99,7 @@ update msg model =
                             ( { model
                                 | game = newGame
                               }
-                            , List.map effectToJs effects
-                                |> Ports.send
+                            , effectsToCmd model.interfaceMode effects
                             )
 
                         _ ->
@@ -89,6 +111,18 @@ update msg model =
                     ( model
                     , Cmd.none
                     )
+
+
+effectsToCmd : InterfaceMode -> List Game.Effect -> Cmd Msg
+effectsToCmd interfaceMode effects =
+    case interfaceMode of
+        InterfaceJS ->
+            effects
+                |> List.map effectToJs
+                |> Ports.send
+
+        InterfaceElmVDom ->
+            Cmd.none
 
 
 effectToJs : Game.Effect -> ToJs.ToJs
@@ -108,10 +142,20 @@ subscriptions _ =
 
 view : Model -> Html.Html Msg
 view model =
-    Html.text ""
+    case model.interfaceMode of
+        InterfaceJS ->
+            Html.text ""
+
+        InterfaceElmVDom ->
+            elmView model
 
 
-main : Program () Model Msg
+elmView : Model -> Html.Html Msg
+elmView model =
+    Html.text "Using Elm VDOM"
+
+
+main : Program Flags Model Msg
 main =
     Browser.element
         { init = init

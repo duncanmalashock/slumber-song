@@ -1,8 +1,13 @@
 import '../assets/style.css'
 import Main from '../src/Main.elm'
 
+let useVDomInterface = true;
+
 let app = Main.init({
-  node: document.getElementById('app')
+  node: document.getElementById('app'),
+  flags: {
+    useVDomInterface: useVDomInterface
+  }
 });
 
 let interactionLock = false;
@@ -32,8 +37,33 @@ app.ports.toJs.subscribe((msgs) => {
   })
 });
 
-const goButton = document.getElementById('go');
-goButton.addEventListener("mouseup", (e) => { sendToElm("userClickedGoButton", {}) });
+if (!useVDomInterface) {
+  const roomDiv = document.createElement("div");
+  roomDiv.id = "room";
+  
+  const goDiv = document.createElement("div");
+  goDiv.id = "go";
+  goDiv.textContent = "Go";
+  
+  const exitDiv = document.createElement("div");
+  exitDiv.id = "exit";
+
+  const canvas = document.createElement("canvas");
+  canvas.id = "screen";
+  canvas.width = 512;
+  canvas.height = 342;
+  
+  const body = document.body;
+  
+  // Insert in reverse order to maintain correct top-down order
+  body.insertBefore(exitDiv, body.firstChild);
+  body.insertBefore(goDiv, body.firstChild);
+  body.insertBefore(roomDiv, body.firstChild);
+  body.insertBefore(canvas, body.firstChild);
+
+  goDiv.addEventListener("mouseup", (e) => { sendToElm("userClickedGoButton", {}) });
+}
+
 
 function changeRoom(id, name, exits) {
   document.getElementById('room').setHTMLUnsafe(name);
