@@ -4,6 +4,35 @@ import Main from '../src/Main.elm'
 // Flag to disable imperative canvas drawing for game logic debugging
 let useVDomInterface = false;
 
+// Set up DOM elements
+if (!useVDomInterface) {
+  const roomDiv = document.createElement("div");
+  roomDiv.id = "room";
+  
+  const goDiv = document.createElement("div");
+  goDiv.id = "go";
+  goDiv.textContent = "Go";
+  
+  const exitDiv = document.createElement("div");
+  exitDiv.id = "exit";
+
+  const canvas = document.createElement("canvas");
+  canvas.id = "screen";
+  canvas.width = 512;
+  canvas.height = 342;
+  
+  const body = document.body;
+  
+  // Insert in reverse order to maintain correct top-down order
+  body.insertBefore(exitDiv, body.firstChild);
+  body.insertBefore(goDiv, body.firstChild);
+  body.insertBefore(roomDiv, body.firstChild);
+  body.insertBefore(canvas, body.firstChild);
+
+  goDiv.addEventListener("mouseup", (e) => { sendToElm("UserClickedGoButton", {}) });
+}
+
+// Elm app initialization
 let app = Main.init({
   node: document.getElementById('app'),
   flags: {
@@ -11,8 +40,19 @@ let app = Main.init({
   }
 });
 
+// Port to Elm
+function sendToElm(tag, payload) {
+  app.ports.fromJs.send({
+    tag: tag,
+    payload: payload
+  });
+}
+
+// Set global interaction lock
+// (prevents sending messages during side effects)
 let interactionLock = false;
 
+// Subscribe to ports from Elm
 app.ports.toJs.subscribe((msgs) => {
   msgs.map((data) => {
     switch (data.tag) {
@@ -46,33 +86,9 @@ app.ports.toJs.subscribe((msgs) => {
   })
 });
 
-if (!useVDomInterface) {
-  const roomDiv = document.createElement("div");
-  roomDiv.id = "room";
-  
-  const goDiv = document.createElement("div");
-  goDiv.id = "go";
-  goDiv.textContent = "Go";
-  
-  const exitDiv = document.createElement("div");
-  exitDiv.id = "exit";
-
-  const canvas = document.createElement("canvas");
-  canvas.id = "screen";
-  canvas.width = 512;
-  canvas.height = 342;
-  
-  const body = document.body;
-  
-  // Insert in reverse order to maintain correct top-down order
-  body.insertBefore(exitDiv, body.firstChild);
-  body.insertBefore(goDiv, body.firstChild);
-  body.insertBefore(roomDiv, body.firstChild);
-  body.insertBefore(canvas, body.firstChild);
-
-  goDiv.addEventListener("mouseup", (e) => { sendToElm("UserClickedGoButton", {}) });
-}
-
+//
+// -- PORTS FROM ELM --
+//
 
 function updateRoom(id, name, exits) {
   console.log(`EFFECT: updateRoom ${id}`);
@@ -108,11 +124,4 @@ function playSound(filename) {
 
 function highlightCommand(commandName) {
   console.log(`EFFECT: highlightCommand ${commandName}`);
-}
-
-function sendToElm(tag, payload) {
-  app.ports.fromJs.send({
-    tag: tag,
-    payload: payload
-  });
 }
