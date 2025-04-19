@@ -3,6 +3,7 @@ module Main exposing (main)
 import Browser
 import Command
 import Dict exposing (Dict)
+import Effect exposing (Effect)
 import Exit
 import Game
 import Html
@@ -11,7 +12,6 @@ import Json.Decode as Decode
 import Map exposing (Map)
 import Ports
 import Room exposing (Room)
-import ToJs
 
 
 type alias Flags =
@@ -88,12 +88,12 @@ init flags =
     in
     ( initialModel
     , Ports.send
-        [ ToJs.LoadGameData
+        [ Effect.LoadGameData
         ]
     )
 
 
-updateLoadedGame : Game.Msg -> RemoteData Game.Game String -> ( RemoteData Game.Game String, List Game.Effect )
+updateLoadedGame : Game.Msg -> RemoteData Game.Game String -> ( RemoteData Game.Game String, List Effect.Effect )
 updateLoadedGame gameMsg gameData =
     case gameData of
         NotLoaded ->
@@ -111,7 +111,7 @@ updateLoadedGame gameMsg gameData =
 
         LoadFailed err ->
             ( gameData
-            , [ Game.ReportError "Couldn't load game" ]
+            , [ Effect.ReportError "Couldn't load game" ]
             )
 
 
@@ -136,7 +136,7 @@ update msg model =
                         | game = LoadFailed "Couldn't load game"
                       }
                     , effectsToCmd
-                        [ Game.ReportError "Couldn't load game" ]
+                        [ Effect.ReportError "Couldn't load game" ]
                     )
 
         UserClickedGoButton ->
@@ -164,31 +164,14 @@ update msg model =
         DecodeError decodeError ->
             ( model
             , effectsToCmd
-                [ Game.ReportError <| "Couldn't decode msg: " ++ Decode.errorToString decodeError ]
+                [ Effect.ReportError <| "Couldn't decode msg: " ++ Decode.errorToString decodeError ]
             )
 
 
-effectsToCmd : List Game.Effect -> Cmd Msg
+effectsToCmd : List Effect -> Cmd Msg
 effectsToCmd effects =
     effects
-        |> List.map effectToJs
         |> Ports.send
-
-
-effectToJs : Game.Effect -> ToJs.ToJs
-effectToJs effect =
-    case effect of
-        Game.UpdateRoom room ->
-            ToJs.UpdateRoom room
-
-        Game.PlaySound filename ->
-            ToJs.PlaySound filename
-
-        Game.HighlightCommand command ->
-            ToJs.HighlightCommand command
-
-        Game.ReportError errorMessage ->
-            ToJs.ReportError <| "ERROR: " ++ errorMessage
 
 
 subscriptions : Model -> Sub Msg

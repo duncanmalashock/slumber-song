@@ -1,4 +1,4 @@
-module ToJs exposing (ToJs(..), encodeList)
+module Effect exposing (Effect(..), encodeList)
 
 import Command exposing (Command)
 import Exit
@@ -6,7 +6,7 @@ import Json.Encode as Encode
 import Room
 
 
-type ToJs
+type Effect
     = LoadGameData
     | UpdateRoom Room.Room
     | PlaySound String
@@ -14,14 +14,14 @@ type ToJs
     | ReportError String
 
 
-encodeList : List ToJs -> Encode.Value
-encodeList toJsMsgs =
-    Encode.list encode toJsMsgs
+encodeList : List Effect -> Encode.Value
+encodeList effects =
+    Encode.list encode effects
 
 
-encode : ToJs -> Encode.Value
-encode toJsMsg =
-    case toJsMsg of
+encode : Effect -> Encode.Value
+encode effect =
+    case effect of
         LoadGameData ->
             Encode.object
                 [ ( "tag", Encode.string "LoadGameData" )

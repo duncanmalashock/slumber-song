@@ -40,7 +40,7 @@ app.ports.toJs.subscribe((msgs) => {
         break;
 
       default:
-        console.error("Unknown tag from Elm:", data);
+        console.error("Unknown port tag sent from Elm to JS:", data);
     }
   })
 });
@@ -98,7 +98,7 @@ function playSound(filename) {
   audio.play();
   audio.addEventListener("ended", function(){
     audio.currentTime = 0;
-    console.log("ended");
+    console.log("Sound playback ended");
     interactionLock = false;
   });
 }

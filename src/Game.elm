@@ -1,6 +1,7 @@
-module Game exposing (Effect(..), Game, Msg(..), dummy, goToExit, new, selectCommand, selectedCommand, update)
+module Game exposing (Game, Msg(..), dummy, goToExit, new, selectCommand, selectedCommand, update)
 
 import Command exposing (Command(..))
+import Effect exposing (Effect(..))
 import Map exposing (Map)
 import Room exposing (Room)
 
@@ -49,13 +50,6 @@ new rooms initialRoom =
 type Msg
     = UserClickedCommandButton Command
     | UserClickedExit String
-
-
-type Effect
-    = UpdateRoom Room
-    | PlaySound String
-    | HighlightCommand Command
-    | ReportError String
 
 
 update : Msg -> Game -> ( Game, List Effect )
