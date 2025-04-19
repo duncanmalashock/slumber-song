@@ -1,6 +1,7 @@
 import '../assets/style.css'
 import Main from '../src/Main.elm'
 
+// Flag to disable imperative canvas drawing for game logic debugging
 let useVDomInterface = false;
 
 let app = Main.init({
@@ -75,20 +76,22 @@ if (!useVDomInterface) {
 
 function updateRoom(id, name, exits) {
   console.log(`EFFECT: updateRoom ${id}`);
-  document.getElementById('room').setHTMLUnsafe(name);
+  if (!useVDomInterface) {
+    document.getElementById('room').setHTMLUnsafe(name);
 
-  const oldExitElement = document.getElementById('exit');
-  const newExitElement = oldExitElement.cloneNode(true);
-  oldExitElement.parentNode.replaceChild(newExitElement, oldExitElement);
+    const oldExitElement = document.getElementById('exit');
+    const newExitElement = oldExitElement.cloneNode(true);
+    oldExitElement.parentNode.replaceChild(newExitElement, oldExitElement);
 
-  newExitElement.setHTMLUnsafe(exits[0].toRoomId);
-  newExitElement.addEventListener("mouseup", (e) => {
-    if (interactionLock) {
-    }
-    else {
-      sendToElm("UserClickedExit", { toRoomId: exits[0].toRoomId });
-    }
-  });
+    newExitElement.setHTMLUnsafe(exits[0].toRoomId);
+    newExitElement.addEventListener("mouseup", (e) => {
+      if (interactionLock) {
+      }
+      else {
+        sendToElm("UserClickedExit", { toRoomId: exits[0].toRoomId });
+      }
+    });
+  }
 }
 
 function playSound(filename) {

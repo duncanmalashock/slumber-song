@@ -45,9 +45,8 @@ type InterfaceMode
 
 type Msg
     = GameDataLoaded (List Room.Room)
-    | UserClickedGoButton
-    | UserClickedExit String
-    | DecodeError Decode.Error
+    | ReceivedGameMsg Game.Msg
+    | GameMsgDecodeError Decode.Error
 
 
 msgDecoder : Decode.Decoder Msg
@@ -61,11 +60,20 @@ msgDecoder =
                             (Decode.map GameDataLoaded (Decode.list Room.decoder))
 
                     "UserClickedGoButton" ->
-                        Decode.succeed UserClickedGoButton
+                        Decode.succeed
+                            (ReceivedGameMsg
+                                (Game.UserClickedCommandButton Command.Go)
+                            )
 
                     "UserClickedExit" ->
                         Decode.field "payload"
-                            (Decode.map UserClickedExit (Decode.field "toRoomId" Decode.string))
+                            (Decode.map
+                                (\toRoomId ->
+                                    ReceivedGameMsg
+                                        (Game.UserClickedExit toRoomId)
+                                )
+                                (Decode.field "toRoomId" Decode.string)
+                            )
 
                     _ ->
                         Decode.fail "Unknown tag"
@@ -93,7 +101,10 @@ init flags =
     )
 
 
-updateLoadedGame : Game.Msg -> RemoteData Game.Game String -> ( RemoteData Game.Game String, List Effect.Effect )
+updateLoadedGame :
+    Game.Msg
+    -> RemoteData Game.Game String
+    -> ( RemoteData Game.Game String, List Effect.Effect )
 updateLoadedGame gameMsg gameData =
     case gameData of
         NotLoaded ->
@@ -139,10 +150,12 @@ update msg model =
                         [ Effect.ReportError "Couldn't load game" ]
                     )
 
-        UserClickedGoButton ->
+        ReceivedGameMsg gameMsg ->
             let
                 ( updatedGame, effects ) =
-                    updateLoadedGame (Game.UserClickedCommandButton Command.Go) model.game
+                    updateLoadedGame
+                        (Game.UserClickedCommandButton Command.Go)
+                        model.game
             in
             ( { model
                 | game = updatedGame
@@ -150,21 +163,13 @@ update msg model =
             , effectsToCmd effects
             )
 
-        UserClickedExit toRoomId ->
-            let
-                ( updatedGame, effects ) =
-                    updateLoadedGame (Game.UserClickedExit toRoomId) model.game
-            in
-            ( { model
-                | game = updatedGame
-              }
-            , effectsToCmd effects
-            )
-
-        DecodeError decodeError ->
+        GameMsgDecodeError decodeError ->
             ( model
             , effectsToCmd
-                [ Effect.ReportError <| "Couldn't decode msg: " ++ Decode.errorToString decodeError ]
+                [ Effect.ReportError <|
+                    "Couldn't decode msg: "
+                        ++ Decode.errorToString decodeError
+                ]
             )
 
 
@@ -186,7 +191,7 @@ jsonToMsg json =
             msg
 
         Err err ->
-            DecodeError err
+            GameMsgDecodeError err
 
 
 view : Model -> Html.Html Msg
