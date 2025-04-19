@@ -57,7 +57,8 @@ init flags =
     in
     ( initialModel
     , Ports.send
-        [ ToJs.LoadGameData ]
+        [ ToJs.LoadGameData
+        ]
     )
 
 
@@ -83,29 +84,26 @@ update msg model =
                             ( model, Cmd.none )
 
                 FromJs.UserClickedGoButton ->
+                    let
+                        ( updatedGame, effects ) =
+                            Game.update (Game.UserClickedCommandButton Command.Go) model.game
+                    in
                     ( { model
-                        | game = Game.selectCommand Command.Go model.game
+                        | game = updatedGame
                       }
-                    , Cmd.none
+                    , effectsToCmd model.interfaceMode effects
                     )
 
                 FromJs.UserClickedExit toRoomId ->
-                    case Game.selectedCommand model.game of
-                        Just Command.Go ->
-                            let
-                                ( newGame, effects ) =
-                                    Game.goToExit { toRoomId = toRoomId } model.game
-                            in
-                            ( { model
-                                | game = newGame
-                              }
-                            , effectsToCmd model.interfaceMode effects
-                            )
-
-                        _ ->
-                            ( model
-                            , Cmd.none
-                            )
+                    let
+                        ( updatedGame, effects ) =
+                            Game.update (Game.UserClickedExit toRoomId) model.game
+                    in
+                    ( { model
+                        | game = updatedGame
+                      }
+                    , effectsToCmd model.interfaceMode effects
+                    )
 
                 FromJs.DecodeError string ->
                     ( model
@@ -133,6 +131,9 @@ effectToJs effect =
 
         Game.PlaySound filename ->
             ToJs.PlaySound filename
+
+        Game.HighlightCommand command ->
+            ToJs.HighlightCommand command
 
 
 subscriptions : Model -> Sub Msg

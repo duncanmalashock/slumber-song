@@ -1,7 +1,7 @@
 import '../assets/style.css'
 import Main from '../src/Main.elm'
 
-let useVDomInterface = true;
+let useVDomInterface = false;
 
 let app = Main.init({
   node: document.getElementById('app'),
@@ -24,11 +24,15 @@ app.ports.toJs.subscribe((msgs) => {
         break;
 
       case "UpdateRoom":
-        changeRoom(data.id, data.name, data.exits);
+        updateRoom(data.id, data.name, data.exits);
         break;
 
       case "PlaySound":
         playSound(data.file);
+        break;
+
+      case "HighlightCommand":
+        highlightCommand(data.command);
         break;
 
       default:
@@ -65,7 +69,7 @@ if (!useVDomInterface) {
 }
 
 
-function changeRoom(id, name, exits) {
+function updateRoom(id, name, exits) {
   document.getElementById('room').setHTMLUnsafe(name);
 
   const oldExitElement = document.getElementById('exit');
@@ -91,6 +95,10 @@ function playSound(filename) {
     console.log("ended");
     interactionLock = false;
   });
+}
+
+function highlightCommand(commandName) {
+  console.log(`Highlight command button: ${commandName}`);
 }
 
 function sendToElm(tag, payload) {

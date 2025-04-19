@@ -1,6 +1,6 @@
-module Game exposing (Effect(..), Game, dummy, goToExit, new, selectCommand, selectedCommand)
+module Game exposing (Effect(..), Game, Msg(..), dummy, goToExit, new, selectCommand, selectedCommand, update)
 
-import Command exposing (Command)
+import Command exposing (Command(..))
 import Map exposing (Map)
 import Room exposing (Room)
 
@@ -46,6 +46,37 @@ new rooms initialRoom =
     )
 
 
+type Msg
+    = UserClickedCommandButton Command
+    | UserClickedExit String
+
+
+type Effect
+    = UpdateRoom Room
+    | PlaySound String
+    | HighlightCommand Command
+
+
+update : Msg -> Game -> ( Game, List Effect )
+update msg ((Game internals) as game) =
+    case msg of
+        UserClickedCommandButton command ->
+            ( Game
+                { internals
+                    | selectedCommand = Just command
+                }
+            , [ HighlightCommand command
+              ]
+            )
+
+        UserClickedExit toRoomId ->
+            if internals.selectedCommand == Just Command.Go then
+                goToExit { toRoomId = toRoomId } game
+
+            else
+                ( game, [] )
+
+
 selectCommand : Command -> Game -> Game
 selectCommand command (Game internals) =
     Game
@@ -79,8 +110,3 @@ goToExit { toRoomId } (Game internals) =
 selectedCommand : Game -> Maybe Command
 selectedCommand (Game internals) =
     internals.selectedCommand
-
-
-type Effect
-    = UpdateRoom Room
-    | PlaySound String

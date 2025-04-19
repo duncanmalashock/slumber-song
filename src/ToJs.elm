@@ -1,5 +1,6 @@
 module ToJs exposing (ToJs(..), encodeList)
 
+import Command exposing (Command)
 import Exit
 import Json.Encode as Encode
 import Room
@@ -9,6 +10,7 @@ type ToJs
     = LoadGameData
     | UpdateRoom Room.Room
     | PlaySound String
+    | HighlightCommand Command
 
 
 encodeList : List ToJs -> Encode.Value
@@ -44,4 +46,10 @@ encode toJsMsg =
             Encode.object
                 [ ( "tag", Encode.string "PlaySound" )
                 , ( "file", Encode.string ("/game/sfx/" ++ file ++ ".mp3") )
+                ]
+
+        HighlightCommand command ->
+            Encode.object
+                [ ( "tag", Encode.string "HighlightCommand" )
+                , ( "command", Encode.string (Command.toString command) )
                 ]
