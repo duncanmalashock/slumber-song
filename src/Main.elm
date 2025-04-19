@@ -153,9 +153,7 @@ update msg model =
         ReceivedGameMsg gameMsg ->
             let
                 ( updatedGame, effects ) =
-                    updateLoadedGame
-                        (Game.UserClickedCommandButton Command.Go)
-                        model.game
+                    updateLoadedGame gameMsg model.game
             in
             ( { model
                 | game = updatedGame
