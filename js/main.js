@@ -35,6 +35,10 @@ app.ports.toJs.subscribe((msgs) => {
         highlightCommand(data.command);
         break;
 
+      case "ReportError":
+        console.error(data.message);
+        break;
+
       default:
         console.error("Unknown tag from Elm:", data);
     }
@@ -70,6 +74,7 @@ if (!useVDomInterface) {
 
 
 function updateRoom(id, name, exits) {
+  console.log(`EFFECT: updateRoom ${id}`);
   document.getElementById('room').setHTMLUnsafe(name);
 
   const oldExitElement = document.getElementById('exit');
@@ -87,6 +92,7 @@ function updateRoom(id, name, exits) {
 }
 
 function playSound(filename) {
+  console.log(`EFFECT: playSound ${filename}`);
   interactionLock = true;
   const audio = new Audio(filename);
   audio.play();
@@ -98,7 +104,7 @@ function playSound(filename) {
 }
 
 function highlightCommand(commandName) {
-  console.log(`Highlight command button: ${commandName}`);
+  console.log(`EFFECT: highlightCommand ${commandName}`);
 }
 
 function sendToElm(tag, payload) {

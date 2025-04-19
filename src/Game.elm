@@ -55,6 +55,7 @@ type Effect
     = UpdateRoom Room
     | PlaySound String
     | HighlightCommand Command
+    | ReportError String
 
 
 update : Msg -> Game -> ( Game, List Effect )

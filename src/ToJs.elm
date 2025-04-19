@@ -11,6 +11,7 @@ type ToJs
     | UpdateRoom Room.Room
     | PlaySound String
     | HighlightCommand Command
+    | ReportError String
 
 
 encodeList : List ToJs -> Encode.Value
@@ -52,4 +53,10 @@ encode toJsMsg =
             Encode.object
                 [ ( "tag", Encode.string "HighlightCommand" )
                 , ( "command", Encode.string (Command.toString command) )
+                ]
+
+        ReportError message ->
+            Encode.object
+                [ ( "tag", Encode.string "ReportError" )
+                , ( "message", Encode.string message )
                 ]

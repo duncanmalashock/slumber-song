@@ -26,9 +26,16 @@ flagsDecoder =
 
 
 type alias Model =
-    { game : Game.Game
+    { game : RemoteData Game.Game String
     , interfaceMode : InterfaceMode
     }
+
+
+type RemoteData data err
+    = NotLoaded
+    | Loading
+    | LoadSuccessful data
+    | LoadFailed err
 
 
 type InterfaceMode
@@ -70,7 +77,7 @@ init flags =
     let
         initialModel : Model
         initialModel =
-            { game = Game.dummy
+            { game = Loading
             , interfaceMode =
                 if flags.useVDomInterface then
                     InterfaceElmVDom
@@ -86,6 +93,28 @@ init flags =
     )
 
 
+updateLoadedGame : Game.Msg -> RemoteData Game.Game String -> ( RemoteData Game.Game String, List Game.Effect )
+updateLoadedGame gameMsg gameData =
+    case gameData of
+        NotLoaded ->
+            ( gameData, [] )
+
+        Loading ->
+            ( gameData, [] )
+
+        LoadSuccessful loadedGame ->
+            let
+                ( updatedGame, effects ) =
+                    Game.update gameMsg loadedGame
+            in
+            ( LoadSuccessful updatedGame, effects )
+
+        LoadFailed err ->
+            ( gameData
+            , [ Game.ReportError "Couldn't load game" ]
+            )
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -97,52 +126,53 @@ update msg model =
                             Game.new rooms initialRoom
                     in
                     ( { model
-                        | game = newGame
+                        | game = LoadSuccessful newGame
                       }
-                    , effectsToCmd model.interfaceMode effects
+                    , effectsToCmd effects
                     )
 
                 _ ->
-                    ( model, Cmd.none )
+                    ( { model
+                        | game = LoadFailed "Couldn't load game"
+                      }
+                    , effectsToCmd
+                        [ Game.ReportError "Couldn't load game" ]
+                    )
 
         UserClickedGoButton ->
             let
                 ( updatedGame, effects ) =
-                    Game.update (Game.UserClickedCommandButton Command.Go) model.game
+                    updateLoadedGame (Game.UserClickedCommandButton Command.Go) model.game
             in
             ( { model
                 | game = updatedGame
               }
-            , effectsToCmd model.interfaceMode effects
+            , effectsToCmd effects
             )
 
         UserClickedExit toRoomId ->
             let
                 ( updatedGame, effects ) =
-                    Game.update (Game.UserClickedExit toRoomId) model.game
+                    updateLoadedGame (Game.UserClickedExit toRoomId) model.game
             in
             ( { model
                 | game = updatedGame
               }
-            , effectsToCmd model.interfaceMode effects
+            , effectsToCmd effects
             )
 
-        DecodeError string ->
+        DecodeError decodeError ->
             ( model
-            , Cmd.none
+            , effectsToCmd
+                [ Game.ReportError <| "Couldn't decode msg: " ++ Decode.errorToString decodeError ]
             )
 
 
-effectsToCmd : InterfaceMode -> List Game.Effect -> Cmd Msg
-effectsToCmd interfaceMode effects =
-    case interfaceMode of
-        InterfaceJS ->
-            effects
-                |> List.map effectToJs
-                |> Ports.send
-
-        InterfaceElmVDom ->
-            Cmd.none
+effectsToCmd : List Game.Effect -> Cmd Msg
+effectsToCmd effects =
+    effects
+        |> List.map effectToJs
+        |> Ports.send
 
 
 effectToJs : Game.Effect -> ToJs.ToJs
@@ -156,6 +186,9 @@ effectToJs effect =
 
         Game.HighlightCommand command ->
             ToJs.HighlightCommand command
+
+        Game.ReportError errorMessage ->
+            ToJs.ReportError <| "ERROR: " ++ errorMessage
 
 
 subscriptions : Model -> Sub Msg
