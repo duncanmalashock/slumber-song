@@ -19,7 +19,7 @@ app.ports.toJs.subscribe((msgs) => {
         fetch("/game/rooms.json")
           .then(res => res.json())
           .then(data => {
-            sendToElm("gameDataLoaded", data);
+            sendToElm("GameDataLoaded", data);
           });
         break;
 
@@ -65,7 +65,7 @@ if (!useVDomInterface) {
   body.insertBefore(roomDiv, body.firstChild);
   body.insertBefore(canvas, body.firstChild);
 
-  goDiv.addEventListener("mouseup", (e) => { sendToElm("userClickedGoButton", {}) });
+  goDiv.addEventListener("mouseup", (e) => { sendToElm("UserClickedGoButton", {}) });
 }
 
 
@@ -81,7 +81,7 @@ function updateRoom(id, name, exits) {
     if (interactionLock) {
     }
     else {
-      sendToElm("userClickedExit", { toRoomId: exits[0].toRoomId });
+      sendToElm("UserClickedExit", { toRoomId: exits[0].toRoomId });
     }
   });
 }
