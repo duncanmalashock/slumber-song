@@ -1,9 +1,9 @@
-module Game exposing (Game, Msg(..), dummy, goToExit, new, selectCommand, selectedCommand, update)
+module Game exposing (Game, Msg(..), new, selectCommand, selectedCommand, update)
 
 import Command exposing (Command(..))
 import Effect exposing (Effect(..))
-import Map exposing (Map)
-import Room exposing (Room)
+import Object exposing (Object)
+import Objects exposing (Objects)
 
 
 type Game
@@ -11,45 +11,23 @@ type Game
 
 
 type alias Internals =
-    { currentRoom : Room
-    , map : Map
+    { objects : Objects
     , selectedCommand : Maybe Command
     }
 
 
-dummy : Game
-dummy =
-    let
-        emptyRoom : Room
-        emptyRoom =
-            Room.new
-                { id = ""
-                , name = ""
-                , exits =
-                    []
-                }
-    in
-    Game
-        { currentRoom = emptyRoom
-        , map = Map.new [ emptyRoom ]
-        , selectedCommand = Nothing
-        }
-
-
-new : List Room.Room -> Room.Room -> ( Game, List Effect )
-new rooms initialRoom =
+new : List Object -> ( Game, List Effect )
+new objects =
     ( Game
-        { currentRoom = initialRoom
-        , map = Map.new rooms
+        { objects = Objects.new objects
         , selectedCommand = Nothing
         }
-    , [ UpdateRoom initialRoom ]
+    , []
     )
 
 
 type Msg
     = UserClickedCommandButton Command
-    | UserClickedExit String
 
 
 update : Msg -> Game -> ( Game, List Effect )
@@ -64,13 +42,6 @@ update msg ((Game internals) as game) =
               ]
             )
 
-        UserClickedExit toRoomId ->
-            if internals.selectedCommand == Just Command.Go then
-                goToExit { toRoomId = toRoomId } game
-
-            else
-                ( game, [] )
-
 
 selectCommand : Command -> Game -> Game
 selectCommand command (Game internals) =
@@ -78,28 +49,6 @@ selectCommand command (Game internals) =
         { internals
             | selectedCommand = Just Command.Go
         }
-
-
-goToExit : { toRoomId : String } -> Game -> ( Game, List Effect )
-goToExit { toRoomId } (Game internals) =
-    let
-        newRoom : Room
-        newRoom =
-            internals.map
-                |> Map.getRoomById toRoomId
-                |> Maybe.withDefault internals.currentRoom
-    in
-    ( Game
-        { internals
-            | selectedCommand = Nothing
-            , currentRoom = newRoom
-        }
-    , UpdateRoom newRoom
-        :: (newRoom
-                |> Room.soundsOnEnter
-                |> List.map PlaySound
-           )
-    )
 
 
 selectedCommand : Game -> Maybe Command

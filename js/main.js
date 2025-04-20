@@ -2,7 +2,7 @@ import '../assets/style.css'
 import Main from '../src/Main.elm'
 
 // Flag to disable imperative canvas drawing for game logic debugging
-let useVDomInterface = false;
+let useVDomInterface = true;
 
 // Set up DOM elements
 if (!useVDomInterface) {
@@ -36,7 +36,8 @@ if (!useVDomInterface) {
 let app = Main.init({
   node: document.getElementById('app'),
   flags: {
-    useVDomInterface: useVDomInterface
+    useVDomInterface: useVDomInterface,
+    gameFile: "/game/game.json"
   }
 });
 
@@ -57,15 +58,11 @@ app.ports.toJs.subscribe((msgs) => {
   msgs.map((data) => {
     switch (data.tag) {
       case "LoadGameData":
-        fetch("/game/rooms.json")
+        fetch(data.file)
           .then(res => res.json())
           .then(data => {
             sendToElm("GameDataLoaded", data);
           });
-        break;
-
-      case "UpdateRoom":
-        updateRoom(data.id, data.name, data.exits);
         break;
 
       case "PlaySound":
@@ -89,26 +86,6 @@ app.ports.toJs.subscribe((msgs) => {
 //
 // -- PORTS FROM ELM --
 //
-
-function updateRoom(id, name, exits) {
-  console.log(`EFFECT: updateRoom ${id}`);
-  if (!useVDomInterface) {
-    document.getElementById('room').setHTMLUnsafe(name);
-
-    const oldExitElement = document.getElementById('exit');
-    const newExitElement = oldExitElement.cloneNode(true);
-    oldExitElement.parentNode.replaceChild(newExitElement, oldExitElement);
-
-    newExitElement.setHTMLUnsafe(exits[0].toRoomId);
-    newExitElement.addEventListener("mouseup", (e) => {
-      if (interactionLock) {
-      }
-      else {
-        sendToElm("UserClickedExit", { toRoomId: exits[0].toRoomId });
-      }
-    });
-  }
-}
 
 function playSound(filename) {
   console.log(`EFFECT: playSound ${filename}`);

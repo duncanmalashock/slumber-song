@@ -4,25 +4,25 @@ import Browser
 import Command
 import Dict exposing (Dict)
 import Effect exposing (Effect)
-import Exit
 import Game
 import Html
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
-import Map exposing (Map)
+import Object exposing (Object)
 import Ports
-import Room exposing (Room)
 
 
 type alias Flags =
     { useVDomInterface : Bool
+    , gameFile : String
     }
 
 
 flagsDecoder : Decode.Decoder Flags
 flagsDecoder =
-    Decode.map Flags
+    Decode.map2 Flags
         (Decode.field "useVDomInterface" Decode.bool)
+        (Decode.field "gameFile" Decode.string)
 
 
 type alias Model =
@@ -44,7 +44,7 @@ type InterfaceMode
 
 
 type Msg
-    = GameDataLoaded (List Room.Room)
+    = GameDataLoaded (List Object)
     | ReceivedGameMsg Game.Msg
     | GameMsgDecodeError Decode.Error
 
@@ -57,22 +57,12 @@ msgDecoder =
                 case tag of
                     "GameDataLoaded" ->
                         Decode.field "payload"
-                            (Decode.map GameDataLoaded (Decode.list Room.decoder))
+                            (Decode.map GameDataLoaded (Decode.list Object.decoder))
 
                     "UserClickedGoButton" ->
                         Decode.succeed
                             (ReceivedGameMsg
                                 (Game.UserClickedCommandButton Command.Go)
-                            )
-
-                    "UserClickedExit" ->
-                        Decode.field "payload"
-                            (Decode.map
-                                (\toRoomId ->
-                                    ReceivedGameMsg
-                                        (Game.UserClickedExit toRoomId)
-                                )
-                                (Decode.field "toRoomId" Decode.string)
                             )
 
                     _ ->
@@ -96,7 +86,7 @@ init flags =
     in
     ( initialModel
     , Ports.send
-        [ Effect.LoadGameData
+        [ Effect.LoadGameData flags.gameFile
         ]
     )
 
@@ -129,26 +119,16 @@ updateLoadedGame gameMsg gameData =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        GameDataLoaded loadedRooms ->
-            case loadedRooms of
-                (initialRoom :: _) as rooms ->
-                    let
-                        ( newGame, effects ) =
-                            Game.new rooms initialRoom
-                    in
-                    ( { model
-                        | game = LoadSuccessful newGame
-                      }
-                    , effectsToCmd effects
-                    )
-
-                _ ->
-                    ( { model
-                        | game = LoadFailed "Couldn't load game"
-                      }
-                    , effectsToCmd
-                        [ Effect.ReportError "Couldn't load game" ]
-                    )
+        GameDataLoaded objects ->
+            let
+                ( newGame, effects ) =
+                    Game.new objects
+            in
+            ( { model
+                | game = LoadSuccessful newGame
+              }
+            , effectsToCmd effects
+            )
 
         ReceivedGameMsg gameMsg ->
             let
