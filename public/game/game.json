@@ -1,7 +1,15 @@
 [
   {
+    "id": "world",
+    "name": "world",
+    "parent": "",
+    "attributes": {
+    }
+  },
+  {
     "id": "object:torch",
     "name": "torch",
+    "parent": "world",
     "attributes": {
       "weight": 1
     }
