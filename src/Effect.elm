@@ -1,6 +1,7 @@
-module Effect exposing (Effect(..), encodeList)
+module Effect exposing (Effect(..), decoder, encodeList)
 
 import Command exposing (Command)
+import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
 
 
@@ -30,7 +31,7 @@ encode effect =
         PlaySound file ->
             Encode.object
                 [ ( "tag", Encode.string "PlaySound" )
-                , ( "file", Encode.string ("/game/sfx/" ++ file ++ ".mp3") )
+                , ( "file", Encode.string file )
                 ]
 
         HighlightCommand command ->
@@ -56,3 +57,38 @@ encode effect =
                 [ ( "tag", Encode.string "ReportError" )
                 , ( "message", Encode.string message )
                 ]
+
+
+decoder : Decoder Effect
+decoder =
+    Decode.field "tag" Decode.string
+        |> Decode.andThen
+            (\tag ->
+                case tag of
+                    "LoadGameData" ->
+                        Decode.field "file" Decode.string
+                            |> Decode.map LoadGameData
+
+                    "PlaySound" ->
+                        Decode.field "file" Decode.string
+                            |> Decode.map PlaySound
+
+                    "HighlightCommand" ->
+                        Decode.field "command" Command.decoder
+                            |> Decode.map HighlightCommand
+
+                    "HighlightObject" ->
+                        Decode.field "objId" Decode.string
+                            |> Decode.map HighlightObject
+
+                    "PrintText" ->
+                        Decode.field "text" Decode.string
+                            |> Decode.map PrintText
+
+                    "ReportError" ->
+                        Decode.field "message" Decode.string
+                            |> Decode.map ReportError
+
+                    _ ->
+                        Decode.fail ("Unknown effect tag: " ++ tag)
+            )

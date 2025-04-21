@@ -6,15 +6,34 @@
     "description": "",
     "attributes": {
       "time": 0
-    }
+    },
+    "scripts": [
+      {
+        "trigger": {
+          "tag": "OnAny"
+        },
+        "condition": {
+          "tag": "ConditionAny"
+        },
+        "updates": [
+          {
+            "tag": "AddToAttribute",
+            "objId": "world",
+            "attributeKey": "time",
+            "value": 1
+          }
+        ],
+        "effects": []
+      }
+    ]
   },
   {
     "id": "player",
     "name": "player",
     "parent": "room:entrance",
     "description": "Thou art truly a brave knight!",
-    "attributes": {
-    }
+    "attributes": {},
+    "scripts": []
   },
   {
     "id": "object:torch",
@@ -25,22 +44,23 @@
       "weight": 1,
       "lit": false,
       "willGoOutAtTime": 0
-    }
+    },
+    "scripts": []
   },
   {
     "id": "room:entrance",
     "name": "Entrance",
     "parent": "world",
     "description": "You stand before a stone wall that has been carved out of the earth. The forest ends some twenty feet from the wall, as if sensing some great evil.",
-    "attributes": {
-    }
+    "attributes": {},
+    "scripts": []
   },
   {
     "id": "object:skull",
     "name": "skull",
     "parent": "room:entrance",
     "description": "It's the skull of some creature. Whatever it is, its meaning is quite clear: Death lurks inside.",
-    "attributes": {
-    }
+    "attributes": {},
+    "scripts": []
   }
 ]

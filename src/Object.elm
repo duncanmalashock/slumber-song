@@ -4,6 +4,7 @@ import Attribute exposing (Attribute)
 import Attributes exposing (Attributes)
 import Dict exposing (Dict)
 import Json.Decode as Decode exposing (Decoder)
+import Script exposing (Script)
 
 
 type Object
@@ -16,6 +17,7 @@ type alias Internals =
     , parent : String
     , description : String
     , attributes : Attributes
+    , scripts : List Script
     }
 
 
@@ -28,8 +30,9 @@ decoder =
             -> String
             -> String
             -> Dict String Attribute
+            -> List Script
             -> Object
-        construct myId myName myParent myDescription myAttributes =
+        construct myId myName myParent myDescription myAttributes myScripts =
             Object
                 { id = myId
                 , name = myName
@@ -39,14 +42,16 @@ decoder =
                     myAttributes
                         |> Dict.toList
                         |> Attributes.new
+                , scripts = myScripts
                 }
     in
-    Decode.map5 construct
+    Decode.map6 construct
         (Decode.field "id" Decode.string)
         (Decode.field "name" Decode.string)
         (Decode.field "parent" Decode.string)
         (Decode.field "description" Decode.string)
         (Decode.field "attributes" (Decode.dict Attribute.decoder))
+        (Decode.field "scripts" (Decode.list Script.decoder))
 
 
 new :
@@ -55,6 +60,7 @@ new :
     , parent : String
     , description : String
     , attributes : List ( String, Attribute )
+    , scripts : List Script
     }
     -> Object
 new params =
@@ -64,6 +70,7 @@ new params =
         , parent = params.parent
         , description = params.description
         , attributes = Attributes.new params.attributes
+        , scripts = params.scripts
         }
 
 
@@ -75,6 +82,7 @@ null =
         , parent = ""
         , description = ""
         , attributes = Attributes.new []
+        , scripts = []
         }
 
 
