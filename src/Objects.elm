@@ -30,9 +30,10 @@ new objectsForInit =
         }
 
 
-getById : String -> Objects -> Maybe Object
+getById : String -> Objects -> Object
 getById id (Objects internals) =
     Dict.get id internals.objects
+        |> Maybe.withDefault Object.null
 
 
 withParentId : String -> Objects -> List Object

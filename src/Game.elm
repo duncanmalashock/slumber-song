@@ -41,7 +41,6 @@ player : Game -> Object
 player (Game internals) =
     internals.objects
         |> Objects.getById "player"
-        |> Maybe.withDefault Object.null
 
 
 objectsInInventory : Game -> List Object
@@ -56,11 +55,9 @@ currentRoom (Game internals) =
         playerParentId =
             internals.objects
                 |> Objects.getById "player"
-                |> Maybe.withDefault Object.null
                 |> Object.parent
     in
     Objects.getById playerParentId internals.objects
-        |> Maybe.withDefault Object.null
 
 
 objectsInCurrentRoom : Game -> List Object
@@ -124,7 +121,6 @@ runEngine (Game internals) =
                 descriptionText =
                     internals.objects
                         |> Objects.getById sourceId
-                        |> Maybe.withDefault Object.null
                         |> Object.description
             in
             ( Game
