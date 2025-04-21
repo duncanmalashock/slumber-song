@@ -21,7 +21,7 @@
     "id": "object:torch",
     "name": "torch",
     "parent": "player",
-    "description": "It's an ordinary wooden torch.",
+    "description": "It's a common, wooden torch.",
     "attributes": {
       "weight": 1,
       "lit": false,
