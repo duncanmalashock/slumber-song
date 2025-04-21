@@ -29,7 +29,7 @@ if (!useVDomInterface) {
   body.insertBefore(roomDiv, body.firstChild);
   body.insertBefore(canvas, body.firstChild);
 
-  goDiv.addEventListener("mouseup", (e) => { sendToElm("UserClickedGoButton", {}) });
+  goDiv.addEventListener("mouseup", (e) => { sendToElm("UserClickedCommandButton", { command: "go" }) });
 }
 
 // Elm app initialization
@@ -73,6 +73,14 @@ app.ports.toJs.subscribe((msgs) => {
         highlightCommand(data.command);
         break;
 
+      case "HighlightObject":
+        highlightObject(data.objId);
+        break;
+
+      case "PrintText":
+        printText(data.text);
+        break;
+
       case "ReportError":
         console.error(data.message);
         break;
@@ -101,4 +109,12 @@ function playSound(filename) {
 
 function highlightCommand(commandName) {
   console.log(`EFFECT: highlightCommand ${commandName}`);
+}
+
+function highlightObject(objId) {
+  console.log(`EFFECT: highlightObject ${objId}`);
+}
+
+function printText(text) {
+  console.log(`EFFECT: printText ${text}`);
 }

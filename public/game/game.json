@@ -3,15 +3,45 @@
     "id": "world",
     "name": "world",
     "parent": "",
+    "description": "",
     "attributes": {
+      "time": 0
+    }
+  },
+  {
+    "id": "player",
+    "name": "player",
+    "parent": "room:entrance",
+    "description": "Thou art truly a brave knight!",
+    "attributes": {
+      "time": 0
     }
   },
   {
     "id": "object:torch",
     "name": "torch",
-    "parent": "world",
+    "parent": "player",
+    "description": "It's an ordinary wooden torch.",
     "attributes": {
-      "weight": 1
+      "weight": 1,
+      "lit": false,
+      "willGoOutAtTime": 0
+    }
+  },
+  {
+    "id": "room:entrance",
+    "name": "Entrance",
+    "parent": "world",
+    "description": "You stand before a stone wall that has been carved out of the earth. The forest ends some twenty feet from the wall, as if sensing some great evil.",
+    "attributes": {
+    }
+  },
+  {
+    "id": "object:skull",
+    "name": "skull",
+    "parent": "room:entrance",
+    "description": "It's the skull of some creature. Whatever it is, its meaning is quite clear: Death lurks inside.",
+    "attributes": {
     }
   }
 ]

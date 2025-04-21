@@ -1,11 +1,12 @@
 module Main exposing (main)
 
 import Browser
-import Command
+import Command exposing (Command)
 import Dict exposing (Dict)
 import Effect exposing (Effect)
-import Game
-import Html
+import Game exposing (Game)
+import Html exposing (Html)
+import Html.Attributes as Html
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
 import Object exposing (Object)
@@ -57,12 +58,17 @@ msgDecoder =
                 case tag of
                     "GameDataLoaded" ->
                         Decode.field "payload"
-                            (Decode.map GameDataLoaded (Decode.list Object.decoder))
+                            (Decode.map GameDataLoaded
+                                (Decode.list Object.decoder)
+                            )
 
-                    "UserClickedGoButton" ->
-                        Decode.succeed
-                            (ReceivedGameMsg
-                                (Game.UserClickedCommandButton Command.Go)
+                    "UserClickedCommandButton" ->
+                        Decode.field "payload"
+                            (Decode.map
+                                (Game.UserClickedCommandButton
+                                    >> ReceivedGameMsg
+                                )
+                                (Decode.field "command" Command.decoder)
                             )
 
                     _ ->
@@ -127,7 +133,7 @@ update msg model =
             ( { model
                 | game = LoadSuccessful newGame
               }
-            , effectsToCmd effects
+            , Ports.send effects
             )
 
         ReceivedGameMsg gameMsg ->
@@ -138,23 +144,17 @@ update msg model =
             ( { model
                 | game = updatedGame
               }
-            , effectsToCmd effects
+            , Ports.send effects
             )
 
         GameMsgDecodeError decodeError ->
             ( model
-            , effectsToCmd
+            , Ports.send
                 [ Effect.ReportError <|
                     "Couldn't decode msg: "
                         ++ Decode.errorToString decodeError
                 ]
             )
-
-
-effectsToCmd : List Effect -> Cmd Msg
-effectsToCmd effects =
-    effects
-        |> Ports.send
 
 
 subscriptions : Model -> Sub Msg
@@ -172,7 +172,7 @@ jsonToMsg json =
             GameMsgDecodeError err
 
 
-view : Model -> Html.Html Msg
+view : Model -> Html Msg
 view model =
     case model.interfaceMode of
         InterfaceJS ->
@@ -182,9 +182,72 @@ view model =
             elmView model
 
 
-elmView : Model -> Html.Html Msg
+elmView : Model -> Html Msg
 elmView model =
-    Html.text "Using Elm VDOM"
+    case model.game of
+        LoadSuccessful game ->
+            Html.div []
+                [ viewCommands game
+                , viewObjects game
+                , viewNarration game
+                ]
+
+        NotLoaded ->
+            Html.text "No game loaded"
+
+        Loading ->
+            Html.text "Loading game..."
+
+        LoadFailed err ->
+            Html.text "Error: Couldn't load game"
+
+
+viewCommands : Game -> Html Msg
+viewCommands game =
+    let
+        viewCommand : Command -> Html Msg
+        viewCommand c =
+            Html.button
+                [ onClick
+                    (ReceivedGameMsg
+                        (Game.UserClickedCommandButton c)
+                    )
+                ]
+                [ Html.text (Command.toName c) ]
+    in
+    Html.div
+        [ Html.id "commands" ]
+        (List.map viewCommand Command.all)
+
+
+viewObjects : Game -> Html Msg
+viewObjects game =
+    let
+        viewObject : Object -> Html Msg
+        viewObject obj =
+            Html.button
+                [ onClick
+                    (ReceivedGameMsg
+                        (Game.UserClickedObject (Object.id obj))
+                    )
+                ]
+                [ Html.text (Object.name obj) ]
+    in
+    Html.div
+        [ Html.id "objects" ]
+        [ Html.div [] [ viewObject (Game.player game) ]
+        , Html.div [] (List.map viewObject (Game.objectsInInventory game))
+        , Html.div [] [ viewObject (Game.currentRoom game) ]
+        , Html.div [] (List.map viewObject (Game.objectsInCurrentRoom game))
+        ]
+
+
+viewNarration : Game -> Html Msg
+viewNarration game =
+    Html.div
+        [ Html.id "narration" ]
+        [ Html.text (Game.narration game)
+        ]
 
 
 main : Program Flags Model Msg

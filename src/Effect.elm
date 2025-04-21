@@ -8,6 +8,8 @@ type Effect
     = LoadGameData String
     | PlaySound String
     | HighlightCommand Command
+    | HighlightObject String
+    | PrintText String
     | ReportError String
 
 
@@ -35,6 +37,18 @@ encode effect =
             Encode.object
                 [ ( "tag", Encode.string "HighlightCommand" )
                 , ( "command", Encode.string (Command.toString command) )
+                ]
+
+        HighlightObject objId ->
+            Encode.object
+                [ ( "tag", Encode.string "HighlightObject" )
+                , ( "objId", Encode.string objId )
+                ]
+
+        PrintText text ->
+            Encode.object
+                [ ( "tag", Encode.string "PrintText" )
+                , ( "text", Encode.string text )
                 ]
 
         ReportError message ->
