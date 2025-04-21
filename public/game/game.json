@@ -9,11 +9,12 @@
     },
     "scripts": [
       {
-        "trigger": {
+        "on": {
           "tag": "OnAny"
         },
         "condition": {
-          "tag": "ConditionAny"
+            "tag": "LiteralBool",
+            "value": true
         },
         "updates": [
           {
