@@ -2,7 +2,7 @@ module Script exposing (Script, decoder, run)
 
 import Command exposing (Command)
 import Effect exposing (Effect)
-import Expression exposing (Expression)
+import Expression exposing (ExpressionBool)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (required)
 import Trigger exposing (Trigger)
@@ -11,7 +11,7 @@ import Update exposing (Update)
 
 type alias Script =
     { trigger : Trigger
-    , condition : Expression
+    , condition : ExpressionBool
     , updates : List Update
     , effects : List Effect
     }

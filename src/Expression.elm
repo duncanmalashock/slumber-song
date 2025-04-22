@@ -1,79 +1,81 @@
-module Expression exposing (Expression(..), decoder, evaluate)
+module Expression exposing (ExpressionBool(..), decoder, evaluate)
 
 import Json.Decode as Decode exposing (Decoder)
 
 
-type Expression
+type ExpressionBool
     = LiteralBool Bool
-    | LiteralInt Int
-    | LiteralString String
-    | AttributeBool { objId : String, attributeKey : String }
-    | AttributeInt { objId : String, attributeKey : String }
-    | AttributeString { objId : String, attributeKey : String }
-    | Equals Expression Expression
-    | GreaterThan Expression Expression
-    | LessThan Expression Expression
-    | Contains Expression Expression
-    | And Expression Expression
-    | Or Expression Expression
-    | Not Expression
+    | AttributeBool { objId : String, key : String }
+    | BoolEquals ExpressionBool ExpressionBool
+    | IntEquals ExpressionInt ExpressionInt
+    | IntGreaterThan ExpressionInt ExpressionInt
+    | IntLessThan ExpressionInt ExpressionInt
+    | StringEquals ExpressionString ExpressionString
+    | StringContains ExpressionString ExpressionString
+    | And ExpressionBool ExpressionBool
+    | Or ExpressionBool ExpressionBool
+    | Not ExpressionBool
 
 
-decoder : Decoder Expression
+type ExpressionInt
+    = LiteralInt Int
+    | AttributeInt { objId : String, key : String }
+
+
+type ExpressionString
+    = LiteralString String
+    | AttributeString { objId : String, key : String }
+
+
+evaluate : ExpressionBool -> Bool
+evaluate expression =
+    True
+
+
+decoder : Decoder ExpressionBool
 decoder =
     Decode.field "tag" Decode.string
         |> Decode.andThen decodeByTag
 
 
-decodeByTag : String -> Decoder Expression
+decodeByTag : String -> Decoder ExpressionBool
 decodeByTag tag =
     case tag of
         "LiteralBool" ->
-            Decode.field "value" Decode.bool
-                |> Decode.map LiteralBool
-
-        "LiteralInt" ->
-            Decode.field "value" Decode.int
-                |> Decode.map LiteralInt
-
-        "LiteralString" ->
-            Decode.field "value" Decode.string
-                |> Decode.map LiteralString
+            Decode.map LiteralBool (Decode.field "value" Decode.bool)
 
         "AttributeBool" ->
-            Decode.map2 (\objId key -> AttributeBool { objId = objId, attributeKey = key })
-                (Decode.field "objId" Decode.string)
-                (Decode.field "attributeKey" Decode.string)
+            Decode.map AttributeBool fieldDecoder
 
-        "AttributeInt" ->
-            Decode.map2 (\objId key -> AttributeInt { objId = objId, attributeKey = key })
-                (Decode.field "objId" Decode.string)
-                (Decode.field "attributeKey" Decode.string)
-
-        "AttributeString" ->
-            Decode.map2 (\objId key -> AttributeString { objId = objId, attributeKey = key })
-                (Decode.field "objId" Decode.string)
-                (Decode.field "attributeKey" Decode.string)
-
-        "Equals" ->
-            Decode.map2 Equals
+        "BoolEquals" ->
+            Decode.map2 BoolEquals
                 (Decode.field "left" decoder)
                 (Decode.field "right" decoder)
 
-        "GreaterThan" ->
-            Decode.map2 GreaterThan
-                (Decode.field "left" decoder)
-                (Decode.field "right" decoder)
+        "IntEquals" ->
+            Decode.map2 IntEquals
+                (Decode.field "left" decodeExpressionInt)
+                (Decode.field "right" decodeExpressionInt)
 
-        "LessThan" ->
-            Decode.map2 LessThan
-                (Decode.field "left" decoder)
-                (Decode.field "right" decoder)
+        "IntGreaterThan" ->
+            Decode.map2 IntGreaterThan
+                (Decode.field "left" decodeExpressionInt)
+                (Decode.field "right" decodeExpressionInt)
 
-        "Contains" ->
-            Decode.map2 Contains
-                (Decode.field "left" decoder)
-                (Decode.field "right" decoder)
+        "IntLessThan" ->
+            Decode.map2 IntLessThan
+                (Decode.field "left" decodeExpressionInt)
+                (Decode.field "right" decodeExpressionInt)
+
+        "StringEquals" ->
+            Decode.map2 StringEquals
+                (Decode.field "left" decodeExpressionString)
+                (Decode.field "right" decodeExpressionString)
+
+        "StringContains" ->
+            Decode.map2 StringContains
+                (Decode.field "left" decodeExpressionString)
+                (Decode.field "right" decodeExpressionString)
 
         "And" ->
             Decode.map2 And
@@ -86,13 +88,48 @@ decodeByTag tag =
                 (Decode.field "right" decoder)
 
         "Not" ->
-            Decode.field "expression" decoder
-                |> Decode.map Not
+            Decode.map Not (Decode.field "expr" decoder)
 
         _ ->
-            Decode.fail ("Unknown expression tag: " ++ tag)
+            Decode.fail ("Unknown tag: " ++ tag)
 
 
-evaluate : Expression -> Bool
-evaluate expression =
-    True
+decodeExpressionInt : Decoder ExpressionInt
+decodeExpressionInt =
+    Decode.field "tag" Decode.string
+        |> Decode.andThen
+            (\tag ->
+                case tag of
+                    "LiteralInt" ->
+                        Decode.map LiteralInt (Decode.field "value" Decode.int)
+
+                    "AttributeInt" ->
+                        Decode.map AttributeInt fieldDecoder
+
+                    _ ->
+                        Decode.fail ("Unknown int tag: " ++ tag)
+            )
+
+
+decodeExpressionString : Decoder ExpressionString
+decodeExpressionString =
+    Decode.field "tag" Decode.string
+        |> Decode.andThen
+            (\tag ->
+                case tag of
+                    "LiteralString" ->
+                        Decode.map LiteralString (Decode.field "value" Decode.string)
+
+                    "AttributeString" ->
+                        Decode.map AttributeString fieldDecoder
+
+                    _ ->
+                        Decode.fail ("Unknown string tag: " ++ tag)
+            )
+
+
+fieldDecoder : Decoder { objId : String, key : String }
+fieldDecoder =
+    Decode.map2 (\objId key -> { objId = objId, key = key })
+        (Decode.field "objId" Decode.string)
+        (Decode.field "key" Decode.string)
