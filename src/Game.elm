@@ -2,6 +2,7 @@ module Game exposing (Game, Msg(..), currentRoom, narration, new, objectsInCurre
 
 import Command exposing (Command(..))
 import Effect exposing (Effect(..))
+import Interaction exposing (Interaction)
 import Object exposing (Object)
 import ObjectStore exposing (ObjectStore)
 import Script exposing (Script)
@@ -15,9 +16,17 @@ type Game
 type alias Internals =
     { objects : ObjectStore
     , selectedCommand : Maybe Command
-    , sourceObject : Maybe String
-    , targetObject : Maybe String
+    , sourceObjectId : Maybe String
+    , targetObjectId : Maybe String
+    , objectDragInfo : Maybe { objectId : String, from : ObjectLocation, to : ObjectLocation }
     , narration : String
+    }
+
+
+type alias ObjectLocation =
+    { windowObjectId : String
+    , xPos : Int
+    , yPos : Int
     }
 
 
@@ -26,8 +35,9 @@ new objects =
     ( Game
         { objects = ObjectStore.new objects
         , selectedCommand = Nothing
-        , sourceObject = Nothing
-        , targetObject = Nothing
+        , sourceObjectId = Nothing
+        , targetObjectId = Nothing
+        , objectDragInfo = Nothing
         , narration = ""
         }
     , []
@@ -101,7 +111,7 @@ update msg ((Game internals) as game) =
                             | selectedCommand = Just command
                         }
             in
-            runScripts updatedGame
+            respondToInput updatedGame
 
         UserClickedObject objectId ->
             let
@@ -109,14 +119,34 @@ update msg ((Game internals) as game) =
                 updatedGame =
                     Game
                         { internals
-                            | sourceObject = Just objectId
+                            | sourceObjectId = Just objectId
                         }
             in
-            runScripts updatedGame
+            respondToInput updatedGame
 
 
-runScripts : Game -> ( Game, List Effect )
-runScripts game =
+respondToInput : Game -> ( Game, List Effect )
+respondToInput ((Game internals) as game) =
+    let
+        maybeInteraction : Maybe Interaction
+        maybeInteraction =
+            Interaction.detect
+                { selectedCommand = internals.selectedCommand
+                , sourceObjectId = internals.sourceObjectId
+                , targetObjectId = internals.targetObjectId
+                , objectDragInfo = internals.objectDragInfo
+                }
+    in
+    case maybeInteraction of
+        Nothing ->
+            ( Game internals, [] )
+
+        Just interaction ->
+            runScripts game interaction
+
+
+runScripts : Game -> Interaction -> ( Game, List Effect )
+runScripts game interaction =
     let
         worldScripts : List Script
         worldScripts =
@@ -140,7 +170,7 @@ runScripts game =
             , currentRoomObjectScripts
             ]
                 |> List.concat
-                |> List.map Script.run
+                |> List.map (Script.run interaction)
 
         updates : List Update
         updates =

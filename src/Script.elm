@@ -3,6 +3,7 @@ module Script exposing (Script, decoder, run)
 import Command exposing (Command)
 import Effect exposing (Effect)
 import Expression exposing (ExpressionBool)
+import Interaction exposing (Interaction(..))
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (required)
 import Trigger exposing (Trigger)
@@ -26,9 +27,9 @@ decoder =
         |> required "effects" (Decode.list Effect.decoder)
 
 
-run : Script -> ( List Update, List Effect )
-run script =
-    if Trigger.shouldRun script.trigger then
+run : Interaction -> Script -> ( List Update, List Effect )
+run interaction script =
+    if Trigger.shouldRun script.trigger interaction then
         if Expression.evaluate script.condition then
             ( script.updates, script.effects )
 
