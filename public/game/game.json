@@ -9,7 +9,7 @@
     },
     "scripts": [
       {
-        "on": {
+        "trigger": {
           "tag": "OnAny"
         },
         "condition": {

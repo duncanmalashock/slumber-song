@@ -3,7 +3,9 @@ module Game exposing (Game, Msg(..), currentRoom, narration, new, objectsInCurre
 import Command exposing (Command(..))
 import Effect exposing (Effect(..))
 import Object exposing (Object)
-import Objects exposing (Objects)
+import ObjectStore exposing (ObjectStore)
+import Script exposing (Script)
+import Update exposing (Update(..))
 
 
 type Game
@@ -11,7 +13,7 @@ type Game
 
 
 type alias Internals =
-    { objects : Objects
+    { objects : ObjectStore
     , selectedCommand : Maybe Command
     , sourceObject : Maybe String
     , targetObject : Maybe String
@@ -22,7 +24,7 @@ type alias Internals =
 new : List Object -> ( Game, List Effect )
 new objects =
     ( Game
-        { objects = Objects.new objects
+        { objects = ObjectStore.new objects
         , selectedCommand = Nothing
         , sourceObject = Nothing
         , targetObject = Nothing
@@ -37,16 +39,22 @@ narration (Game internals) =
     internals.narration
 
 
+world : Game -> Object
+world (Game internals) =
+    internals.objects
+        |> ObjectStore.getById "world"
+
+
 player : Game -> Object
 player (Game internals) =
     internals.objects
-        |> Objects.getById "player"
+        |> ObjectStore.getById "player"
 
 
 objectsInInventory : Game -> List Object
 objectsInInventory (Game internals) =
     internals.objects
-        |> Objects.withParentId "player"
+        |> ObjectStore.withParentId "player"
 
 
 currentRoom : Game -> Object
@@ -54,10 +62,10 @@ currentRoom (Game internals) =
     let
         playerParentId =
             internals.objects
-                |> Objects.getById "player"
+                |> ObjectStore.getById "player"
                 |> Object.parent
     in
-    Objects.getById playerParentId internals.objects
+    ObjectStore.getById playerParentId internals.objects
 
 
 objectsInCurrentRoom : Game -> List Object
@@ -72,7 +80,7 @@ objectsInCurrentRoom (Game internals) =
             objectsList
                 |> List.filter (\obj -> Object.id obj /= "player")
     in
-    Objects.withParentId currentRoomId internals.objects
+    ObjectStore.withParentId currentRoomId internals.objects
         |> excludePlayer
 
 
@@ -93,7 +101,7 @@ update msg ((Game internals) as game) =
                             | selectedCommand = Just command
                         }
             in
-            runEngine updatedGame
+            runScripts updatedGame
 
         UserClickedObject objectId ->
             let
@@ -104,48 +112,58 @@ update msg ((Game internals) as game) =
                             | sourceObject = Just objectId
                         }
             in
-            runEngine updatedGame
+            runScripts updatedGame
 
 
-type Interaction
-    = SelectCommand Command
-    | SelectObject Object
+runScripts : Game -> ( Game, List Effect )
+runScripts game =
+    let
+        worldScripts : List Script
+        worldScripts =
+            world game
+                |> Object.scripts
+
+        currentRoomScripts : List Script
+        currentRoomScripts =
+            currentRoom game
+                |> Object.scripts
+
+        currentRoomObjectScripts : List Script
+        currentRoomObjectScripts =
+            objectsInCurrentRoom game
+                |> List.concatMap Object.scripts
+
+        updatesAndEffects : List ( List Update, List Effect )
+        updatesAndEffects =
+            [ worldScripts
+            , currentRoomScripts
+            , currentRoomObjectScripts
+            ]
+                |> List.concat
+                |> List.map Script.run
+
+        updates : List Update
+        updates =
+            updatesAndEffects
+                |> List.concatMap (\( u, _ ) -> u)
+
+        effects : List Effect
+        effects =
+            updatesAndEffects
+                |> List.concatMap (\( _, e ) -> e)
+
+        updatedGame : Game
+        updatedGame =
+            List.foldl applyUpdate game updates
+    in
+    ( updatedGame, effects )
 
 
-runEngine : Game -> ( Game, List Effect )
-runEngine (Game internals) =
-    case toRunCommand internals of
-        Just (RunExamine sourceId) ->
-            let
-                descriptionText : String
-                descriptionText =
-                    internals.objects
-                        |> Objects.getById sourceId
-                        |> Object.description
-            in
-            ( Game
-                { internals
-                    | sourceObject = Nothing
-                    , selectedCommand = Nothing
-                    , narration = descriptionText
-                }
-            , [ PrintText descriptionText
-              ]
-            )
+applyUpdate : Update -> Game -> Game
+applyUpdate updateToApply (Game internals) =
+    case updateToApply of
+        AddToAttribute { objId, attributeKey, value } ->
+            Game internals
 
-        Nothing ->
-            ( Game internals, [] )
-
-
-type RunCommand
-    = RunExamine String
-
-
-toRunCommand : Internals -> Maybe RunCommand
-toRunCommand internals =
-    case ( internals.selectedCommand, internals.sourceObject ) of
-        ( Just Examine, Just sourceObject ) ->
-            Just (RunExamine sourceObject)
-
-        _ ->
-            Nothing
+        ClearSelections ->
+            Game internals

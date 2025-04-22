@@ -1,11 +1,11 @@
-module Objects exposing (Objects, getById, new, withParentId)
+module ObjectStore exposing (ObjectStore, getById, new, withParentId)
 
 import Dict exposing (Dict)
 import Object exposing (Object)
 
 
-type Objects
-    = Objects Internals
+type ObjectStore
+    = ObjectStore Internals
 
 
 type alias Internals =
@@ -13,7 +13,7 @@ type alias Internals =
     }
 
 
-new : List Object -> Objects
+new : List Object -> ObjectStore
 new objectsForInit =
     let
         objects : Dict String Object
@@ -25,19 +25,19 @@ new objectsForInit =
                     )
                 |> Dict.fromList
     in
-    Objects
+    ObjectStore
         { objects = objects
         }
 
 
-getById : String -> Objects -> Object
-getById id (Objects internals) =
+getById : String -> ObjectStore -> Object
+getById id (ObjectStore internals) =
     Dict.get id internals.objects
         |> Maybe.withDefault Object.null
 
 
-withParentId : String -> Objects -> List Object
-withParentId id (Objects internals) =
+withParentId : String -> ObjectStore -> List Object
+withParentId id (ObjectStore internals) =
     Dict.toList internals.objects
         |> List.filter
             (\( key, obj ) ->

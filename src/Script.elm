@@ -1,4 +1,4 @@
-module Script exposing (Script, decoder)
+module Script exposing (Script, decoder, run)
 
 import Command exposing (Command)
 import Effect exposing (Effect)
@@ -10,7 +10,7 @@ import Update exposing (Update)
 
 
 type alias Script =
-    { on : Trigger
+    { trigger : Trigger
     , condition : Expression
     , updates : List Update
     , effects : List Effect
@@ -20,7 +20,20 @@ type alias Script =
 decoder : Decoder Script
 decoder =
     Decode.succeed Script
-        |> required "on" Trigger.decoder
+        |> required "trigger" Trigger.decoder
         |> required "condition" Expression.decoder
         |> required "updates" (Decode.list Update.decoder)
         |> required "effects" (Decode.list Effect.decoder)
+
+
+run : Script -> ( List Update, List Effect )
+run script =
+    if Trigger.shouldRun script.trigger then
+        if Expression.evaluate script.condition then
+            ( script.updates, script.effects )
+
+        else
+            ( [], [] )
+
+    else
+        ( [], [] )

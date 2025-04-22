@@ -1,4 +1,4 @@
-module Expression exposing (Expression, decoder)
+module Expression exposing (Expression(..), decoder, evaluate)
 
 import Json.Decode as Decode exposing (Decoder)
 
@@ -91,3 +91,8 @@ decodeByTag tag =
 
         _ ->
             Decode.fail ("Unknown expression tag: " ++ tag)
+
+
+evaluate : Expression -> Bool
+evaluate expression =
+    True

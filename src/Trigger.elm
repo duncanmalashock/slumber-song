@@ -1,4 +1,4 @@
-module Trigger exposing (Trigger, decoder)
+module Trigger exposing (Trigger, decoder, shouldRun)
 
 import Command exposing (Command)
 import Json.Decode as Decode exposing (Decoder)
@@ -25,3 +25,8 @@ decoder =
                     _ ->
                         Decode.fail ("Unknown trigger tag: " ++ tag)
             )
+
+
+shouldRun : Trigger -> Bool
+shouldRun trigger =
+    True

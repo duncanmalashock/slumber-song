@@ -1,7 +1,7 @@
-module Object exposing (Object, decoder, description, id, name, new, null, parent)
+module Object exposing (Object, decoder, description, id, name, new, null, parent, scripts)
 
 import Attribute exposing (Attribute)
-import Attributes exposing (Attributes)
+import AttributeStore exposing (AttributeStore)
 import Dict exposing (Dict)
 import Json.Decode as Decode exposing (Decoder)
 import Script exposing (Script)
@@ -16,7 +16,7 @@ type alias Internals =
     , name : String
     , parent : String
     , description : String
-    , attributes : Attributes
+    , attributes : AttributeStore
     , scripts : List Script
     }
 
@@ -41,7 +41,7 @@ decoder =
                 , attributes =
                     myAttributes
                         |> Dict.toList
-                        |> Attributes.new
+                        |> AttributeStore.new
                 , scripts = myScripts
                 }
     in
@@ -69,7 +69,7 @@ new params =
         , name = params.name
         , parent = params.parent
         , description = params.description
-        , attributes = Attributes.new params.attributes
+        , attributes = AttributeStore.new params.attributes
         , scripts = params.scripts
         }
 
@@ -81,7 +81,7 @@ null =
         , name = ""
         , parent = ""
         , description = ""
-        , attributes = Attributes.new []
+        , attributes = AttributeStore.new []
         , scripts = []
         }
 
@@ -104,3 +104,8 @@ parent (Object internals) =
 description : Object -> String
 description (Object internals) =
     internals.description
+
+
+scripts : Object -> List Script
+scripts (Object internals) =
+    internals.scripts
