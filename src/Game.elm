@@ -150,22 +150,31 @@ respondToInput ((Game internals) as game) =
 runScripts : Game -> Interaction -> ( Game, List Effect )
 runScripts ((Game internals) as game) interaction =
     let
-        worldScripts : List Script
+        objectIdAndScripts : Object -> List ( String, Script )
+        objectIdAndScripts obj =
+            obj
+                |> Object.scripts
+                |> List.map
+                    (\s ->
+                        ( Object.id obj, s )
+                    )
+
+        worldScripts : List ( String, Script )
         worldScripts =
             world game
-                |> Object.scripts
+                |> objectIdAndScripts
 
-        currentRoomScripts : List Script
+        currentRoomScripts : List ( String, Script )
         currentRoomScripts =
             currentRoom game
-                |> Object.scripts
+                |> objectIdAndScripts
 
-        currentRoomObjectScripts : List Script
+        currentRoomObjectScripts : List ( String, Script )
         currentRoomObjectScripts =
             objectsInCurrentRoom game
-                |> List.concatMap Object.scripts
+                |> List.concatMap objectIdAndScripts
 
-        scriptsToRun : List Script
+        scriptsToRun : List ( String, Script )
         scriptsToRun =
             [ worldScripts
             , currentRoomScripts
@@ -176,7 +185,10 @@ runScripts ((Game internals) as game) interaction =
         updatesAndEffects : List ( List Update, List Effect )
         updatesAndEffects =
             scriptsToRun
-                |> List.map (runScript interaction internals.objects)
+                |> List.map
+                    (\( objId, script ) ->
+                        runScript objId interaction internals.objects script
+                    )
 
         updates : List Update
         updates =
@@ -195,9 +207,9 @@ runScripts ((Game internals) as game) interaction =
     ( updatedGame, effects )
 
 
-runScript : Interaction -> ObjectStore -> Script -> ( List Update, List Effect )
-runScript interaction objects script =
-    if Trigger.shouldRun script.trigger interaction then
+runScript : String -> Interaction -> ObjectStore -> Script -> ( List Update, List Effect )
+runScript objectId interaction objects script =
+    if Trigger.shouldRun objectId script.trigger interaction then
         if Expression.evaluate (ObjectStore.getAttribute objects) script.condition then
             ( script.updates ++ [ ClearSelections ], script.effects )
 
@@ -220,6 +232,18 @@ applyUpdate updateToApply (Game internals) =
                             { objectId = objId
                             , attributeId = attributeKey
                             , amount = value
+                            }
+                }
+
+        SetBoolAttribute { objId, attributeKey, value } ->
+            Game
+                { internals
+                    | objects =
+                        ObjectStore.setBoolAttribute
+                            internals.objects
+                            { objectId = objId |> Debug.log "SetBoolAttribute objectId"
+                            , attributeId = attributeKey |> Debug.log "SetBoolAttribute attributeId"
+                            , value = value |> Debug.log "SetBoolAttribute value"
                             }
                 }
 

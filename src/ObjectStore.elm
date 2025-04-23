@@ -1,4 +1,4 @@
-module ObjectStore exposing (ObjectStore, getAttribute, getById, incrementAttributeBy, new, withParentId)
+module ObjectStore exposing (ObjectStore, getAttribute, getById, incrementAttributeBy, new, setBoolAttribute, withParentId)
 
 import Attribute exposing (Attribute(..))
 import Dict exposing (Dict)
@@ -63,6 +63,25 @@ incrementAttributeBy ((ObjectStore internals) as objectStore) { objectId, attrib
                         Dict.insert objectId
                             (Object.setIntAttribute
                                 { id = attributeId, value = intValue + amount }
+                                (getById objectId objectStore)
+                            )
+                            internals.objects
+                }
+
+        _ ->
+            objectStore
+
+
+setBoolAttribute : ObjectStore -> { objectId : String, attributeId : String, value : Bool } -> ObjectStore
+setBoolAttribute ((ObjectStore internals) as objectStore) { objectId, attributeId, value } =
+    case getAttribute objectStore { objectId = objectId, attributeId = attributeId } of
+        Just (AttributeBool intValue) ->
+            ObjectStore
+                { internals
+                    | objects =
+                        Dict.insert objectId
+                            (Object.setBoolAttribute
+                                { id = attributeId, value = value }
                                 (getById objectId objectStore)
                             )
                             internals.objects

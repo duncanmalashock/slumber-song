@@ -61,7 +61,29 @@
     "name": "skull",
     "parent": "room:entrance",
     "description": "It's the skull of some creature. Whatever it is, its meaning is quite clear: Death lurks inside.",
-    "attributes": {},
-    "scripts": []
+    "attributes": {
+      "isOpen" : false
+    },
+    "scripts": [
+      {
+        "trigger": {
+          "tag": "OnCommand",
+          "command": "open"
+        },
+        "condition": {
+            "tag": "LiteralBool",
+            "value": true
+        },
+        "updates": [
+          {
+            "tag": "SetBoolAttribute",
+            "objId": "object:skull",
+            "attributeKey": "isOpen",
+            "value": true
+          }
+        ],
+        "effects": []
+      }
+    ]
   }
 ]

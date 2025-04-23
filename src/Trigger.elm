@@ -11,22 +11,22 @@ type Trigger
     | OnMove
 
 
-shouldRun : Trigger -> Interaction -> Bool
-shouldRun trigger interaction =
+shouldRun : String -> Trigger -> Interaction -> Bool
+shouldRun objectIdToMatch trigger interaction =
     case trigger of
         OnAny ->
             True
 
         OnMove ->
             case interaction of
-                AttemptMoveObject _ ->
-                    True
+                AttemptMoveObject { objectId, from, to } ->
+                    objectId == objectIdToMatch
 
                 _ ->
                     False
 
         OnCommand command ->
-            Interaction.matchesCommand command interaction
+            Interaction.matchesCommand command objectIdToMatch interaction
 
 
 decoder : Decoder Trigger

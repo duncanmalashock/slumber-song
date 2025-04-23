@@ -22,32 +22,32 @@ type alias ObjectLocation =
     }
 
 
-matchesCommand : Command -> Interaction -> Bool
-matchesCommand command interaction =
+matchesCommand : Command -> String -> Interaction -> Bool
+matchesCommand command objectIdToMatch interaction =
     case interaction of
-        AttemptExamine _ ->
-            command == Examine
+        AttemptExamine { objectId } ->
+            command == Examine && (objectId == objectIdToMatch)
 
-        AttemptOpen _ ->
-            command == Open
+        AttemptOpen { objectId } ->
+            command == Open && (objectId == objectIdToMatch)
 
-        AttemptClose _ ->
-            command == Close
+        AttemptClose { objectId } ->
+            command == Close && (objectId == objectIdToMatch)
 
-        AttemptSpeak _ ->
-            command == Speak
+        AttemptSpeak { objectId } ->
+            command == Speak && (objectId == objectIdToMatch)
 
-        AttemptOperate _ ->
-            command == Operate
+        AttemptOperate { sourceObjectId, targetObjectId } ->
+            command == Operate && ((sourceObjectId == objectIdToMatch) || (targetObjectId == objectIdToMatch))
 
-        AttemptGo _ ->
-            command == Go
+        AttemptGo { objectId } ->
+            command == Go && (objectId == objectIdToMatch)
 
-        AttemptHit _ ->
-            command == Hit
+        AttemptHit { objectId } ->
+            command == Hit && (objectId == objectIdToMatch)
 
-        AttemptConsume _ ->
-            command == Consume
+        AttemptConsume { objectId } ->
+            command == Consume && (objectId == objectIdToMatch)
 
         AttemptMoveObject _ ->
             False
