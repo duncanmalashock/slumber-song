@@ -119,10 +119,18 @@ update msg ((Game internals) as game) =
             let
                 updatedGame : Game
                 updatedGame =
-                    Game
-                        { internals
-                            | sourceObjectId = Just objectId
-                        }
+                    case ( internals.selectedCommand, internals.sourceObjectId ) of
+                        ( Just Operate, Just _ ) ->
+                            Game
+                                { internals
+                                    | targetObjectId = Just objectId
+                                }
+
+                        _ ->
+                            Game
+                                { internals
+                                    | sourceObjectId = Just objectId
+                                }
             in
             respondToInput updatedGame
 
