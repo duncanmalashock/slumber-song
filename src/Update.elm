@@ -5,7 +5,7 @@ import Json.Decode as Decode exposing (Decoder)
 
 type Update
     = ClearSelections
-    | AddToAttribute { objId : String, attributeKey : String, value : Int }
+    | IncrementAttribute { objId : String, attributeKey : String, value : Int }
 
 
 decoder : Decoder Update
@@ -17,10 +17,10 @@ decoder =
                     "ClearSelections" ->
                         Decode.succeed ClearSelections
 
-                    "AddToAttribute" ->
+                    "IncrementAttribute" ->
                         Decode.map3
                             (\objId attributeKey value ->
-                                AddToAttribute { objId = objId, attributeKey = attributeKey, value = value }
+                                IncrementAttribute { objId = objId, attributeKey = attributeKey, value = value }
                             )
                             (Decode.field "objId" Decode.string)
                             (Decode.field "attributeKey" Decode.string)

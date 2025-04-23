@@ -1,4 +1,4 @@
-module Script exposing (Script, decoder, run)
+module Script exposing (Script, decoder)
 
 import Command exposing (Command)
 import Effect exposing (Effect)
@@ -25,16 +25,3 @@ decoder =
         |> required "condition" Expression.decoder
         |> required "updates" (Decode.list Update.decoder)
         |> required "effects" (Decode.list Effect.decoder)
-
-
-run : Interaction -> Script -> ( List Update, List Effect )
-run interaction script =
-    if Trigger.shouldRun script.trigger interaction then
-        if Expression.evaluate script.condition then
-            ( script.updates, script.effects )
-
-        else
-            ( [], [] )
-
-    else
-        ( [], [] )

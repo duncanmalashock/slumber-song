@@ -1,4 +1,4 @@
-module Object exposing (Object, decoder, description, id, name, new, null, parent, scripts)
+module Object exposing (Object, attribute, decoder, description, id, name, new, null, parent, scripts, setIntAttribute)
 
 import Attribute exposing (Attribute)
 import AttributeStore exposing (AttributeStore)
@@ -104,6 +104,22 @@ parent (Object internals) =
 description : Object -> String
 description (Object internals) =
     internals.description
+
+
+attribute : String -> Object -> Maybe Attribute
+attribute attributeId (Object internals) =
+    internals.attributes
+        |> AttributeStore.getById attributeId
+
+
+setIntAttribute : { id : String, value : Int } -> Object -> Object
+setIntAttribute params (Object internals) =
+    Object
+        { internals
+            | attributes =
+                internals.attributes
+                    |> AttributeStore.setInt { id = params.id, value = params.value }
+        }
 
 
 scripts : Object -> List Script

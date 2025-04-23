@@ -2,10 +2,12 @@ module Game exposing (Game, Msg(..), currentRoom, narration, new, objectsInCurre
 
 import Command exposing (Command(..))
 import Effect exposing (Effect(..))
+import Expression
 import Interaction exposing (Interaction)
 import Object exposing (Object)
 import ObjectStore exposing (ObjectStore)
 import Script exposing (Script)
+import Trigger exposing (Trigger)
 import Update exposing (Update(..))
 
 
@@ -146,7 +148,7 @@ respondToInput ((Game internals) as game) =
 
 
 runScripts : Game -> Interaction -> ( Game, List Effect )
-runScripts game interaction =
+runScripts ((Game internals) as game) interaction =
     let
         worldScripts : List Script
         worldScripts =
@@ -163,14 +165,18 @@ runScripts game interaction =
             objectsInCurrentRoom game
                 |> List.concatMap Object.scripts
 
-        updatesAndEffects : List ( List Update, List Effect )
-        updatesAndEffects =
+        scriptsToRun : List Script
+        scriptsToRun =
             [ worldScripts
             , currentRoomScripts
             , currentRoomObjectScripts
             ]
                 |> List.concat
-                |> List.map (Script.run interaction)
+
+        updatesAndEffects : List ( List Update, List Effect )
+        updatesAndEffects =
+            scriptsToRun
+                |> List.map (runScript interaction internals.objects)
 
         updates : List Update
         updates =
@@ -189,11 +195,39 @@ runScripts game interaction =
     ( updatedGame, effects )
 
 
+runScript : Interaction -> ObjectStore -> Script -> ( List Update, List Effect )
+runScript interaction objects script =
+    if Trigger.shouldRun script.trigger interaction then
+        if Expression.evaluate (ObjectStore.getAttribute objects) script.condition then
+            ( script.updates ++ [ ClearSelections ], script.effects )
+
+        else
+            ( [ ClearSelections ], [] )
+
+    else
+        ( [ ClearSelections ], [] )
+
+
 applyUpdate : Update -> Game -> Game
 applyUpdate updateToApply (Game internals) =
     case updateToApply of
-        AddToAttribute { objId, attributeKey, value } ->
-            Game internals
+        IncrementAttribute { objId, attributeKey, value } ->
+            Game
+                { internals
+                    | objects =
+                        ObjectStore.incrementAttributeBy
+                            internals.objects
+                            { objectId = objId
+                            , attributeId = attributeKey
+                            , amount = value
+                            }
+                }
 
         ClearSelections ->
-            Game internals
+            Game
+                { internals
+                    | selectedCommand = Nothing
+                    , sourceObjectId = Nothing
+                    , targetObjectId = Nothing
+                    , objectDragInfo = Nothing
+                }

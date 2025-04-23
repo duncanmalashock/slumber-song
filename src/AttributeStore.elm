@@ -1,4 +1,4 @@
-module AttributeStore exposing (AttributeStore, getById, new)
+module AttributeStore exposing (AttributeStore, getById, new, setInt)
 
 import Attribute exposing (Attribute)
 import Dict exposing (Dict)
@@ -30,3 +30,11 @@ new attributesForInit =
 getById : String -> AttributeStore -> Maybe Attribute
 getById id (AttributeStore internals) =
     Dict.get id internals.attributes
+
+
+setInt : { id : String, value : Int } -> AttributeStore -> AttributeStore
+setInt { id, value } (AttributeStore internals) =
+    AttributeStore
+        { attributes =
+            Dict.insert id (Attribute.int value) internals.attributes
+        }

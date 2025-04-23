@@ -1,11 +1,12 @@
 module Expression exposing (ExpressionBool(..), decoder, evaluate)
 
+import Attribute exposing (Attribute(..))
 import Json.Decode as Decode exposing (Decoder)
 
 
 type ExpressionBool
     = LiteralBool Bool
-    | AttributeBool { objId : String, key : String }
+    | ExpAttributeBool { objId : String, key : String }
     | BoolEquals ExpressionBool ExpressionBool
     | IntEquals ExpressionInt ExpressionInt
     | IntGreaterThan ExpressionInt ExpressionInt
@@ -19,17 +20,89 @@ type ExpressionBool
 
 type ExpressionInt
     = LiteralInt Int
-    | AttributeInt { objId : String, key : String }
+    | ExpAttributeInt { objId : String, key : String }
 
 
 type ExpressionString
     = LiteralString String
-    | AttributeString { objId : String, key : String }
+    | ExpAttributeString { objId : String, key : String }
 
 
-evaluate : ExpressionBool -> Bool
-evaluate expression =
-    True
+type alias LookupFn =
+    { objectId : String, attributeId : String } -> Maybe Attribute
+
+
+evaluate : LookupFn -> ExpressionBool -> Bool
+evaluate lookup expression =
+    case expression of
+        LiteralBool b ->
+            b
+
+        ExpAttributeBool record ->
+            case lookup { objectId = record.objId, attributeId = record.key } of
+                Just (AttributeBool val) ->
+                    val
+
+                _ ->
+                    False
+
+        -- default if not found or wrong type
+        BoolEquals a b ->
+            evaluate lookup a == evaluate lookup b
+
+        IntEquals a b ->
+            evaluateInt lookup a == evaluateInt lookup b
+
+        IntGreaterThan a b ->
+            evaluateInt lookup a > evaluateInt lookup b
+
+        IntLessThan a b ->
+            evaluateInt lookup a < evaluateInt lookup b
+
+        StringEquals a b ->
+            evaluateString lookup a == evaluateString lookup b
+
+        StringContains a b ->
+            String.contains (evaluateString lookup b) (evaluateString lookup a)
+
+        And a b ->
+            evaluate lookup a && evaluate lookup b
+
+        Or a b ->
+            evaluate lookup a || evaluate lookup b
+
+        Not sub ->
+            not (evaluate lookup sub)
+
+
+evaluateInt : LookupFn -> ExpressionInt -> Int
+evaluateInt lookup expression =
+    case expression of
+        LiteralInt i ->
+            i
+
+        ExpAttributeInt record ->
+            case lookup { objectId = record.objId, attributeId = record.key } of
+                Just (AttributeInt val) ->
+                    val
+
+                _ ->
+                    0
+
+
+evaluateString : LookupFn -> ExpressionString -> String
+evaluateString lookup expression =
+    case expression of
+        LiteralString s ->
+            s
+
+        ExpAttributeString record ->
+            case lookup { objectId = record.objId, attributeId = record.key } of
+                Just (AttributeString val) ->
+                    val
+
+                _ ->
+                    ""
 
 
 decoder : Decoder ExpressionBool
@@ -44,8 +117,8 @@ decodeByTag tag =
         "LiteralBool" ->
             Decode.map LiteralBool (Decode.field "value" Decode.bool)
 
-        "AttributeBool" ->
-            Decode.map AttributeBool fieldDecoder
+        "ExpAttributeBool" ->
+            Decode.map ExpAttributeBool fieldDecoder
 
         "BoolEquals" ->
             Decode.map2 BoolEquals
@@ -103,8 +176,8 @@ decodeExpressionInt =
                     "LiteralInt" ->
                         Decode.map LiteralInt (Decode.field "value" Decode.int)
 
-                    "AttributeInt" ->
-                        Decode.map AttributeInt fieldDecoder
+                    "ExpAttributeInt" ->
+                        Decode.map ExpAttributeInt fieldDecoder
 
                     _ ->
                         Decode.fail ("Unknown int tag: " ++ tag)
@@ -120,8 +193,8 @@ decodeExpressionString =
                     "LiteralString" ->
                         Decode.map LiteralString (Decode.field "value" Decode.string)
 
-                    "AttributeString" ->
-                        Decode.map AttributeString fieldDecoder
+                    "ExpAttributeString" ->
+                        Decode.map ExpAttributeString fieldDecoder
 
                     _ ->
                         Decode.fail ("Unknown string tag: " ++ tag)

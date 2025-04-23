@@ -1,5 +1,6 @@
-module ObjectStore exposing (ObjectStore, getById, new, withParentId)
+module ObjectStore exposing (ObjectStore, getAttribute, getById, incrementAttributeBy, new, withParentId)
 
+import Attribute exposing (Attribute(..))
 import Dict exposing (Dict)
 import Object exposing (Object)
 
@@ -44,3 +45,28 @@ withParentId id (ObjectStore internals) =
                 Object.parent obj == id
             )
         |> List.map (\( key, obj ) -> obj)
+
+
+getAttribute : ObjectStore -> { objectId : String, attributeId : String } -> Maybe Attribute
+getAttribute objectStore { objectId, attributeId } =
+    getById objectId objectStore
+        |> Object.attribute attributeId
+
+
+incrementAttributeBy : ObjectStore -> { objectId : String, attributeId : String, amount : Int } -> ObjectStore
+incrementAttributeBy ((ObjectStore internals) as objectStore) { objectId, attributeId, amount } =
+    case getAttribute objectStore { objectId = objectId, attributeId = attributeId } of
+        Just (AttributeInt intValue) ->
+            ObjectStore
+                { internals
+                    | objects =
+                        Dict.insert objectId
+                            (Object.setIntAttribute
+                                { id = attributeId, value = intValue + amount }
+                                (getById objectId objectStore)
+                            )
+                            internals.objects
+                }
+
+        _ ->
+            objectStore

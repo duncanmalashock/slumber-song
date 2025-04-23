@@ -1,4 +1,4 @@
-module Attribute exposing (Attribute, bool, decoder, int, string)
+module Attribute exposing (Attribute(..), bool, decoder, int, string)
 
 import Json.Decode as Decode exposing (Decoder)
 
