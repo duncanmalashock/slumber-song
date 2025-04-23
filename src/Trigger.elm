@@ -1,8 +1,9 @@
-module Trigger exposing (Trigger, decoder, shouldRun)
+module Trigger exposing (Trigger, decoder, encode, shouldRun)
 
 import Command exposing (Command)
 import Interaction exposing (Interaction(..))
 import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
 
 
 type Trigger
@@ -37,3 +38,18 @@ decoder =
                     _ ->
                         Decode.fail ("Unknown trigger tag: " ++ tag)
             )
+
+
+encode : Trigger -> Encode.Value
+encode trigger =
+    case trigger of
+        OnAny ->
+            Encode.object
+                [ ( "tag", Encode.string "OnAny" )
+                ]
+
+        OnCommand cmd ->
+            Encode.object
+                [ ( "tag", Encode.string "OnCommand" )
+                , ( "command", Encode.string (Command.toString cmd) )
+                ]

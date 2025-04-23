@@ -3,7 +3,7 @@ module Main exposing (main)
 import Browser
 import Command exposing (Command)
 import Dict exposing (Dict)
-import Effect exposing (Effect)
+import Effect exposing (Effect(..))
 import Game exposing (Game)
 import Html exposing (Html)
 import Html.Attributes as Html
@@ -48,6 +48,7 @@ type Msg
     = GameDataLoaded (List Object)
     | ReceivedGameMsg Game.Msg
     | GameMsgDecodeError Decode.Error
+    | UserClickedSaveButton
 
 
 msgDecoder : Decode.Decoder Msg
@@ -156,6 +157,22 @@ update msg model =
                 ]
             )
 
+        UserClickedSaveButton ->
+            case model.game of
+                NotLoaded ->
+                    ( model, Cmd.none )
+
+                Loading ->
+                    ( model, Cmd.none )
+
+                LoadSuccessful loadedGame ->
+                    ( model
+                    , Ports.send [ SaveGameData (Game.encode loadedGame) ]
+                    )
+
+                LoadFailed err ->
+                    ( model, Cmd.none )
+
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
@@ -190,6 +207,7 @@ elmView model =
                 [ viewCommands game
                 , viewObjects game
                 , viewNarration game
+                , viewSaveButton game
                 ]
 
         NotLoaded ->
@@ -248,6 +266,14 @@ viewNarration game =
         [ Html.id "narration" ]
         [ Html.text (Game.narration game)
         ]
+
+
+viewSaveButton : Game -> Html Msg
+viewSaveButton game =
+    Html.button
+        [ onClick UserClickedSaveButton
+        ]
+        [ Html.text "Save Game Data" ]
 
 
 main : Program Flags Model Msg

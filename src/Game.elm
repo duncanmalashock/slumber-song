@@ -1,9 +1,10 @@
-module Game exposing (Game, Msg(..), currentRoom, narration, new, objectsInCurrentRoom, objectsInInventory, player, update)
+module Game exposing (Game, Msg(..), currentRoom, encode, narration, new, objectsInCurrentRoom, objectsInInventory, player, update)
 
 import Command exposing (Command(..))
 import Effect exposing (Effect(..))
 import Expression
 import Interaction exposing (Interaction(..))
+import Json.Encode as Encode
 import Object exposing (Object)
 import ObjectStore exposing (ObjectStore)
 import Script exposing (Script)
@@ -328,7 +329,7 @@ runScripts ((Game internals) as game) interaction =
                             { handledInteraction = True
                             , updates = []
                             , effects =
-                                [ PrintText ("Hitting the " ++ objectName ++ " produced no effect.")
+                                [ PrintText ("Hitting the " ++ objectName ++ " accomplished nothing.")
                                 ]
                             }
 
@@ -423,3 +424,8 @@ applyUpdate updateToApply (Game internals) =
                     , targetObjectId = Nothing
                     , objectDragInfo = Nothing
                 }
+
+
+encode : Game -> Encode.Value
+encode (Game internals) =
+    Encode.list Object.encode (ObjectStore.toList internals.objects)

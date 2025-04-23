@@ -85,6 +85,10 @@ app.ports.toJs.subscribe((msgs) => {
         console.error(data.message);
         break;
 
+      case "SaveGameData":
+        console.log(data.gameData);
+        break;
+
       default:
         console.error("Unknown port tag sent from Elm to JS:", data);
     }

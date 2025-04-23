@@ -1,6 +1,7 @@
-module Attribute exposing (Attribute(..), bool, decoder, int, string)
+module Attribute exposing (Attribute(..), bool, decoder, encode, int, string)
 
 import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
 
 
 type Attribute
@@ -31,3 +32,16 @@ decoder =
         , Decode.int |> Decode.map AttributeInt
         , Decode.string |> Decode.map AttributeString
         ]
+
+
+encode : Attribute -> Encode.Value
+encode attr =
+    case attr of
+        AttributeBool b ->
+            Encode.bool b
+
+        AttributeInt i ->
+            Encode.int i
+
+        AttributeString s ->
+            Encode.string s

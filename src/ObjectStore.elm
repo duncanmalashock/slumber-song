@@ -1,4 +1,4 @@
-module ObjectStore exposing (ObjectStore, getAttribute, getById, incrementAttributeBy, new, setBoolAttribute, withParentId)
+module ObjectStore exposing (ObjectStore, getAttribute, getById, incrementAttributeBy, new, setBoolAttribute, toList, withParentId)
 
 import Attribute exposing (Attribute(..))
 import Dict exposing (Dict)
@@ -29,6 +29,12 @@ new objectsForInit =
     ObjectStore
         { objects = objects
         }
+
+
+toList : ObjectStore -> List Object
+toList (ObjectStore internals) =
+    Dict.toList internals.objects
+        |> List.map Tuple.second
 
 
 getById : String -> ObjectStore -> Object

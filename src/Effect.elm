@@ -1,4 +1,4 @@
-module Effect exposing (Effect(..), decoder, encodeList)
+module Effect exposing (Effect(..), decoder, encode, encodeList)
 
 import Command exposing (Command)
 import Json.Decode as Decode exposing (Decoder)
@@ -12,6 +12,7 @@ type Effect
     | HighlightObject String
     | PrintText String
     | ReportError String
+    | SaveGameData Encode.Value
 
 
 encodeList : List Effect -> Encode.Value
@@ -56,6 +57,12 @@ encode effect =
             Encode.object
                 [ ( "tag", Encode.string "ReportError" )
                 , ( "message", Encode.string message )
+                ]
+
+        SaveGameData gameData ->
+            Encode.object
+                [ ( "tag", Encode.string "SaveGameData" )
+                , ( "gameData", gameData )
                 ]
 
 

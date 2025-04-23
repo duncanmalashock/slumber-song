@@ -1,7 +1,8 @@
-module Expression exposing (ExpressionBool(..), decoder, evaluate)
+module Expression exposing (ExpressionBool(..), decoder, encode, evaluate)
 
 import Attribute exposing (Attribute(..))
 import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
 
 
 type ExpressionBool
@@ -206,3 +207,116 @@ fieldDecoder =
     Decode.map2 (\objId key -> { objId = objId, key = key })
         (Decode.field "objId" Decode.string)
         (Decode.field "key" Decode.string)
+
+
+encode : ExpressionBool -> Encode.Value
+encode expression =
+    case expression of
+        LiteralBool b ->
+            Encode.object
+                [ ( "tag", Encode.string "LiteralBool" )
+                , ( "value", Encode.bool b )
+                ]
+
+        ExpAttributeBool { objId, key } ->
+            Encode.object
+                [ ( "tag", Encode.string "ExpAttributeBool" )
+                , ( "objId", Encode.string objId )
+                , ( "key", Encode.string key )
+                ]
+
+        BoolEquals a b ->
+            Encode.object
+                [ ( "tag", Encode.string "BoolEquals" )
+                , ( "left", encode a )
+                , ( "right", encode b )
+                ]
+
+        IntEquals a b ->
+            Encode.object
+                [ ( "tag", Encode.string "IntEquals" )
+                , ( "left", encodeInt a )
+                , ( "right", encodeInt b )
+                ]
+
+        IntGreaterThan a b ->
+            Encode.object
+                [ ( "tag", Encode.string "IntGreaterThan" )
+                , ( "left", encodeInt a )
+                , ( "right", encodeInt b )
+                ]
+
+        IntLessThan a b ->
+            Encode.object
+                [ ( "tag", Encode.string "IntLessThan" )
+                , ( "left", encodeInt a )
+                , ( "right", encodeInt b )
+                ]
+
+        StringEquals a b ->
+            Encode.object
+                [ ( "tag", Encode.string "StringEquals" )
+                , ( "left", encodeString a )
+                , ( "right", encodeString b )
+                ]
+
+        StringContains a b ->
+            Encode.object
+                [ ( "tag", Encode.string "StringContains" )
+                , ( "left", encodeString a )
+                , ( "right", encodeString b )
+                ]
+
+        And a b ->
+            Encode.object
+                [ ( "tag", Encode.string "And" )
+                , ( "left", encode a )
+                , ( "right", encode b )
+                ]
+
+        Or a b ->
+            Encode.object
+                [ ( "tag", Encode.string "Or" )
+                , ( "left", encode a )
+                , ( "right", encode b )
+                ]
+
+        Not sub ->
+            Encode.object
+                [ ( "tag", Encode.string "Not" )
+                , ( "expr", encode sub )
+                ]
+
+
+encodeInt : ExpressionInt -> Encode.Value
+encodeInt expr =
+    case expr of
+        LiteralInt i ->
+            Encode.object
+                [ ( "tag", Encode.string "LiteralInt" )
+                , ( "value", Encode.int i )
+                ]
+
+        ExpAttributeInt { objId, key } ->
+            Encode.object
+                [ ( "tag", Encode.string "ExpAttributeInt" )
+                , ( "objId", Encode.string objId )
+                , ( "key", Encode.string key )
+                ]
+
+
+encodeString : ExpressionString -> Encode.Value
+encodeString expr =
+    case expr of
+        LiteralString s ->
+            Encode.object
+                [ ( "tag", Encode.string "LiteralString" )
+                , ( "value", Encode.string s )
+                ]
+
+        ExpAttributeString { objId, key } ->
+            Encode.object
+                [ ( "tag", Encode.string "ExpAttributeString" )
+                , ( "objId", Encode.string objId )
+                , ( "key", Encode.string key )
+                ]

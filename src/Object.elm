@@ -1,9 +1,10 @@
-module Object exposing (Object, attribute, decoder, description, id, name, new, null, parent, scripts, setBoolAttribute, setIntAttribute)
+module Object exposing (Object, attribute, decoder, description, encode, id, name, new, null, parent, scripts, setBoolAttribute, setIntAttribute)
 
 import Attribute exposing (Attribute)
 import AttributeStore exposing (AttributeStore)
 import Dict exposing (Dict)
 import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
 import Script exposing (Script)
 
 
@@ -52,6 +53,18 @@ decoder =
         (Decode.field "description" Decode.string)
         (Decode.field "attributes" (Decode.dict Attribute.decoder))
         (Decode.field "scripts" (Decode.list Script.decoder))
+
+
+encode : Object -> Encode.Value
+encode (Object internals) =
+    Encode.object
+        [ ( "id", Encode.string internals.id )
+        , ( "name", Encode.string internals.name )
+        , ( "parent", Encode.string internals.parent )
+        , ( "description", Encode.string internals.description )
+        , ( "attributes", AttributeStore.encode internals.attributes )
+        , ( "scripts", Encode.list Script.encode internals.scripts )
+        ]
 
 
 new :

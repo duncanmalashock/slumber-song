@@ -1,8 +1,9 @@
-module AttributeStore exposing (AttributeStore, getById, new, setBool, setInt)
+module AttributeStore exposing (AttributeStore, encode, getById, new, setBool, setInt)
 
 import Attribute exposing (Attribute)
 import Dict exposing (Dict)
 import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
 
 
 type AttributeStore
@@ -46,3 +47,22 @@ setBool { id, value } (AttributeStore internals) =
         { attributes =
             Dict.insert id (Attribute.bool value) internals.attributes
         }
+
+
+toDict : AttributeStore -> Dict String Attribute
+toDict (AttributeStore internals) =
+    internals.attributes
+
+
+encode : AttributeStore -> Encode.Value
+encode store =
+    toDict store
+        |> Dict.toList
+        |> List.map (\( k, v ) -> ( k, Attribute.encode v ))
+        |> Encode.object
+
+
+decoder : Decoder AttributeStore
+decoder =
+    Decode.dict Attribute.decoder
+        |> Decode.map (\dict -> AttributeStore { attributes = dict })
