@@ -8,7 +8,6 @@ import Json.Decode as Decode exposing (Decoder)
 type Trigger
     = OnAny
     | OnCommand Command
-    | OnMove
 
 
 shouldRun : String -> Trigger -> Interaction -> Bool
@@ -17,16 +16,9 @@ shouldRun objectIdToMatch trigger interaction =
         OnAny ->
             True
 
-        OnMove ->
-            case interaction of
-                AttemptMoveObject { objectId, from, to } ->
-                    objectId == objectIdToMatch
-
-                _ ->
-                    False
-
         OnCommand command ->
-            Interaction.matchesCommand command objectIdToMatch interaction
+            Interaction.handlesCommand command interaction
+                && Interaction.handlesObject objectIdToMatch interaction
 
 
 decoder : Decoder Trigger
@@ -41,9 +33,6 @@ decoder =
                     "OnCommand" ->
                         Decode.field "command" Command.decoder
                             |> Decode.map OnCommand
-
-                    "OnMove" ->
-                        Decode.succeed OnMove
 
                     _ ->
                         Decode.fail ("Unknown trigger tag: " ++ tag)

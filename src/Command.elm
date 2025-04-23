@@ -1,4 +1,4 @@
-module Command exposing (Command(..), all, decoder, toName, toString)
+module Command exposing (Command(..), decoder, listForMenu, toName, toString)
 
 import Json.Decode as Decode exposing (Decoder)
 
@@ -12,10 +12,11 @@ type Command
     | Go
     | Hit
     | Consume
+    | Move
 
 
-all : List Command
-all =
+listForMenu : List Command
+listForMenu =
     [ Examine
     , Open
     , Close
@@ -54,6 +55,9 @@ toString command =
         Consume ->
             "consume"
 
+        Move ->
+            "move"
+
 
 toName : Command -> String
 toName command =
@@ -81,6 +85,9 @@ toName command =
 
         Consume ->
             "Consume"
+
+        Move ->
+            "Move"
 
 
 decoder : Decoder Command
@@ -112,6 +119,9 @@ decoder =
 
                     "consume" ->
                         Decode.succeed Consume
+
+                    "move" ->
+                        Decode.succeed Move
 
                     _ ->
                         Decode.fail ("Unknown command: " ++ str)

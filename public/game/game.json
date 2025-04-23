@@ -82,7 +82,12 @@
             "value": true
           }
         ],
-        "effects": []
+        "effects": [
+          {
+            "tag": "PrintText",
+            "text": "As if by magic, the skull rises."
+          }
+        ]
       }
     ]
   }

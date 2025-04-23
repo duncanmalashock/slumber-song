@@ -217,7 +217,7 @@ viewCommands game =
     in
     Html.div
         [ Html.id "commands" ]
-        (List.map viewCommand Command.all)
+        (List.map viewCommand Command.listForMenu)
 
 
 viewObjects : Game -> Html Msg

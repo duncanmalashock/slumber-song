@@ -3,7 +3,7 @@ module Game exposing (Game, Msg(..), currentRoom, narration, new, objectsInCurre
 import Command exposing (Command(..))
 import Effect exposing (Effect(..))
 import Expression
-import Interaction exposing (Interaction)
+import Interaction exposing (Interaction(..))
 import Object exposing (Object)
 import ObjectStore exposing (ObjectStore)
 import Script exposing (Script)
@@ -182,42 +182,202 @@ runScripts ((Game internals) as game) interaction =
             ]
                 |> List.concat
 
-        updatesAndEffects : List ( List Update, List Effect )
+        updatesAndEffects :
+            List
+                { handledInteraction : Bool, updates : List Update, effects : List Effect }
         updatesAndEffects =
             scriptsToRun
                 |> List.map
                     (\( objId, script ) ->
                         runScript objId interaction internals.objects script
                     )
+                |> finalizeUpdatesAndEffects
 
-        updates : List Update
-        updates =
-            updatesAndEffects
-                |> List.concatMap (\( u, _ ) -> u)
+        finalizeUpdatesAndEffects :
+            List { handledInteraction : Bool, updates : List Update, effects : List Effect }
+            -> List { handledInteraction : Bool, updates : List Update, effects : List Effect }
+        finalizeUpdatesAndEffects list =
+            if List.any (\{ handledInteraction } -> handledInteraction) list then
+                list
 
-        effects : List Effect
-        effects =
+            else
+                list
+                    |> applyFallbackForInteraction interaction
+
+        applyFallbackForInteraction :
+            Interaction
+            ->
+                List
+                    { handledInteraction : Bool, updates : List Update, effects : List Effect }
+            ->
+                List
+                    { handledInteraction : Bool, updates : List Update, effects : List Effect }
+        applyFallbackForInteraction i list =
+            let
+                fallback =
+                    case i of
+                        AttemptMoveObject { objectId } ->
+                            let
+                                objectName =
+                                    ObjectStore.getById objectId internals.objects
+                                        |> Object.name
+                            in
+                            { handledInteraction = True
+                            , updates = []
+                            , effects =
+                                [ PrintText ("The " ++ objectName ++ " couldn't be moved.")
+                                ]
+                            }
+
+                        AttemptExamine { objectId } ->
+                            let
+                                objectDescription =
+                                    ObjectStore.getById objectId internals.objects
+                                        |> Object.description
+                            in
+                            { handledInteraction = True
+                            , updates = []
+                            , effects =
+                                [ PrintText objectDescription
+                                ]
+                            }
+
+                        AttemptOpen { objectId } ->
+                            let
+                                objectName =
+                                    ObjectStore.getById objectId internals.objects
+                                        |> Object.name
+                            in
+                            { handledInteraction = True
+                            , updates = []
+                            , effects =
+                                [ PrintText ("The " ++ objectName ++ " couldn't be opened.")
+                                ]
+                            }
+
+                        AttemptClose { objectId } ->
+                            let
+                                objectName =
+                                    ObjectStore.getById objectId internals.objects
+                                        |> Object.name
+                            in
+                            { handledInteraction = True
+                            , updates = []
+                            , effects =
+                                [ PrintText ("The " ++ objectName ++ " couldn't be closed.")
+                                ]
+                            }
+
+                        AttemptSpeak { objectId } ->
+                            let
+                                objectName =
+                                    ObjectStore.getById objectId internals.objects
+                                        |> Object.name
+                            in
+                            { handledInteraction = True
+                            , updates = []
+                            , effects =
+                                [ PrintText ("Speaking to the " ++ objectName ++ " produced no effect.")
+                                ]
+                            }
+
+                        AttemptOperate { sourceObjectId, targetObjectId } ->
+                            let
+                                sourceObjectName =
+                                    ObjectStore.getById sourceObjectId internals.objects
+                                        |> Object.name
+
+                                targetObjectName =
+                                    ObjectStore.getById targetObjectId internals.objects
+                                        |> Object.name
+                            in
+                            { handledInteraction = True
+                            , updates = []
+                            , effects =
+                                [ PrintText ("Operating the " ++ sourceObjectName ++ " on the " ++ targetObjectName ++ " produced no effect.")
+                                ]
+                            }
+
+                        AttemptGo { objectId } ->
+                            let
+                                objectName =
+                                    ObjectStore.getById objectId internals.objects
+                                        |> Object.name
+                            in
+                            { handledInteraction = True
+                            , updates = []
+                            , effects =
+                                [ PrintText "You can't go there."
+                                ]
+                            }
+
+                        AttemptHit { objectId } ->
+                            let
+                                objectName =
+                                    ObjectStore.getById objectId internals.objects
+                                        |> Object.name
+                            in
+                            { handledInteraction = True
+                            , updates = []
+                            , effects =
+                                [ PrintText ("Hitting the " ++ objectName ++ " produced no effect.")
+                                ]
+                            }
+
+                        AttemptConsume { objectId } ->
+                            let
+                                objectName =
+                                    ObjectStore.getById objectId internals.objects
+                                        |> Object.name
+                            in
+                            { handledInteraction = True
+                            , updates = []
+                            , effects =
+                                [ PrintText ("You can't eat the " ++ objectName ++ ".")
+                                ]
+                            }
+            in
+            list ++ [ fallback ]
+
+        finalUpdates : List Update
+        finalUpdates =
             updatesAndEffects
-                |> List.concatMap (\( _, e ) -> e)
+                |> List.concatMap (\{ updates } -> updates)
+                |> (++) [ ClearSelections ]
+
+        finalEffects : List Effect
+        finalEffects =
+            updatesAndEffects
+                |> List.concatMap (\{ effects } -> effects)
 
         updatedGame : Game
         updatedGame =
-            List.foldl applyUpdate game updates
+            List.foldl applyUpdate game finalUpdates
     in
-    ( updatedGame, effects )
+    ( updatedGame, finalEffects )
 
 
-runScript : String -> Interaction -> ObjectStore -> Script -> ( List Update, List Effect )
+runScript :
+    String
+    -> Interaction
+    -> ObjectStore
+    -> Script
+    -> { handledInteraction : Bool, updates : List Update, effects : List Effect }
 runScript objectId interaction objects script =
-    if Trigger.shouldRun objectId script.trigger interaction then
-        if Expression.evaluate (ObjectStore.getAttribute objects) script.condition then
-            ( script.updates ++ [ ClearSelections ], script.effects )
-
-        else
-            ( [ ClearSelections ], [] )
+    if
+        Trigger.shouldRun objectId script.trigger interaction
+            && Expression.evaluate (ObjectStore.getAttribute objects) script.condition
+    then
+        { handledInteraction = Interaction.handlesObject objectId interaction
+        , updates = script.updates
+        , effects = script.effects
+        }
 
     else
-        ( [ ClearSelections ], [] )
+        { handledInteraction = False
+        , updates = []
+        , effects = []
+        }
 
 
 applyUpdate : Update -> Game -> Game
@@ -241,9 +401,9 @@ applyUpdate updateToApply (Game internals) =
                     | objects =
                         ObjectStore.setBoolAttribute
                             internals.objects
-                            { objectId = objId |> Debug.log "SetBoolAttribute objectId"
-                            , attributeId = attributeKey |> Debug.log "SetBoolAttribute attributeId"
-                            , value = value |> Debug.log "SetBoolAttribute value"
+                            { objectId = objId
+                            , attributeId = attributeKey
+                            , value = value
                             }
                 }
 

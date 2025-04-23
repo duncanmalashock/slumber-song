@@ -1,4 +1,4 @@
-module Interaction exposing (Interaction(..), detect, matchesCommand)
+module Interaction exposing (Interaction(..), detect, handlesCommand, handlesObject)
 
 import Command exposing (Command(..))
 
@@ -22,35 +22,66 @@ type alias ObjectLocation =
     }
 
 
-matchesCommand : Command -> String -> Interaction -> Bool
-matchesCommand command objectIdToMatch interaction =
+handlesCommand : Command -> Interaction -> Bool
+handlesCommand command interaction =
     case interaction of
         AttemptExamine { objectId } ->
-            command == Examine && (objectId == objectIdToMatch)
+            command == Examine
 
         AttemptOpen { objectId } ->
-            command == Open && (objectId == objectIdToMatch)
+            command == Open
 
         AttemptClose { objectId } ->
-            command == Close && (objectId == objectIdToMatch)
+            command == Close
 
         AttemptSpeak { objectId } ->
-            command == Speak && (objectId == objectIdToMatch)
+            command == Speak
 
         AttemptOperate { sourceObjectId, targetObjectId } ->
-            command == Operate && ((sourceObjectId == objectIdToMatch) || (targetObjectId == objectIdToMatch))
+            command == Operate
 
         AttemptGo { objectId } ->
-            command == Go && (objectId == objectIdToMatch)
+            command == Go
 
         AttemptHit { objectId } ->
-            command == Hit && (objectId == objectIdToMatch)
+            command == Hit
 
         AttemptConsume { objectId } ->
-            command == Consume && (objectId == objectIdToMatch)
+            command == Consume
 
-        AttemptMoveObject _ ->
-            False
+        AttemptMoveObject { objectId } ->
+            command == Move
+
+
+handlesObject : String -> Interaction -> Bool
+handlesObject objectIdToMatch interaction =
+    case interaction of
+        AttemptExamine { objectId } ->
+            objectId == objectIdToMatch
+
+        AttemptOpen { objectId } ->
+            objectId == objectIdToMatch
+
+        AttemptClose { objectId } ->
+            objectId == objectIdToMatch
+
+        AttemptSpeak { objectId } ->
+            objectId == objectIdToMatch
+
+        AttemptOperate { sourceObjectId, targetObjectId } ->
+            (sourceObjectId == objectIdToMatch) || (targetObjectId == objectIdToMatch)
+
+        AttemptGo { objectId } ->
+            objectId == objectIdToMatch
+
+        AttemptHit { objectId } ->
+            objectId == objectIdToMatch
+
+        AttemptConsume { objectId } ->
+            objectId == objectIdToMatch
+
+        AttemptMoveObject { objectId } ->
+            objectId == objectIdToMatch
 
 
 detect :
@@ -74,6 +105,10 @@ detect params =
 
                 Nothing ->
                     Nothing
+
+        Just Move ->
+            -- Can't be selected with the menu
+            Nothing
 
         Just Examine ->
             case params.sourceObjectId of
