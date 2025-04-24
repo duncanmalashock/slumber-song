@@ -1,10 +1,11 @@
-module Vent exposing (conditionParser, effectsParser, scriptParser, triggerParser, updatesParser)
+module Vent exposing (conditionParser, effectsParser, scriptParser, triggerParser, updateParser)
 
 import Command
 import Effect exposing (Effect)
 import Expression exposing (ExpressionBool(..))
 import Parser exposing ((|.), (|=), Parser)
 import Script exposing (Script)
+import Set
 import Trigger exposing (Trigger)
 import Update exposing (Update)
 
@@ -53,6 +54,7 @@ conditionParser =
         |= boolExpressionParser
         |. Parser.spaces
         |. Parser.keyword "then"
+        |. Parser.spaces
 
 
 boolExpressionParser : Parser ExpressionBool
@@ -96,11 +98,66 @@ checkLiteralBoolKeyword stringToCheck =
 
 updatesParser : Parser (List Update)
 updatesParser =
-    Parser.succeed Update.ClearSelections
+    updateParser
         |> Parser.map List.singleton
+
+
+updateParser : Parser Update
+updateParser =
+    Parser.oneOf
+        [ setAttributeUpdateParser
+        ]
+        |. Parser.spaces
+
+
+setAttributeUpdateParser : Parser Update
+setAttributeUpdateParser =
+    let
+        objVarParser : Parser String
+        objVarParser =
+            Parser.variable
+                { start = Char.isLower
+                , inner = Char.isAlphaNum
+                , reserved = Set.fromList []
+                }
+
+        attrVarParser : Parser String
+        attrVarParser =
+            Parser.variable
+                { start = Char.isLower
+                , inner = Char.isAlphaNum
+                , reserved = Set.fromList []
+                }
+
+        boolLiteralParser : Parser Bool
+        boolLiteralParser =
+            Parser.oneOf
+                [ Parser.succeed True
+                    |. Parser.keyword "true"
+                , Parser.succeed False
+                    |. Parser.keyword "false"
+                ]
+
+        buildSetBoolAttribute : String -> String -> Bool -> Update
+        buildSetBoolAttribute objId attrId value =
+            Update.SetBoolAttribute
+                { objId = objId
+                , attributeKey = attrId
+                , value = value
+                }
+    in
+    Parser.succeed buildSetBoolAttribute
+        |. Parser.symbol "@"
+        |= objVarParser
+        |. Parser.symbol "."
+        |= attrVarParser
+        |. Parser.spaces
+        |. Parser.symbol "="
+        |. Parser.spaces
+        |= boolLiteralParser
 
 
 effectsParser : Parser (List Effect)
 effectsParser =
-    Parser.succeed (Effect.PrintText "Hi!")
+    Parser.succeed (Effect.PrintText "As if by magic, the skull rises.")
         |> Parser.map List.singleton
