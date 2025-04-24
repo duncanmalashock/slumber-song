@@ -1,4 +1,4 @@
-module Trigger exposing (Trigger, decoder, encode, shouldRun)
+module Trigger exposing (Trigger(..), decoder, encode, fromString, shouldRun)
 
 import Command exposing (Command)
 import Interaction exposing (Interaction(..))
@@ -38,6 +38,17 @@ decoder =
                     _ ->
                         Decode.fail ("Unknown trigger tag: " ++ tag)
             )
+
+
+fromString : String -> Result String Trigger
+fromString string =
+    case string of
+        "any" ->
+            Ok OnAny
+
+        _ ->
+            Command.fromString string
+                |> Result.map OnCommand
 
 
 encode : Trigger -> Encode.Value

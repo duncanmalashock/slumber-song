@@ -10,7 +10,9 @@ import Html.Attributes as Html
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
 import Object exposing (Object)
+import Parser
 import Ports
+import Vent
 
 
 type alias Flags =
@@ -29,6 +31,7 @@ flagsDecoder =
 type alias Model =
     { game : RemoteData Game.Game String
     , interfaceMode : InterfaceMode
+    , parserInput : String
     }
 
 
@@ -49,6 +52,7 @@ type Msg
     | ReceivedGameMsg Game.Msg
     | GameMsgDecodeError Decode.Error
     | UserClickedSaveButton
+    | UserTypedIntoParserInput String
 
 
 msgDecoder : Decode.Decoder Msg
@@ -89,6 +93,13 @@ init flags =
 
                 else
                     InterfaceJS
+            , parserInput = String.trimLeft """
+%open
+if !@skull.isOpen then
+@skull.isOpen = true
+$printText "As if by magic, the skull rises."
+end
+"""
             }
     in
     ( initialModel
@@ -173,6 +184,9 @@ update msg model =
                 LoadFailed err ->
                     ( model, Cmd.none )
 
+        UserTypedIntoParserInput input ->
+            ( { model | parserInput = input }, Cmd.none )
+
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
@@ -208,6 +222,7 @@ elmView model =
                 , viewObjects game
                 , viewNarration game
                 , viewSaveButton game
+                , viewParserInput model.parserInput
                 ]
 
         NotLoaded ->
@@ -265,6 +280,21 @@ viewNarration game =
     Html.div
         [ Html.id "narration" ]
         [ Html.text (Game.narration game)
+        ]
+
+
+viewParserInput : String -> Html Msg
+viewParserInput input =
+    Html.div []
+        [ Html.textarea
+            [ Html.Events.onInput UserTypedIntoParserInput
+            , Html.value input
+            , Html.rows 20
+            , Html.style "width" "60ch"
+            ]
+            []
+        , Html.pre []
+            [ Html.text (Debug.toString <| Parser.run Vent.scriptParser input) ]
         ]
 
 

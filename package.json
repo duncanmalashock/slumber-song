@@ -12,5 +12,8 @@
   "devDependencies": {
     "vite": "6.2.5",
     "vite-plugin-elm-watch": "1.4.2"
+  },
+  "dependencies": {
+    "elm-test": "^0.19.1-revision15"
   }
 }

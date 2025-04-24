@@ -1,4 +1,4 @@
-module Command exposing (Command(..), decoder, listForMenu, toName, toString)
+module Command exposing (Command(..), decoder, fromString, listForMenu, toName, toString)
 
 import Json.Decode as Decode exposing (Decoder)
 
@@ -95,34 +95,44 @@ decoder =
     Decode.string
         |> Decode.andThen
             (\str ->
-                case str of
-                    "examine" ->
-                        Decode.succeed Examine
+                case fromString str of
+                    Ok command ->
+                        Decode.succeed command
 
-                    "open" ->
-                        Decode.succeed Open
-
-                    "close" ->
-                        Decode.succeed Close
-
-                    "speak" ->
-                        Decode.succeed Speak
-
-                    "operate" ->
-                        Decode.succeed Operate
-
-                    "go" ->
-                        Decode.succeed Go
-
-                    "hit" ->
-                        Decode.succeed Hit
-
-                    "consume" ->
-                        Decode.succeed Consume
-
-                    "move" ->
-                        Decode.succeed Move
-
-                    _ ->
-                        Decode.fail ("Unknown command: " ++ str)
+                    Err error ->
+                        Decode.fail error
             )
+
+
+fromString : String -> Result String Command
+fromString string =
+    case string of
+        "examine" ->
+            Ok Examine
+
+        "open" ->
+            Ok Open
+
+        "close" ->
+            Ok Close
+
+        "speak" ->
+            Ok Speak
+
+        "operate" ->
+            Ok Operate
+
+        "go" ->
+            Ok Go
+
+        "hit" ->
+            Ok Hit
+
+        "consume" ->
+            Ok Consume
+
+        "move" ->
+            Ok Move
+
+        _ ->
+            Err ("Unknown command: " ++ string)

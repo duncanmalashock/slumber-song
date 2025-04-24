@@ -71,8 +71,16 @@
           "command": "open"
         },
         "condition": {
-            "tag": "LiteralBool",
-            "value": true
+            "tag": "BoolEquals",
+            "left": {
+              "tag": "ExpAttributeBool",
+              "objId": "object:skull",
+              "key": "isOpen"
+            },
+            "right": {
+              "tag": "LiteralBool",
+              "value": false
+            }
         },
         "updates": [
           {
