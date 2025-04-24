@@ -293,7 +293,7 @@ viewParserInput input =
             , Html.style "width" "60ch"
             ]
             []
-        , Html.pre []
+        , Html.pre [ Html.style "width" "60ch", Html.style "text-wrap" "auto" ]
             [ Html.text (Debug.toString <| Parser.run Vent.scriptParser input) ]
         ]
 
