@@ -1,7 +1,7 @@
 module VentTest exposing (..)
 
 import Command
-import Effect exposing (Effect)
+import Effect exposing (Effect(..))
 import Expect
 import Expression exposing (ExpressionBool)
 import Parser exposing (Problem(..))
@@ -93,6 +93,21 @@ updateExamples =
     ]
 
 
+effectExamples :
+    List
+        { expect : Result (List Parser.DeadEnd) Effect
+        , given : String
+        }
+effectExamples =
+    [ { given = "$printText \"As if by magic, the skull rises.\""
+      , expect = Ok (PrintText "As if by magic, the skull rises.")
+      }
+    , { given = "$printText \"The torch you lit before has now gone out.\""
+      , expect = Ok (PrintText "The torch you lit before has now gone out.")
+      }
+    ]
+
+
 suite : Test
 suite =
     Test.describe "Vent"
@@ -133,6 +148,16 @@ suite =
                         Test.test example.given <|
                             \_ ->
                                 Parser.run Vent.updateParser example.given
+                                    |> Expect.equal example.expect
+                    )
+            )
+        , Test.describe "Vent.effectParser"
+            (effectExamples
+                |> List.map
+                    (\example ->
+                        Test.test example.given <|
+                            \_ ->
+                                Parser.run Vent.effectParser example.given
                                     |> Expect.equal example.expect
                     )
             )

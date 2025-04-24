@@ -1,4 +1,4 @@
-module Vent exposing (conditionParser, effectsParser, scriptParser, triggerParser, updateParser)
+module Vent exposing (conditionParser, effectParser, scriptParser, triggerParser, updateParser)
 
 import Command
 import Effect exposing (Effect)
@@ -17,6 +17,9 @@ scriptParser =
         |= conditionParser
         |= updatesParser
         |= effectsParser
+        |. Parser.keyword "end"
+        |. Parser.spaces
+        |. Parser.end
 
 
 triggerParser : Parser Trigger
@@ -159,5 +162,25 @@ setAttributeUpdateParser =
 
 effectsParser : Parser (List Effect)
 effectsParser =
-    Parser.succeed (Effect.PrintText "As if by magic, the skull rises.")
+    effectParser
         |> Parser.map List.singleton
+
+
+effectParser : Parser Effect
+effectParser =
+    Parser.oneOf
+        [ printTextEffectParser
+        ]
+        |. Parser.spaces
+
+
+printTextEffectParser : Parser Effect
+printTextEffectParser =
+    Parser.succeed Effect.PrintText
+        |. Parser.keyword "$printText"
+        |. Parser.spaces
+        |. Parser.symbol "\""
+        |= (Parser.chompUntil "\""
+                |> Parser.getChompedString
+           )
+        |. Parser.symbol "\""
