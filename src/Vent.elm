@@ -17,6 +17,7 @@ import Update exposing (Update)
 scriptParser : Parser Script
 scriptParser =
     Parser.succeed Script
+        |. Parser.spaces
         |= triggerParser
         |= conditionParser
         |= updatesParser
