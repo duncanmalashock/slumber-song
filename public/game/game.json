@@ -31,13 +31,13 @@
   {
     "id": "player",
     "name": "player",
-    "parent": "room:entrance",
+    "parent": "entrance",
     "description": "Thou art truly a brave knight!",
     "attributes": {},
     "scripts": []
   },
   {
-    "id": "object:torch",
+    "id": "torch",
     "name": "torch",
     "parent": "player",
     "description": "It's a common, wooden torch.",
@@ -49,7 +49,7 @@
     "scripts": []
   },
   {
-    "id": "room:entrance",
+    "id": "entrance",
     "name": "Entrance",
     "parent": "world",
     "description": "You stand before a stone wall that has been carved out of the earth. The forest ends some twenty feet from the wall, as if sensing some great evil.",
@@ -57,9 +57,9 @@
     "scripts": []
   },
   {
-    "id": "object:skull",
+    "id": "skull",
     "name": "skull",
-    "parent": "room:entrance",
+    "parent": "entrance",
     "description": "It's the skull of some creature. Whatever it is, its meaning is quite clear: Death lurks inside.",
     "attributes": {
       "isOpen" : false
@@ -74,7 +74,7 @@
             "tag": "BoolEquals",
             "left": {
               "tag": "ExpAttributeBool",
-              "objId": "object:skull",
+              "objId": "skull",
               "key": "isOpen"
             },
             "right": {
@@ -85,7 +85,7 @@
         "updates": [
           {
             "tag": "SetBoolAttribute",
-            "objId": "object:skull",
+            "objId": "skull",
             "attributeKey": "isOpen",
             "value": true
           }

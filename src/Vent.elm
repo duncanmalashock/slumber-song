@@ -1,4 +1,4 @@
-module Vent exposing (conditionParser, effectParser, scriptParser, triggerParser, updateParser)
+module Vent exposing (conditionParser, effectParser, effectsParser, scriptParser, triggerParser, updateParser)
 
 import Command
 import Effect exposing (Effect)
@@ -105,8 +105,25 @@ checkLiteralBoolKeyword stringToCheck =
 
 updatesParser : Parser (List Update)
 updatesParser =
-    updateParser
-        |> Parser.map List.singleton
+    let
+        accumulateUpdates :
+            List Update
+            -> Parser (Parser.Step (List Update) (List Update))
+        accumulateUpdates updateList =
+            Parser.oneOf
+                [ Parser.succeed
+                    (\update ->
+                        Parser.Loop (update :: updateList)
+                    )
+                    |= updateParser
+                , Parser.succeed ()
+                    |> Parser.map
+                        (\_ ->
+                            Parser.Done (List.reverse updateList)
+                        )
+                ]
+    in
+    Parser.loop [] accumulateUpdates
 
 
 updateParser : Parser Update
@@ -166,8 +183,25 @@ setAttributeUpdateParser =
 
 effectsParser : Parser (List Effect)
 effectsParser =
-    effectParser
-        |> Parser.map List.singleton
+    let
+        accumulateEffects :
+            List Effect
+            -> Parser (Parser.Step (List Effect) (List Effect))
+        accumulateEffects effectList =
+            Parser.oneOf
+                [ Parser.succeed
+                    (\effect ->
+                        Parser.Loop (effect :: effectList)
+                    )
+                    |= effectParser
+                , Parser.succeed ()
+                    |> Parser.map
+                        (\_ ->
+                            Parser.Done (List.reverse effectList)
+                        )
+                ]
+    in
+    Parser.loop [] accumulateEffects
 
 
 effectParser : Parser Effect

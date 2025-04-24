@@ -95,7 +95,7 @@ init flags =
                     InterfaceJS
             , parserInput = String.trimLeft """
 %open
-if !@skull.isOpen then
+if true then
 @skull.isOpen = true
 $printText "As if by magic, the skull rises."
 end

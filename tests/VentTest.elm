@@ -18,7 +18,7 @@ scriptExamples :
         , given : String
         }
 scriptExamples =
-    [ { given = "%any\nif true then\n@skull.isOpen = true\n$printText \"As if by magic, the skull rises.\"\nend"
+    [ { given = "%any\nif true then\n@skull.isOpen = true\n$printText \"As if by magic, the skull rises.\"\n$printText \"As if by magic, the skull rises.\"\nend"
       , expect =
             Ok
                 { trigger = Trigger.OnAny
@@ -30,7 +30,10 @@ scriptExamples =
                         , value = True
                         }
                     ]
-                , effects = [ Effect.PrintText "As if by magic, the skull rises." ]
+                , effects =
+                    [ Effect.PrintText "As if by magic, the skull rises."
+                    , Effect.PrintText "As if by magic, the skull rises."
+                    ]
                 }
       }
     ]
@@ -108,6 +111,25 @@ effectExamples =
     ]
 
 
+effectsExamples :
+    List
+        { expect : Result (List Parser.DeadEnd) (List Effect)
+        , given : String
+        }
+effectsExamples =
+    [ { given = "$printText \"As if by magic, the skull rises.\""
+      , expect = Ok [ PrintText "As if by magic, the skull rises." ]
+      }
+    , { given = "$printText \"The torch you lit before has now gone out.\"\n$printText \"As if by magic, the skull rises.\""
+      , expect =
+            Ok
+                [ PrintText "The torch you lit before has now gone out."
+                , PrintText "As if by magic, the skull rises."
+                ]
+      }
+    ]
+
+
 suite : Test
 suite =
     Test.describe "Vent"
@@ -158,6 +180,16 @@ suite =
                         Test.test example.given <|
                             \_ ->
                                 Parser.run Vent.effectParser example.given
+                                    |> Expect.equal example.expect
+                    )
+            )
+        , Test.describe "Vent.effectsParser"
+            (effectsExamples
+                |> List.map
+                    (\example ->
+                        Test.test example.given <|
+                            \_ ->
+                                Parser.run Vent.effectsParser example.given
                                     |> Expect.equal example.expect
                     )
             )
