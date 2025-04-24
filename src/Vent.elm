@@ -10,6 +10,10 @@ import Trigger exposing (Trigger)
 import Update exposing (Update)
 
 
+
+-- VENT: the Vintage Exploratory-Narrative Toolkit
+
+
 scriptParser : Parser Script
 scriptParser =
     Parser.succeed Script
