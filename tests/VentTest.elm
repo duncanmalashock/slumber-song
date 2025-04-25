@@ -3,7 +3,7 @@ module VentTest exposing (..)
 import Expect
 import Parser.Advanced as Parser
 import Test exposing (Test)
-import Vent
+import Vent.Parse as Vent
 
 
 triggerExamples :

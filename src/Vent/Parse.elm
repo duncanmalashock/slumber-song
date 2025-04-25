@@ -1,9 +1,10 @@
-module Vent exposing
+module Vent.Parse exposing
     ( Effect(..)
     , Error(..)
     , Expr(..)
     , Operator(..)
     , ParseResult
+    , Script(..)
     , Statement(..)
     , Trigger(..)
     , Variable(..)

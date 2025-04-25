@@ -12,7 +12,7 @@ import Json.Decode as Decode
 import Object exposing (Object)
 import Parser.Advanced as Parser
 import Ports
-import Vent
+import Vent.Parse
 
 
 type alias Flags =
@@ -294,7 +294,7 @@ viewParserInput input =
             ]
             []
         , Html.pre [ Html.style "width" "60ch", Html.style "text-wrap" "auto" ]
-            [ Html.text (Debug.toString <| Parser.run Vent.scriptParser input) ]
+            [ Html.text (Debug.toString <| Parser.run Vent.Parse.scriptParser input) ]
         ]
 
 
