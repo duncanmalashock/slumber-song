@@ -1,220 +1,345 @@
-module Vent exposing (conditionParser, effectParser, effectsParser, scriptParser, triggerParser, updateParser)
+module Vent exposing
+    ( Effect(..)
+    , Error(..)
+    , Expr(..)
+    , Operator(..)
+    , ParseResult
+    , Statement(..)
+    , Trigger(..)
+    , Variable(..)
+    , scriptParser
+    , statementParser
+    , statementsParser
+    , triggerParser
+    )
 
-import Command
-import Effect exposing (Effect)
-import Expression exposing (ExpressionBool(..))
-import Parser exposing ((|.), (|=), Parser)
-import Script exposing (Script)
-import Set
-import Trigger exposing (Trigger)
-import Update exposing (Update)
+import Parser.Advanced as Parser exposing ((|.), (|=))
 
 
 
 -- VENT: the Vintage Exploratory-Narrative Toolkit
 
 
+type alias Parser a =
+    Parser.Parser () Error a
+
+
+type Error
+    = ExpectedKeyword String
+    | ExpectedSymbol String
+    | AssignmentHasNoRightSide
+    | ExpectedLowerCaseVariable
+    | IncompleteComparison
+    | ReservedKeyword
+    | IfThenIsMissingCondition
+    | ReachedEndOfFile
+    | UnknownEffect
+
+
+
+-- Script
+
+
+type Script
+    = Script Trigger (List Statement)
+
+
 scriptParser : Parser Script
 scriptParser =
     Parser.succeed Script
-        |. Parser.spaces
         |= triggerParser
-        |= conditionParser
-        |= updatesParser
-        |= effectsParser
-        |. Parser.keyword "end"
-        |. Parser.spaces
-        |. Parser.end
+        |= statementsParser Nothing
+
+
+
+-- Trigger
+
+
+type Trigger
+    = OnAny
+    | OnOpen
+    | OnOperate
 
 
 triggerParser : Parser Trigger
 triggerParser =
     Parser.succeed identity
-        |. Parser.symbol "%"
+        |. symbol "%"
         |= triggerKeywordParser
-        |. Parser.spaces
+        |. spacesOrNewline
 
 
 triggerKeywordParser : Parser Trigger
 triggerKeywordParser =
-    Parser.succeed identity
-        |= (Parser.chompWhile Char.isAlphaNum
-                |> Parser.getChompedString
-           )
-        |> Parser.andThen checkTriggerKeyword
-
-
-checkTriggerKeyword : String -> Parser Trigger
-checkTriggerKeyword stringToCheck =
-    case Trigger.fromString stringToCheck of
-        Ok trigger ->
-            Parser.succeed trigger
-
-        _ ->
-            Parser.problem ("Unknown trigger keyword: " ++ stringToCheck)
-
-
-conditionParser : Parser ExpressionBool
-conditionParser =
-    Parser.succeed identity
-        |. Parser.keyword "if"
-        |. Parser.spaces
-        |= boolExpressionParser
-        |. Parser.spaces
-        |. Parser.keyword "then"
-        |. Parser.spaces
-
-
-boolExpressionParser : Parser ExpressionBool
-boolExpressionParser =
     Parser.oneOf
-        [ expLiteralBoolParser
-        , expAttributeBoolParser
+        [ Parser.succeed OnAny
+            |. keyword "any"
+        , Parser.succeed OnOpen
+            |. keyword "open"
+        , Parser.succeed OnOperate
+            |. keyword "operate"
         ]
 
 
-expAttributeBoolParser : Parser ExpressionBool
-expAttributeBoolParser =
+
+-- Statements
+
+
+type Statement
+    = Assignment Variable Expr
+    | IfThen Expr (List Statement)
+    | Efct Effect
+
+
+type Expr
+    = -- Operations
+      Comparison Expr Operator Expr
+      -- Sub expressions
+    | Ref Variable
+    | LiteralBool Bool
+
+
+type Variable
+    = Local String
+    | Field String String
+
+
+type Operator
+    = EqualTo
+    | LessThan
+    | GreaterThan
+
+
+type Effect
+    = PrintText String
+
+
+statementsParser : Maybe String -> Parser (List Statement)
+statementsParser maybeTermKeyword =
     let
-        buildExpAttributeBool : String -> String -> ExpressionBool
-        buildExpAttributeBool objId attrId =
-            Expression.ExpAttributeBool
-                { objId = objId
-                , key = attrId
-                }
-    in
-    Parser.succeed buildExpAttributeBool
-        |. Parser.symbol "@"
-        |= objVarParser
-        |. Parser.symbol "."
-        |= attrVarParser
-
-
-expLiteralBoolParser : Parser ExpressionBool
-expLiteralBoolParser =
-    Parser.succeed Expression.LiteralBool
-        |= literalBoolParser
-
-
-literalBoolParser : Parser Bool
-literalBoolParser =
-    Parser.oneOf
-        [ Parser.succeed True
-            |. Parser.keyword "true"
-        , Parser.succeed False
-            |. Parser.keyword "false"
-        ]
-
-
-updatesParser : Parser (List Update)
-updatesParser =
-    let
-        accumulateUpdates :
-            List Update
-            -> Parser (Parser.Step (List Update) (List Update))
-        accumulateUpdates updateList =
+        loop : List Statement -> Parser Step
+        loop statements =
             Parser.oneOf
                 [ Parser.succeed
-                    (\update ->
-                        Parser.Loop (update :: updateList)
-                    )
-                    |= updateParser
-                , Parser.succeed ()
-                    |> Parser.map
-                        (\_ ->
-                            Parser.Done (List.reverse updateList)
-                        )
+                    (Parser.Done (List.reverse statements))
+                    |. (case maybeTermKeyword of
+                            Just theKeyword ->
+                                keyword theKeyword
+
+                            Nothing ->
+                                Parser.end ReachedEndOfFile
+                       )
+                , Parser.succeed
+                    (\statement -> Parser.Loop (statement :: statements))
+                    |= statementParser
+                    |. spacesOrNewline
                 ]
     in
-    Parser.loop [] accumulateUpdates
+    Parser.loop [] loop
 
 
-updateParser : Parser Update
-updateParser =
+type alias Step =
+    Parser.Step (List Statement) (List Statement)
+
+
+statementParser : Parser Statement
+statementParser =
     Parser.oneOf
-        [ setAttributeUpdateParser
+        [ ifThenParser
+        , assignmentParser
+        , effectParser
         ]
-        |. Parser.spaces
 
 
-objVarParser : Parser String
-objVarParser =
-    Parser.variable
-        { start = Char.isLower
-        , inner = Char.isAlphaNum
-        , reserved = Set.fromList []
-        }
+ifThenParser : Parser Statement
+ifThenParser =
+    Parser.succeed IfThen
+        |. keyword "if"
+        |. spaces
+        |= attempt exprParser IfThenIsMissingCondition
+        |. spaces
+        |. keyword "then"
+        |. spacesOrNewline
+        |= statementsParser (Just "end")
 
 
-attrVarParser : Parser String
-attrVarParser =
-    Parser.variable
-        { start = Char.isLower
-        , inner = Char.isAlphaNum
-        , reserved = Set.fromList []
-        }
+assignmentParser : Parser Statement
+assignmentParser =
+    Parser.succeed Assignment
+        |= variableParser
+        |. spaces
+        |. symbol "="
+        |. spaces
+        |= attempt exprParser AssignmentHasNoRightSide
 
 
-setAttributeUpdateParser : Parser Update
-setAttributeUpdateParser =
-    let
-        buildSetBoolAttribute : String -> String -> Bool -> Update
-        buildSetBoolAttribute objId attrId value =
-            Update.SetBoolAttribute
-                { objId = objId
-                , attributeKey = attrId
-                , value = value
-                }
-    in
-    Parser.succeed buildSetBoolAttribute
-        |. Parser.symbol "@"
-        |= objVarParser
-        |. Parser.symbol "."
-        |= attrVarParser
-        |. Parser.spaces
-        |. Parser.symbol "="
-        |. Parser.spaces
-        |= literalBoolParser
-
-
-effectsParser : Parser (List Effect)
-effectsParser =
-    let
-        accumulateEffects :
-            List Effect
-            -> Parser (Parser.Step (List Effect) (List Effect))
-        accumulateEffects effectList =
-            Parser.oneOf
-                [ Parser.succeed
-                    (\effect ->
-                        Parser.Loop (effect :: effectList)
-                    )
-                    |= effectParser
-                , Parser.succeed ()
-                    |> Parser.map
-                        (\_ ->
-                            Parser.Done (List.reverse effectList)
-                        )
-                ]
-    in
-    Parser.loop [] accumulateEffects
-
-
-effectParser : Parser Effect
+effectParser : Parser Statement
 effectParser =
+    Parser.succeed Efct
+        |. symbol "$"
+        |= attempt
+            (Parser.oneOf
+                [ printTextParser
+                ]
+            )
+            UnknownEffect
+
+
+printTextParser : Parser Effect
+printTextParser =
+    Parser.succeed PrintText
+        |. symbol "printText"
+        |. spaces
+        |= stringLiteral
+
+
+variableParser : Parser Variable
+variableParser =
     Parser.oneOf
-        [ printTextEffectParser
+        [ Parser.succeed Field
+            |. symbol "@"
+            |= varNameParser
+            |. symbol "."
+            |= varNameParser
+        , Parser.succeed Local
+            |= varNameParser
         ]
-        |. Parser.spaces
 
 
-printTextEffectParser : Parser Effect
-printTextEffectParser =
-    Parser.succeed Effect.PrintText
-        |. Parser.keyword "$printText"
-        |. Parser.spaces
-        |. Parser.symbol "\""
-        |= (Parser.chompUntil "\""
+varNameParser : Parser String
+varNameParser =
+    Parser.succeed ()
+        |. Parser.chompIf Char.isLower ExpectedLowerCaseVariable
+        |. Parser.chompWhile Char.isAlpha
+        |> Parser.getChompedString
+
+
+exprParser : Parser Expr
+exprParser =
+    Parser.succeed toExpr
+        |= subExprParser ReservedKeyword
+        |. spaces
+        |= maybeComparisonParser
+
+
+toExpr : Expr -> Maybe ( Operator, Expr ) -> Expr
+toExpr left maybe =
+    case maybe of
+        Nothing ->
+            left
+
+        Just ( op, right ) ->
+            Comparison left op right
+
+
+maybeComparisonParser : Parser (Maybe ( Operator, Expr ))
+maybeComparisonParser =
+    Parser.oneOf
+        [ Parser.succeed (\op right -> Just ( op, right ))
+            |= operatorParser
+            |. spaces
+            |= subExprParser IncompleteComparison
+        , Parser.succeed Nothing
+        ]
+
+
+operatorParser : Parser Operator
+operatorParser =
+    Parser.oneOf
+        [ Parser.succeed EqualTo
+            |. symbol "=="
+        , Parser.succeed LessThan
+            |. symbol "<"
+        , Parser.succeed GreaterThan
+            |. symbol ">"
+        ]
+
+
+subExprParser : Error -> Parser Expr
+subExprParser error =
+    Parser.oneOf
+        [ failForReservedKeywords error
+        , Parser.succeed (LiteralBool True)
+            |. keyword "true"
+        , Parser.succeed (LiteralBool False)
+            |. keyword "false"
+        , Parser.succeed Ref
+            |= variableParser
+        ]
+
+
+failForReservedKeywords : Error -> Parser a
+failForReservedKeywords error =
+    Parser.oneOf (List.map keyword reservedKeywords)
+        |> Parser.andThen
+            (\location ->
+                Parser.problem error
+            )
+
+
+reservedKeywords : List String
+reservedKeywords =
+    [ "if"
+    , "end"
+    , "then"
+    ]
+
+
+
+-- Helpers
+
+
+type alias ParseResult a =
+    Result (List DeadEnd) a
+
+
+type alias DeadEnd =
+    Parser.DeadEnd () Error
+
+
+attempt : Parser value -> Error -> Parser value
+attempt innerParser err =
+    Parser.oneOf
+        [ innerParser
+        , Parser.problem err
+        ]
+
+
+keyword : String -> Parser ()
+keyword str =
+    Parser.keyword (Parser.Token str (ExpectedKeyword str))
+
+
+symbol : String -> Parser ()
+symbol str =
+    Parser.symbol (Parser.Token str (ExpectedSymbol str))
+
+
+spaces : Parser ()
+spaces =
+    Parser.chompWhile isSpaceChar
+
+
+spacesOrNewline : Parser ()
+spacesOrNewline =
+    Parser.chompWhile (\char -> isSpaceChar char || isNewlineChar char)
+
+
+isSpaceChar : Char -> Bool
+isSpaceChar char =
+    char == ' '
+
+
+isNewlineChar : Char -> Bool
+isNewlineChar char =
+    char == '\n'
+
+
+stringLiteral : Parser String
+stringLiteral =
+    Parser.succeed identity
+        |. symbol "\""
+        |= (Parser.chompWhile (\char -> char /= '"')
                 |> Parser.getChompedString
            )
-        |. Parser.symbol "\""
+        |. symbol "\""

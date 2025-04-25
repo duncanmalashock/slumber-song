@@ -10,7 +10,7 @@ import Html.Attributes as Html
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
 import Object exposing (Object)
-import Parser
+import Parser.Advanced as Parser
 import Ports
 import Vent
 
