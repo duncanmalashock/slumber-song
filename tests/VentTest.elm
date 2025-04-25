@@ -78,6 +78,9 @@ conditionExamples =
     , { given = "if false then"
       , expect = Ok (Expression.LiteralBool False)
       }
+    , { given = "if @object.attribute then"
+      , expect = Ok (Expression.ExpAttributeBool { objId = "object", key = "attribute" })
+      }
     ]
 
 

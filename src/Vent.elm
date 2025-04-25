@@ -68,40 +68,42 @@ conditionParser =
 boolExpressionParser : Parser ExpressionBool
 boolExpressionParser =
     Parser.oneOf
-        [ literalBoolParser
+        [ expLiteralBoolParser
+        , expAttributeBoolParser
         ]
 
 
-literalBoolParser : Parser ExpressionBool
-literalBoolParser =
-    Parser.succeed identity
-        |= (Parser.chompWhile Char.isAlphaNum
-                |> Parser.getChompedString
-           )
-        |> Parser.andThen checkLiteralBoolKeyword
-
-
-checkLiteralBoolKeyword : String -> Parser ExpressionBool
-checkLiteralBoolKeyword stringToCheck =
+expAttributeBoolParser : Parser ExpressionBool
+expAttributeBoolParser =
     let
-        stringToBool : String -> Result String Bool
-        stringToBool string =
-            case string of
-                "true" ->
-                    Ok True
-
-                "false" ->
-                    Ok False
-
-                other ->
-                    Err ("Unknown boolean literal: " ++ other)
+        buildExpAttributeBool : String -> String -> ExpressionBool
+        buildExpAttributeBool objId attrId =
+            Expression.ExpAttributeBool
+                { objId = objId
+                , key = attrId
+                }
     in
-    case stringToBool stringToCheck of
-        Ok bool ->
-            Parser.succeed (LiteralBool bool)
+    Parser.succeed buildExpAttributeBool
+        |. Parser.symbol "@"
+        |= objVarParser
+        |. Parser.symbol "."
+        |= attrVarParser
 
-        Err error ->
-            Parser.problem error
+
+expLiteralBoolParser : Parser ExpressionBool
+expLiteralBoolParser =
+    Parser.succeed Expression.LiteralBool
+        |= literalBoolParser
+
+
+literalBoolParser : Parser Bool
+literalBoolParser =
+    Parser.oneOf
+        [ Parser.succeed True
+            |. Parser.keyword "true"
+        , Parser.succeed False
+            |. Parser.keyword "false"
+        ]
 
 
 updatesParser : Parser (List Update)
@@ -135,34 +137,27 @@ updateParser =
         |. Parser.spaces
 
 
+objVarParser : Parser String
+objVarParser =
+    Parser.variable
+        { start = Char.isLower
+        , inner = Char.isAlphaNum
+        , reserved = Set.fromList []
+        }
+
+
+attrVarParser : Parser String
+attrVarParser =
+    Parser.variable
+        { start = Char.isLower
+        , inner = Char.isAlphaNum
+        , reserved = Set.fromList []
+        }
+
+
 setAttributeUpdateParser : Parser Update
 setAttributeUpdateParser =
     let
-        objVarParser : Parser String
-        objVarParser =
-            Parser.variable
-                { start = Char.isLower
-                , inner = Char.isAlphaNum
-                , reserved = Set.fromList []
-                }
-
-        attrVarParser : Parser String
-        attrVarParser =
-            Parser.variable
-                { start = Char.isLower
-                , inner = Char.isAlphaNum
-                , reserved = Set.fromList []
-                }
-
-        boolLiteralParser : Parser Bool
-        boolLiteralParser =
-            Parser.oneOf
-                [ Parser.succeed True
-                    |. Parser.keyword "true"
-                , Parser.succeed False
-                    |. Parser.keyword "false"
-                ]
-
         buildSetBoolAttribute : String -> String -> Bool -> Update
         buildSetBoolAttribute objId attrId value =
             Update.SetBoolAttribute
@@ -179,7 +174,7 @@ setAttributeUpdateParser =
         |. Parser.spaces
         |. Parser.symbol "="
         |. Parser.spaces
-        |= boolLiteralParser
+        |= literalBoolParser
 
 
 effectsParser : Parser (List Effect)
