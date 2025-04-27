@@ -1,4 +1,4 @@
-module Game exposing (Game, Msg(..), currentRoom, encode, narration, new, objectsInCurrentRoom, objectsInInventory, player, update)
+module Game exposing (Game, Msg(..), currentRoom, encode, narration, new, objects, objectsInCurrentRoom, objectsInInventory, player, update)
 
 import Command exposing (Command(..))
 import Effect exposing (Effect(..))
@@ -34,9 +34,9 @@ type alias ObjectLocation =
 
 
 new : List Object -> ( Game, List Effect )
-new objects =
+new objectList =
     ( Game
-        { objects = ObjectStore.new objects
+        { objects = ObjectStore.new objectList
         , selectedCommand = Nothing
         , sourceObjectId = Nothing
         , targetObjectId = Nothing
@@ -52,16 +52,21 @@ narration (Game internals) =
     internals.narration
 
 
+objects : Game -> ObjectStore
+objects (Game internals) =
+    internals.objects
+
+
 world : Game -> Object
 world (Game internals) =
     internals.objects
-        |> ObjectStore.getById "world"
+        |> ObjectStore.getNoFail "world"
 
 
 player : Game -> Object
 player (Game internals) =
     internals.objects
-        |> ObjectStore.getById "player"
+        |> ObjectStore.getNoFail "player"
 
 
 objectsInInventory : Game -> List Object
@@ -75,10 +80,10 @@ currentRoom (Game internals) =
     let
         playerParentId =
             internals.objects
-                |> ObjectStore.getById "player"
+                |> ObjectStore.getNoFail "player"
                 |> Object.parent
     in
-    ObjectStore.getById playerParentId internals.objects
+    ObjectStore.getNoFail playerParentId internals.objects
 
 
 objectsInCurrentRoom : Game -> List Object
@@ -228,7 +233,7 @@ runScripts ((Game internals) as game) interaction =
                         AttemptMoveObject { objectId } ->
                             let
                                 objectName =
-                                    ObjectStore.getById objectId internals.objects
+                                    ObjectStore.getNoFail objectId internals.objects
                                         |> Object.name
                             in
                             { handledInteraction = True
@@ -241,7 +246,7 @@ runScripts ((Game internals) as game) interaction =
                         AttemptExamine { objectId } ->
                             let
                                 objectDescription =
-                                    ObjectStore.getById objectId internals.objects
+                                    ObjectStore.getNoFail objectId internals.objects
                                         |> Object.description
                             in
                             { handledInteraction = True
@@ -254,7 +259,7 @@ runScripts ((Game internals) as game) interaction =
                         AttemptOpen { objectId } ->
                             let
                                 objectName =
-                                    ObjectStore.getById objectId internals.objects
+                                    ObjectStore.getNoFail objectId internals.objects
                                         |> Object.name
                             in
                             { handledInteraction = True
@@ -267,7 +272,7 @@ runScripts ((Game internals) as game) interaction =
                         AttemptClose { objectId } ->
                             let
                                 objectName =
-                                    ObjectStore.getById objectId internals.objects
+                                    ObjectStore.getNoFail objectId internals.objects
                                         |> Object.name
                             in
                             { handledInteraction = True
@@ -280,7 +285,7 @@ runScripts ((Game internals) as game) interaction =
                         AttemptSpeak { objectId } ->
                             let
                                 objectName =
-                                    ObjectStore.getById objectId internals.objects
+                                    ObjectStore.getNoFail objectId internals.objects
                                         |> Object.name
                             in
                             { handledInteraction = True
@@ -293,11 +298,11 @@ runScripts ((Game internals) as game) interaction =
                         AttemptOperate { sourceObjectId, targetObjectId } ->
                             let
                                 sourceObjectName =
-                                    ObjectStore.getById sourceObjectId internals.objects
+                                    ObjectStore.getNoFail sourceObjectId internals.objects
                                         |> Object.name
 
                                 targetObjectName =
-                                    ObjectStore.getById targetObjectId internals.objects
+                                    ObjectStore.getNoFail targetObjectId internals.objects
                                         |> Object.name
                             in
                             { handledInteraction = True
@@ -310,7 +315,7 @@ runScripts ((Game internals) as game) interaction =
                         AttemptGo { objectId } ->
                             let
                                 objectName =
-                                    ObjectStore.getById objectId internals.objects
+                                    ObjectStore.getNoFail objectId internals.objects
                                         |> Object.name
                             in
                             { handledInteraction = True
@@ -323,7 +328,7 @@ runScripts ((Game internals) as game) interaction =
                         AttemptHit { objectId } ->
                             let
                                 objectName =
-                                    ObjectStore.getById objectId internals.objects
+                                    ObjectStore.getNoFail objectId internals.objects
                                         |> Object.name
                             in
                             { handledInteraction = True
@@ -336,7 +341,7 @@ runScripts ((Game internals) as game) interaction =
                         AttemptConsume { objectId } ->
                             let
                                 objectName =
-                                    ObjectStore.getById objectId internals.objects
+                                    ObjectStore.getNoFail objectId internals.objects
                                         |> Object.name
                             in
                             { handledInteraction = True
@@ -372,10 +377,10 @@ runScript :
     -> ObjectStore
     -> Script
     -> { handledInteraction : Bool, updates : List Update, effects : List Effect }
-runScript objectId interaction objects script =
+runScript objectId interaction objectStore script =
     if
         Trigger.shouldRun objectId script.trigger interaction
-            && Expression.evaluate (ObjectStore.getAttribute objects) script.condition
+            && Expression.evaluate (ObjectStore.getAttribute objectStore) script.condition
     then
         { handledInteraction = Interaction.handlesObject objectId interaction
         , updates = script.updates

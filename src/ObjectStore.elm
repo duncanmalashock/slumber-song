@@ -1,4 +1,4 @@
-module ObjectStore exposing (ObjectStore, getAttribute, getById, incrementAttributeBy, new, setBoolAttribute, toList, withParentId)
+module ObjectStore exposing (ObjectStore, get, getAttribute, getNoFail, idExists, incrementAttributeBy, new, setBoolAttribute, toList, withParentId)
 
 import Attribute exposing (Attribute(..))
 import Dict exposing (Dict)
@@ -37,8 +37,23 @@ toList (ObjectStore internals) =
         |> List.map Tuple.second
 
 
-getById : String -> ObjectStore -> Object
-getById id (ObjectStore internals) =
+get : String -> ObjectStore -> Maybe Object
+get id (ObjectStore internals) =
+    Dict.get id internals.objects
+
+
+idExists : String -> ObjectStore -> Bool
+idExists id (ObjectStore internals) =
+    case Dict.get id internals.objects of
+        Just _ ->
+            True
+
+        Nothing ->
+            False
+
+
+getNoFail : String -> ObjectStore -> Object
+getNoFail id (ObjectStore internals) =
     Dict.get id internals.objects
         |> Maybe.withDefault Object.null
 
@@ -55,7 +70,7 @@ withParentId id (ObjectStore internals) =
 
 getAttribute : ObjectStore -> { objectId : String, attributeId : String } -> Maybe Attribute
 getAttribute objectStore { objectId, attributeId } =
-    getById objectId objectStore
+    getNoFail objectId objectStore
         |> Object.attribute attributeId
 
 
@@ -69,7 +84,7 @@ incrementAttributeBy ((ObjectStore internals) as objectStore) { objectId, attrib
                         Dict.insert objectId
                             (Object.setIntAttribute
                                 { id = attributeId, value = intValue + amount }
-                                (getById objectId objectStore)
+                                (getNoFail objectId objectStore)
                             )
                             internals.objects
                 }
@@ -88,7 +103,7 @@ setBoolAttribute ((ObjectStore internals) as objectStore) { objectId, attributeI
                         Dict.insert objectId
                             (Object.setBoolAttribute
                                 { id = attributeId, value = value }
-                                (getById objectId objectStore)
+                                (getNoFail objectId objectStore)
                             )
                             internals.objects
                 }

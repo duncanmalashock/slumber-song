@@ -10,9 +10,9 @@ import Html.Attributes as Html
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
 import Object exposing (Object)
-import Parser.Advanced as Parser
+import ObjectStore exposing (ObjectStore)
 import Ports
-import Vent.Parse
+import Vent
 
 
 type alias Flags =
@@ -222,7 +222,7 @@ elmView model =
                 , viewObjects game
                 , viewNarration game
                 , viewSaveButton game
-                , viewParserInput model.parserInput
+                , viewParserInput (Game.objects game) model.parserInput
                 ]
 
         NotLoaded ->
@@ -283,8 +283,8 @@ viewNarration game =
         ]
 
 
-viewParserInput : String -> Html Msg
-viewParserInput input =
+viewParserInput : ObjectStore -> String -> Html Msg
+viewParserInput objectStore input =
     Html.div []
         [ Html.textarea
             [ Html.Events.onInput UserTypedIntoParserInput
@@ -294,7 +294,7 @@ viewParserInput input =
             ]
             []
         , Html.pre [ Html.style "width" "60ch", Html.style "text-wrap" "auto" ]
-            [ Html.text (Debug.toString <| Parser.run Vent.Parse.scriptParser input) ]
+            [ Html.text (Debug.toString <| Vent.compile "skull" objectStore input) ]
         ]
 
 

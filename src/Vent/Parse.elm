@@ -8,6 +8,7 @@ module Vent.Parse exposing
     , Statement(..)
     , Trigger(..)
     , Variable(..)
+    , execute
     , scriptParser
     , statementParser
     , statementsParser
@@ -17,16 +18,13 @@ module Vent.Parse exposing
 import Parser.Advanced as Parser exposing ((|.), (|=))
 
 
-
--- VENT: the Vintage Exploratory-Narrative Toolkit
-
-
 type alias Parser a =
     Parser.Parser () Error a
 
 
 type Error
-    = ExpectedKeyword String
+    = UnknownError
+    | ExpectedKeyword String
     | ExpectedSymbol String
     | AssignmentHasNoRightSide
     | ExpectedLowerCaseVariable
@@ -35,6 +33,27 @@ type Error
     | IfThenIsMissingCondition
     | ReachedEndOfFile
     | UnknownEffect
+
+
+execute : String -> Result Error Script
+execute input =
+    case Parser.run scriptParser input of
+        Ok script ->
+            Ok script
+
+        Err deadEnds ->
+            let
+                maybeHead =
+                    deadEnds
+                        |> List.reverse
+                        |> List.head
+            in
+            case maybeHead of
+                Just { problem } ->
+                    Err problem
+
+                Nothing ->
+                    Err UnknownError
 
 
 
@@ -58,8 +77,14 @@ scriptParser =
 
 type Trigger
     = OnAny
+    | OnExamine
     | OnOpen
+    | OnClose
+    | OnSpeak
     | OnOperate
+    | OnGo
+    | OnHit
+    | OnConsume
 
 
 triggerParser : Parser Trigger
@@ -75,10 +100,22 @@ triggerKeywordParser =
     Parser.oneOf
         [ Parser.succeed OnAny
             |. keyword "any"
+        , Parser.succeed OnExamine
+            |. keyword "examine"
         , Parser.succeed OnOpen
             |. keyword "open"
+        , Parser.succeed OnClose
+            |. keyword "close"
+        , Parser.succeed OnSpeak
+            |. keyword "speak"
         , Parser.succeed OnOperate
             |. keyword "operate"
+        , Parser.succeed OnGo
+            |. keyword "go"
+        , Parser.succeed OnHit
+            |. keyword "hit"
+        , Parser.succeed OnConsume
+            |. keyword "consume"
         ]
 
 
