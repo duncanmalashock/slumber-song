@@ -146,6 +146,7 @@ type Operator
     = EqualTo
     | LessThan
     | GreaterThan
+    | Contains
 
 
 type Effect
@@ -290,6 +291,8 @@ operatorParser =
             |. symbol "<"
         , Parser.succeed GreaterThan
             |. symbol ">"
+        , Parser.succeed Contains
+            |. symbol "contains"
         ]
 
 

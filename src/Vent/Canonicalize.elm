@@ -75,7 +75,7 @@ convertCondition : String -> ObjectStore -> { trigger : Trigger, statements : Li
 convertCondition localObject objectStore { trigger, statements } =
     case statements of
         (Vent.Parse.IfThen expr thenStatements) :: rest ->
-            case validateExpr localObject objectStore expr of
+            case validateBoolExpr localObject objectStore expr of
                 Ok validCondition ->
                     Ok
                         { trigger = trigger
@@ -98,56 +98,87 @@ type ExpressionError
 
 
 type AttributeTypeError
-    = AttributeIsOfTypeInt String String Int
-    | AttributeIsOfTypeString String String String
+    = AttributeIsOfTypeInt String String
+    | AttributeIsOfTypeString String String
+    | AttributeIsOfTypeBool String String
 
 
-validateExpr : String -> ObjectStore -> Vent.Parse.Expr -> Result ExpressionError ExpressionBool
-validateExpr localObject objectStore expr =
-    let
-        resolveReference obj attr =
-            if ObjectStore.idExists obj objectStore then
-                case
-                    ObjectStore.getAttribute
-                        objectStore
-                        { objectId = obj
-                        , attributeId = attr
-                        }
-                of
-                    Just foundAttr ->
-                        case foundAttr of
-                            Attribute.AttributeBool bool ->
-                                ExpAttributeBool
-                                    { objId = obj
-                                    , key = attr
-                                    }
-                                    |> Ok
+type RefType
+    = RefBool
+    | RefInt
+    | RefString
 
-                            Attribute.AttributeInt int ->
-                                Err (AttributeTypeError (AttributeIsOfTypeInt obj attr int))
 
-                            Attribute.AttributeString str ->
-                                Err (AttributeTypeError (AttributeIsOfTypeString obj attr str))
-
-                    Nothing ->
-                        Err (ReferenceToAttributeNotFound obj attr)
-
-            else
-                Err (ReferenceToObjectNotFound obj)
-    in
+validateBoolExpr : String -> ObjectStore -> Vent.Parse.Expr -> Result ExpressionError ExpressionBool
+validateBoolExpr localObject objectStore expr =
     case expr of
         Vent.Parse.LiteralBool bool ->
             Expression.LiteralBool bool
                 |> Ok
 
         Vent.Parse.Ref (Vent.Parse.Local attrKey) ->
-            resolveReference localObject attrKey
+            case resolveReference objectStore localObject attrKey of
+                Ok RefBool ->
+                    Ok (ExpAttributeBool { objId = localObject, key = attrKey })
+
+                Ok RefInt ->
+                    Err (AttributeTypeError (AttributeIsOfTypeInt localObject attrKey))
+
+                Ok RefString ->
+                    Err (AttributeTypeError (AttributeIsOfTypeString localObject attrKey))
+
+                Err err ->
+                    Err err
 
         Vent.Parse.Ref (Vent.Parse.Field objKey attrKey) ->
-            resolveReference objKey attrKey
+            case resolveReference objectStore objKey attrKey of
+                Ok RefBool ->
+                    Ok (ExpAttributeBool { objId = objKey, key = attrKey })
+
+                Ok RefInt ->
+                    Err (AttributeTypeError (AttributeIsOfTypeInt localObject attrKey))
+
+                Ok RefString ->
+                    Err (AttributeTypeError (AttributeIsOfTypeString localObject attrKey))
+
+                Err err ->
+                    Err err
 
         Vent.Parse.Comparison leftSide operator rightSide ->
+            -- case operator of
+            --     Parse.EqualTo ->
+            --     Parse.LessThan ->
+            --     Parse.GreaterThan ->
+            --     Parse.Contains ->
             Err ExpressionComparisonTodo
+
+
+resolveReference : ObjectStore -> String -> String -> Result ExpressionError RefType
+resolveReference objectStore obj attr =
+    if ObjectStore.idExists obj objectStore then
+        case
+            ObjectStore.getAttribute
+                objectStore
+                { objectId = obj
+                , attributeId = attr
+                }
+        of
+            Just foundAttr ->
+                case foundAttr of
+                    Attribute.AttributeBool bool ->
+                        Ok RefBool
+
+                    Attribute.AttributeInt int ->
+                        Ok RefInt
+
+                    Attribute.AttributeString str ->
+                        Ok RefString
+
+            Nothing ->
+                Err (ReferenceToAttributeNotFound obj attr)
+
+    else
+        Err (ReferenceToObjectNotFound obj)
 
 
 convertResults : String -> ObjectStore -> { trigger : Trigger, condition : ExpressionBool, statements : List Vent.Parse.Statement } -> Result Error Script
