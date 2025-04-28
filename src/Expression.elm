@@ -1,4 +1,4 @@
-module Expression exposing (ExpressionBool(..), decoder, encode, evaluate)
+module Expression exposing (ExpressionBool(..), ExpressionInt(..), ExpressionString(..), decoder, encode, evaluate)
 
 import Attribute exposing (Attribute(..))
 import Json.Decode as Decode exposing (Decoder)

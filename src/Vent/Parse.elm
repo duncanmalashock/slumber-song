@@ -33,6 +33,8 @@ type Error
     | IfThenIsMissingCondition
     | ReachedEndOfFile
     | UnknownEffect
+    | ExpectingNumberFormat
+    | InvalidIntFormat
 
 
 execute : String -> Result Error Script
@@ -135,6 +137,8 @@ type Expr
       -- Sub expressions
     | Ref Variable
     | LiteralBool Bool
+    | LiteralInt Int
+    | LiteralString String
 
 
 type Variable
@@ -304,6 +308,10 @@ subExprParser error =
             |. keyword "true"
         , Parser.succeed (LiteralBool False)
             |. keyword "false"
+        , Parser.succeed LiteralString
+            |= stringLiteral
+        , Parser.succeed LiteralInt
+            |= Parser.int ExpectingNumberFormat InvalidIntFormat
         , Parser.succeed Ref
             |= variableParser
         ]
