@@ -87,7 +87,10 @@
             "tag": "SetBoolAttribute",
             "objId": "skull",
             "attributeKey": "isOpen",
-            "value": true
+            "value": { 
+              "tag": "LiteralBool",
+              "value": false
+            }
           }
         ],
         "effects": [

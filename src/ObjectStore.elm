@@ -1,4 +1,4 @@
-module ObjectStore exposing (ObjectStore, get, getAttribute, getNoFail, idExists, incrementAttributeBy, new, setBoolAttribute, toList, withParentId)
+module ObjectStore exposing (ObjectStore, get, getAttribute, getNoFail, idExists, incrementAttributeBy, new, setBoolAttribute, setIntAttribute, setStringAttribute, toList, withParentId)
 
 import Attribute exposing (Attribute(..))
 import Dict exposing (Dict)
@@ -102,6 +102,44 @@ setBoolAttribute ((ObjectStore internals) as objectStore) { objectId, attributeI
                     | objects =
                         Dict.insert objectId
                             (Object.setBoolAttribute
+                                { id = attributeId, value = value }
+                                (getNoFail objectId objectStore)
+                            )
+                            internals.objects
+                }
+
+        _ ->
+            objectStore
+
+
+setIntAttribute : ObjectStore -> { objectId : String, attributeId : String, value : Int } -> ObjectStore
+setIntAttribute ((ObjectStore internals) as objectStore) { objectId, attributeId, value } =
+    case getAttribute objectStore { objectId = objectId, attributeId = attributeId } of
+        Just (AttributeInt intValue) ->
+            ObjectStore
+                { internals
+                    | objects =
+                        Dict.insert objectId
+                            (Object.setIntAttribute
+                                { id = attributeId, value = value }
+                                (getNoFail objectId objectStore)
+                            )
+                            internals.objects
+                }
+
+        _ ->
+            objectStore
+
+
+setStringAttribute : ObjectStore -> { objectId : String, attributeId : String, value : String } -> ObjectStore
+setStringAttribute ((ObjectStore internals) as objectStore) { objectId, attributeId, value } =
+    case getAttribute objectStore { objectId = objectId, attributeId = attributeId } of
+        Just (AttributeString intValue) ->
+            ObjectStore
+                { internals
+                    | objects =
+                        Dict.insert objectId
+                            (Object.setStringAttribute
                                 { id = attributeId, value = value }
                                 (getNoFail objectId objectStore)
                             )

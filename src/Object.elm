@@ -1,4 +1,4 @@
-module Object exposing (Object, attribute, decoder, description, encode, id, name, new, null, parent, scripts, setBoolAttribute, setIntAttribute)
+module Object exposing (Object, attribute, decoder, description, encode, id, name, new, null, parent, scripts, setBoolAttribute, setIntAttribute, setStringAttribute)
 
 import Attribute exposing (Attribute)
 import AttributeStore exposing (AttributeStore)
@@ -142,6 +142,16 @@ setBoolAttribute params (Object internals) =
             | attributes =
                 internals.attributes
                     |> AttributeStore.setBool { id = params.id, value = params.value }
+        }
+
+
+setStringAttribute : { id : String, value : String } -> Object -> Object
+setStringAttribute params (Object internals) =
+    Object
+        { internals
+            | attributes =
+                internals.attributes
+                    |> AttributeStore.setString { id = params.id, value = params.value }
         }
 
 

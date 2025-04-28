@@ -1,5 +1,6 @@
 module Update exposing (Update(..), decoder, encode)
 
+import Expression
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
 
@@ -7,7 +8,9 @@ import Json.Encode as Encode
 type Update
     = ClearSelections
     | IncrementAttribute { objId : String, attributeKey : String, value : Int }
-    | SetBoolAttribute { objId : String, attributeKey : String, value : Bool }
+    | SetBoolAttribute { objId : String, attributeKey : String, value : Expression.ExpressionBool }
+    | SetIntAttribute { objId : String, attributeKey : String, value : Expression.ExpressionInt }
+    | SetStringAttribute { objId : String, attributeKey : String, value : Expression.ExpressionString }
 
 
 decoder : Decoder Update
@@ -35,7 +38,7 @@ decoder =
                             )
                             (Decode.field "objId" Decode.string)
                             (Decode.field "attributeKey" Decode.string)
-                            (Decode.field "value" Decode.bool)
+                            (Decode.field "value" Expression.decoder)
 
                     _ ->
                         Decode.fail ("Unknown update tag: " ++ tag)
@@ -63,5 +66,21 @@ encode update =
                 [ ( "tag", Encode.string "SetBoolAttribute" )
                 , ( "objId", Encode.string objId )
                 , ( "attributeKey", Encode.string attributeKey )
-                , ( "value", Encode.bool value )
+                , ( "value", Expression.encode value )
+                ]
+
+        SetIntAttribute { objId, attributeKey, value } ->
+            Encode.object
+                [ ( "tag", Encode.string "SetIntAttribute" )
+                , ( "objId", Encode.string objId )
+                , ( "attributeKey", Encode.string attributeKey )
+                , ( "value", Expression.encodeInt value )
+                ]
+
+        SetStringAttribute { objId, attributeKey, value } ->
+            Encode.object
+                [ ( "tag", Encode.string "SetBoolAttribute" )
+                , ( "objId", Encode.string objId )
+                , ( "attributeKey", Encode.string attributeKey )
+                , ( "value", Expression.encodeString value )
                 ]

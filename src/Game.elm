@@ -417,7 +417,31 @@ applyUpdate updateToApply (Game internals) =
                             internals.objects
                             { objectId = objId
                             , attributeId = attributeKey
-                            , value = value
+                            , value = Expression.evaluate (ObjectStore.getAttribute internals.objects) value
+                            }
+                }
+
+        SetIntAttribute { objId, attributeKey, value } ->
+            Game
+                { internals
+                    | objects =
+                        ObjectStore.setIntAttribute
+                            internals.objects
+                            { objectId = objId
+                            , attributeId = attributeKey
+                            , value = Expression.evaluateInt (ObjectStore.getAttribute internals.objects) value
+                            }
+                }
+
+        SetStringAttribute { objId, attributeKey, value } ->
+            Game
+                { internals
+                    | objects =
+                        ObjectStore.setStringAttribute
+                            internals.objects
+                            { objectId = objId
+                            , attributeId = attributeKey
+                            , value = Expression.evaluateString (ObjectStore.getAttribute internals.objects) value
                             }
                 }
 

@@ -16,7 +16,7 @@ import Vent.Parse
 type Error
     = ExpectedCondition
     | ExpressionError ExpressionError
-    | ExpectedUpdates UpdatesError
+    | StatementError StatementError
 
 
 execute : String -> ObjectStore -> Vent.Parse.Script -> Result Error Script
@@ -24,7 +24,7 @@ execute localObject objectStore script =
     script
         |> convertTrigger
         |> Result.andThen (convertCondition localObject objectStore)
-        |> Result.andThen (convertResults localObject objectStore)
+        |> convertResults localObject objectStore
 
 
 convertTrigger :
@@ -96,9 +96,6 @@ type ExpressionError
     | ReferenceToObjectNotFound String
     | TypeError TypeError
     | ComparisonTypeMismatch (Result ExpressionError ExprType) Vent.Parse.Expr
-    | AnyExpressionComparisonTodo
-    | IntExpressionComparisonTodo
-    | StringExpressionComparisonTodo
 
 
 type TypeError
@@ -403,10 +400,112 @@ resolveReference objectStore obj attr =
         Err (ReferenceToObjectNotFound obj)
 
 
-convertResults : String -> ObjectStore -> { trigger : Trigger, condition : ExpressionBool, statements : List Vent.Parse.Statement } -> Result Error Script
-convertResults localObject objectStore { trigger, condition, statements } =
-    Err (ExpectedUpdates UpdatesToDo)
+convertResults : String -> ObjectStore -> Result Error { trigger : Trigger, condition : ExpressionBool, statements : List Vent.Parse.Statement } -> Result Error Script
+convertResults localObject objectStore result =
+    case result of
+        Ok { trigger, condition, statements } ->
+            statements
+                |> List.concatMap unwrapStatements
+                |> List.foldl
+                    (convertResultStatement localObject objectStore)
+                    (Ok { trigger = trigger, condition = condition, updates = [], effects = [] })
+
+        Err err ->
+            Err err
 
 
-type UpdatesError
-    = UpdatesToDo
+unwrapStatements : Vent.Parse.Statement -> List Vent.Parse.Statement
+unwrapStatements statement =
+    case statement of
+        Vent.Parse.IfThen expr statements ->
+            statements
+
+        Vent.Parse.Assignment variable expr ->
+            [ Vent.Parse.Assignment variable expr ]
+
+        Vent.Parse.Efct effect ->
+            [ Vent.Parse.Efct effect ]
+
+
+convertResultStatement : String -> ObjectStore -> Vent.Parse.Statement -> Result Error Script -> Result Error Script
+convertResultStatement localObject objectStore statement current =
+    case current of
+        Ok script ->
+            case statement of
+                Vent.Parse.IfThen expr statements ->
+                    Err (StatementError (UnexpectedIfThenStatement (Vent.Parse.IfThen expr statements)))
+
+                Vent.Parse.Assignment variable expr ->
+                    case variable of
+                        Vent.Parse.Local attrKey ->
+                            updateFromReference script expr objectStore localObject attrKey
+
+                        Vent.Parse.Field objKey attrKey ->
+                            updateFromReference script expr objectStore objKey attrKey
+
+                Vent.Parse.Efct effect ->
+                    case effect of
+                        Vent.Parse.PrintText string ->
+                            Ok
+                                { script
+                                    | effects =
+                                        script.effects
+                                            ++ [ Effect.PrintText string
+                                               ]
+                                }
+
+        Err err ->
+            Err err
+
+
+type StatementError
+    = UnexpectedIfThenStatement Vent.Parse.Statement
+
+
+updateFromReference : Script -> Vent.Parse.Expr -> ObjectStore -> String -> String -> Result Error Script
+updateFromReference script expr objectStore localObject attrKey =
+    case resolveReference objectStore localObject attrKey of
+        Ok RefBool ->
+            case validateBoolExpr localObject objectStore expr of
+                Ok expression ->
+                    Ok
+                        { script
+                            | updates =
+                                script.updates
+                                    ++ [ Update.SetBoolAttribute { objId = localObject, attributeKey = attrKey, value = expression }
+                                       ]
+                        }
+
+                Err err ->
+                    Err (ExpressionError err)
+
+        Ok RefInt ->
+            case validateIntExpr localObject objectStore expr of
+                Ok expression ->
+                    Ok
+                        { script
+                            | updates =
+                                script.updates
+                                    ++ [ Update.SetIntAttribute { objId = localObject, attributeKey = attrKey, value = expression }
+                                       ]
+                        }
+
+                Err err ->
+                    Err (ExpressionError err)
+
+        Ok RefString ->
+            case validateStringExpr localObject objectStore expr of
+                Ok expression ->
+                    Ok
+                        { script
+                            | updates =
+                                script.updates
+                                    ++ [ Update.SetStringAttribute { objId = localObject, attributeKey = attrKey, value = expression }
+                                       ]
+                        }
+
+                Err err ->
+                    Err (ExpressionError err)
+
+        Err err ->
+            Err (ExpressionError err)
