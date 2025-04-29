@@ -1,0 +1,64 @@
+@font-face {
+  font-family: "Chicago";
+  src: url("/fonts/ChiKareGo2.ttf");
+}
+
+@font-face {
+  font-family: "Geneva";
+  src: url("/fonts/FindersKeepers.ttf");
+}
+
+* {
+  image-rendering: pixelated;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: grayscale;
+  box-sizing: border-box;
+  margin: 0;
+  font: inherit;
+  padding: 0;
+  color: inherit;
+  border: 0;
+  line-height: 1;
+  user-select: none;
+}
+
+*::selection {
+  color: white;
+  background-color: black;
+}
+
+textarea:focus-visible {
+  outline: none;
+}
+
+button:focus {
+  outline: none;
+}
+
+button {
+  background: white;
+  color: black;
+}
+
+button:hover {
+  background: black;
+  color: white;
+}
+
+.menu-bar>*:not(:first-child) {
+  margin-left: -3px;
+}
+
+html,
+body {
+  height: 100%
+}
+
+body {
+  font-family: 'Chicago';
+  background: black;
+  margin: 0rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

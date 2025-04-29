@@ -9,6 +9,7 @@ import Html exposing (Html)
 import Html.Attributes as Html
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
+import MacOS
 import Object exposing (Object)
 import ObjectStore exposing (ObjectStore)
 import Ports
@@ -306,11 +307,14 @@ viewSaveButton game =
         [ Html.text "Save Game Data" ]
 
 
-main : Program Flags Model Msg
 main =
-    Browser.element
-        { init = init
-        , update = update
-        , view = view
-        , subscriptions = subscriptions
-        }
+    MacOS.main
+
+
+
+-- Browser.element
+--     { init = init
+--     , update = update
+--     , view = view
+--     , subscriptions = subscriptions
+--     }
