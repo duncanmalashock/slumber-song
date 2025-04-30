@@ -20,8 +20,6 @@ view screen =
             [ style "width" (px (Rect.width screen))
             , style "height" "20px"
             , style "background" "white"
-            , style "border-top-left-radius" "4px"
-            , style "border-top-right-radius" "4px"
             , style "border-bottom" "solid 1px"
             , class "menu-bar"
             , style "padding" "0 10px"

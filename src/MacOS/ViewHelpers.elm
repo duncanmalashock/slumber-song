@@ -1,4 +1,4 @@
-module MacOS.ViewHelpers exposing (none, px, roundFloat)
+module MacOS.ViewHelpers exposing (imgURL, none, px, roundFloat)
 
 import Html exposing (Html)
 import Json.Decode as Decode exposing (Decoder)
@@ -17,3 +17,8 @@ none =
 roundFloat : Decoder Int
 roundFloat =
     Decode.float |> Decode.map round
+
+
+imgURL : String -> String
+imgURL filename =
+    "url(\"" ++ filename ++ "\")"

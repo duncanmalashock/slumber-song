@@ -1,4 +1,4 @@
-module MacOS.Rect exposing (Rect, addPosition, height, new, posX, posY, size, width)
+module MacOS.Rect exposing (Rect, addPosition, bottom, height, left, new, posX, posY, right, size, top, width)
 
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 
@@ -46,3 +46,25 @@ height (Rect internals) =
 size : Rect -> Coordinate
 size (Rect internals) =
     internals.size
+
+
+top : Rect -> Int
+top (Rect internals) =
+    Coordinate.y internals.position
+
+
+bottom : Rect -> Int
+bottom (Rect internals) =
+    Coordinate.y internals.position
+        + Coordinate.y internals.size
+
+
+left : Rect -> Int
+left (Rect internals) =
+    Coordinate.x internals.position
+
+
+right : Rect -> Int
+right (Rect internals) =
+    Coordinate.x internals.position
+        + Coordinate.x internals.size

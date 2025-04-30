@@ -10,7 +10,7 @@ import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.FillPattern as FillPattern
 import MacOS.MenuBar as MenuBar
 import MacOS.Rect as Rect exposing (Rect)
-import MacOS.ViewHelpers as ViewHelpers exposing (px)
+import MacOS.ViewHelpers as ViewHelpers exposing (imgURL, px)
 import MacOS.Window as Window exposing (Window)
 
 
@@ -150,6 +150,7 @@ view model =
 
             _ ->
                 ViewHelpers.none
+        , viewScreenCorners model.screen
         ]
 
 
@@ -167,6 +168,74 @@ dragOutline { size, position } =
         , style "border" "dotted 1px #fff"
         ]
         []
+
+
+type Corner
+    = TopLeftCorner
+    | TopRightCorner
+    | BottomLeftCorner
+    | BottomRightCorner
+
+
+viewScreenCorners : Rect -> Html msg
+viewScreenCorners screen =
+    let
+        cornerSize =
+            5
+
+        attrs : Corner -> List (Html.Attribute msg)
+        attrs corner =
+            case corner of
+                TopLeftCorner ->
+                    [ style "background-image" (imgURL "MacOS/corner-tl.gif")
+                    , style "top" (px 0)
+                    , style "left" (px 0)
+                    ]
+
+                TopRightCorner ->
+                    [ style "background-image" (imgURL "MacOS/corner-tr.gif")
+                    , style "top" (px 0)
+                    , style "right" (px 0)
+                    ]
+
+                BottomLeftCorner ->
+                    [ style "background-image" (imgURL "MacOS/corner-bl.gif")
+                    , style "bottom" (px 0)
+                    , style "left" (px 0)
+                    ]
+
+                BottomRightCorner ->
+                    [ style "background-image" (imgURL "MacOS/corner-br.gif")
+                    , style "bottom" (px 0)
+                    , style "right" (px 0)
+                    ]
+
+        viewCorner : Corner -> Html msg
+        viewCorner c =
+            div
+                ([ style "width" (px cornerSize)
+                 , style "height" (px cornerSize)
+                 , style "position" "absolute"
+                 ]
+                    ++ attrs c
+                )
+                []
+
+        corners : List Corner
+        corners =
+            [ TopLeftCorner
+            , TopRightCorner
+            , BottomLeftCorner
+            , BottomRightCorner
+            ]
+    in
+    div
+        [ style "width" (px (Rect.width screen))
+        , style "height" (px (Rect.height screen))
+        , style "position" "absolute"
+        , style "pointer-events" "none"
+        ]
+        (List.map viewCorner corners)
 
 
 onPointerMove : (Coordinate -> msg) -> Attribute msg
