@@ -6,13 +6,13 @@ import Html.Events as Events
 import Json.Decode as Decode exposing (Decoder)
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.FillPattern as FillPattern
+import MacOS.Rect as Rect exposing (Rect)
 import MacOS.ViewHelpers as ViewHelpers exposing (px)
 
 
 type alias Window =
     { title : String
-    , size : Coordinate
-    , position : Coordinate
+    , rect : Rect
     }
 
 
@@ -25,14 +25,14 @@ type alias DragInfo =
 
 
 view : (DragInfo -> msg) -> (Window -> msg) -> Bool -> Window -> Html msg
-view mouseDownToMsg onClickMsg isActive ({ title, size, position } as window) =
+view mouseDownToMsg onClickMsg isActive ({ title, rect } as window) =
     div
         [ style "position" "absolute"
         , style "z-index" "1"
-        , style "top" (px (Coordinate.y position))
-        , style "left" (px (Coordinate.x position))
-        , style "width" (px (Coordinate.x size))
-        , style "height" (px (Coordinate.y size))
+        , style "top" (px (Rect.posY rect))
+        , style "left" (px (Rect.posX rect))
+        , style "width" (px (Rect.width rect))
+        , style "height" (px (Rect.height rect))
         , style "background" "white"
         , style "background-image" FillPattern.dither25
         , style "border" "solid 1px"

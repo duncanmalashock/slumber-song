@@ -9,6 +9,7 @@ import Json.Decode as Decode exposing (Decoder)
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.FillPattern as FillPattern
 import MacOS.MenuBar as MenuBar
+import MacOS.Rect as Rect exposing (Rect)
 import MacOS.ViewHelpers as ViewHelpers exposing (px)
 import MacOS.Window as Window exposing (Window)
 
@@ -25,8 +26,8 @@ init =
     { active = Just "Entrance"
     , dragging = Nothing
     , windows =
-        [ Window "Inventory" (Coordinate.new ( 150, 150 )) (Coordinate.new ( 25, 50 ))
-        , Window "Entrance" (Coordinate.new ( 200, 150 )) (Coordinate.new ( 200, 125 ))
+        [ Window "Inventory" (Rect.new ( 25, 50 ) ( 150, 150 ))
+        , Window "Entrance" (Rect.new ( 200, 150 ) ( 200, 125 ))
         ]
     }
 
@@ -85,9 +86,9 @@ moveDraggedWindow info windows =
             (\window ->
                 if window.title == info.window.title then
                     { window
-                        | position =
-                            window.position
-                                |> Coordinate.plus (info.cursor |> Coordinate.minus info.cursorAtDragStart)
+                        | rect =
+                            window.rect
+                                |> Rect.addPosition (info.cursor |> Coordinate.minus info.cursorAtDragStart)
                     }
 
                 else
@@ -139,7 +140,7 @@ view model =
             Just info ->
                 div []
                     [ dragOutline
-                        { size = info.window.size
+                        { size = Rect.size info.window.rect
                         , position = info.cursor |> Coordinate.minus info.offset
                         }
                     ]
