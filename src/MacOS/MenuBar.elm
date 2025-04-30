@@ -4,10 +4,12 @@ import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
 import Html.Events as Events
 import MacOS.FillPattern as FillPattern
+import MacOS.Rect as Rect exposing (Rect)
+import MacOS.ViewHelpers as ViewHelpers exposing (px)
 
 
-view : Html msg
-view =
+view : Rect -> Html msg
+view screen =
     div
         [ style "position" "absolute"
         , style "top" "0"
@@ -15,8 +17,8 @@ view =
         , style "background" "black"
         ]
         [ div
-            [ style "width" "512px"
-            , style "height" "19px"
+            [ style "width" (px (Rect.width screen))
+            , style "height" "20px"
             , style "background" "white"
             , style "border-top-left-radius" "4px"
             , style "border-top-right-radius" "4px"
@@ -38,7 +40,7 @@ menuButton : String -> Bool -> Html msg
 menuButton label isDisabled =
     if isDisabled then
         button
-            [ style "padding" "1px 10px"
+            [ style "padding" "1px 10px 2px"
             , style "background-image" FillPattern.dither50
             , style "text-shadow" "none"
             , style "background-clip" "text"
@@ -49,7 +51,7 @@ menuButton label isDisabled =
             [ text label ]
 
     else
-        button [ style "padding" "1px 10px" ] [ text label ]
+        button [ style "padding" "1px 10px 2px" ] [ text label ]
 
 
 appleLogo : String

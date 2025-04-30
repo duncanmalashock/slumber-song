@@ -18,6 +18,7 @@ type alias Model =
     { active : Maybe String
     , dragging : Maybe Window.DragInfo
     , windows : List Window
+    , screen : Rect
     }
 
 
@@ -28,7 +29,9 @@ init =
     , windows =
         [ Window "Inventory" (Rect.new ( 25, 50 ) ( 150, 150 ))
         , Window "Entrance" (Rect.new ( 200, 150 ) ( 200, 125 ))
+        , Window "Entrance" (Rect.new ( 200, 150 ) ( 200, 125 ))
         ]
+    , screen = Rect.new ( 0, 0 ) ( 512, 342 )
     }
 
 
@@ -115,8 +118,8 @@ bringToFront target windows =
 view : Model -> Html Msg
 view model =
     div
-        [ style "width" "512px"
-        , style "height" "342px"
+        [ style "width" (px (Rect.width model.screen))
+        , style "height" (px (Rect.height model.screen))
         , style "background-color" "white"
         , style "background-image" FillPattern.dither50
         , style "position" "relative"
@@ -125,7 +128,7 @@ view model =
         , onPointerUp PointerUp
         , style "overflow" "hidden"
         ]
-        [ MenuBar.view
+        [ MenuBar.view model.screen
         , model.windows
             |> List.map
                 (\window ->
