@@ -69,7 +69,7 @@ viewWindowTitle mouseDownToMsg isActive window =
             , style "background" "white"
             , style "padding" "0 5px"
             , style "display" "inline-block"
-            , style "transform" "translateY(1px)"
+            , style "transform" "translateY(0.5px)"
             , style "pointer-events" "none"
             ]
             [ text window.title ]
@@ -97,7 +97,18 @@ onPointerDownForWindowTitle mouseDownToMsg window =
         )
 
 
+viewWindowTitleLines : Html msg
 viewWindowTitleLines =
+    let
+        line : Html msg
+        line =
+            div
+                [ style "width" "100%"
+                , style "height" "1px"
+                , style "background" "black"
+                ]
+                []
+    in
     div
         [ style "position" "absolute"
         , style "z-index" "1"
@@ -109,12 +120,3 @@ viewWindowTitleLines =
         , style "pointer-events" "none"
         ]
         (List.repeat 6 line)
-
-
-line =
-    div
-        [ style "width" "100%"
-        , style "height" "1px"
-        , style "background" "black"
-        ]
-        []
