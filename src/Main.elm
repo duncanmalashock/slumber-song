@@ -295,7 +295,9 @@ viewParserInput objectStore input =
             ]
             []
         , Html.pre [ Html.style "width" "60ch", Html.style "text-wrap" "auto" ]
-            [ Html.text (Debug.toString <| Vent.compile "skull" objectStore input) ]
+            []
+
+        -- [ Html.text (Debug.toString <| Vent.compile "skull" objectStore input) ]
         ]
 
 
