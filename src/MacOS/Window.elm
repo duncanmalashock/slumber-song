@@ -2,7 +2,7 @@ module MacOS.Window exposing (DragInfo, Window, view)
 
 import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
-import Html.Events as Events
+import Html.Events as Events exposing (..)
 import Json.Decode as Decode exposing (Decoder)
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.FillPattern as FillPattern
@@ -144,6 +144,7 @@ viewWindowCloseBox closeBoxMsg =
             , style "left" (px 1)
             , style "border" "1px solid black"
             , style "background" "white"
+            , onClick closeBoxMsg
 
             -- , style "background-image" (imgURL "MacOS/closebox.gif")
             ]

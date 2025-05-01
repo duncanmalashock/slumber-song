@@ -36,8 +36,11 @@ if (!useVDomInterface) {
 let app = Main.init({
   node: document.getElementById('app'),
   flags: {
-    useVDomInterface: useVDomInterface,
-    gameFile: "/game/game.json"
+    browserDimensions: {
+      x: window.innerWidth,
+      y: window.innerHeight
+    },
+    devicePixelRatio: window.devicePixelRatio
   }
 });
 
@@ -122,3 +125,4 @@ function highlightObject(objId) {
 function printText(text) {
   console.log(`EFFECT: printText ${text}`);
 }
+

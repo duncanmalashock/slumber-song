@@ -1,6 +1,7 @@
 module MacOS exposing (main)
 
 import Browser
+import Browser.Events
 import Dict exposing (Dict)
 import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
@@ -10,7 +11,9 @@ import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.FileSystem as FileSystem exposing (FileSystem)
 import MacOS.FillPattern as FillPattern
 import MacOS.MenuBar as MenuBar exposing (MenuBar)
+import MacOS.Mouse as Mouse exposing (Mouse)
 import MacOS.Rect as Rect exposing (Rect)
+import MacOS.Screen as Screen exposing (Screen)
 import MacOS.ViewHelpers as ViewHelpers exposing (imgURL, px)
 import MacOS.Window as Window exposing (Window)
 
@@ -19,14 +22,17 @@ type alias Model =
     { active : Maybe String
     , dragging : Maybe Window.DragInfo
     , windows : List Window
-    , screen : Rect
+    , screen : Screen
     , menuBar : MenuBar
     , fileSystem : FileSystem
+    , mouse : Mouse
     }
 
 
 type alias Flags =
-    ()
+    { browserDimensions : { x : Int, y : Int }
+    , devicePixelRatio : Float
+    }
 
 
 init : Flags -> ( Model, Cmd Msg )
@@ -35,7 +41,12 @@ init flags =
       , dragging = Nothing
       , windows =
             []
-      , screen = Rect.new ( 0, 0 ) ( 512, 342 )
+      , screen =
+            Screen.new
+                { screen = Coordinate.new ( 512, 342 )
+                , browser = flags.browserDimensions
+                , devicePixelRatio = flags.devicePixelRatio
+                }
       , menuBar =
             MenuBar.new
                 [ MenuBar.menu "File" False
@@ -47,6 +58,7 @@ init flags =
             FileSystem.new
                 [ FileSystem.volume "Diskette" []
                 ]
+      , mouse = Mouse.new
       }
     , Cmd.none
     )
@@ -60,6 +72,8 @@ type Msg
     | PointerUp
     | ClickedDisk FileSystem.Volume
     | ClickedWindowCloseBox
+    | MouseMsg Mouse.Msg
+    | BrowserResized Int Int
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -128,6 +142,20 @@ update msg model =
             , Cmd.none
             )
 
+        MouseMsg mouseMsg ->
+            ( { model
+                | mouse = Mouse.update mouseMsg model.mouse
+              }
+            , Cmd.none
+            )
+
+        BrowserResized newWidth newHeight ->
+            ( { model
+                | screen = Screen.update { x = newWidth, y = newHeight } model.screen
+              }
+            , Cmd.none
+            )
+
 
 moveDraggedWindow : Window.DragInfo -> List Window -> List Window
 moveDraggedWindow info windows =
@@ -162,21 +190,44 @@ bringToFront target windows =
             )
 
 
+viewDebugger : Model -> Html Msg
+viewDebugger model =
+    div
+        [ style "position" "absolute"
+        , style "z-index" "2"
+        , style "top" (px 128)
+        , style "left" (px 16)
+        , style "width" (px 480)
+        ]
+        [ div
+            [ style "background-color" "black"
+            , style "color" "white"
+            , style "font-family" "Geneva"
+            , style "padding" "0 6px"
+            ]
+            [ div [] [ text <| Debug.toString model.screen ]
+            , div [] [ text <| Debug.toString model.mouse ]
+            ]
+        ]
+
+
 view : Model -> Html Msg
 view model =
     div
-        [ style "width" (px (Rect.width model.screen))
-        , style "height" (px (Rect.height model.screen))
-        , style "background-color" "white"
+        [ style "width" (px (Screen.width model.screen))
+        , style "height" (px (Screen.height model.screen))
+        , style "background-color" "black"
         , style "background-image" FillPattern.dither50
         , style "position" "relative"
-        , Events.on "pointerdown" (Decode.succeed ClickedDesktop)
-        , onPointerMove PointerMove
-        , onPointerUp PointerUp
+        , Screen.scaleAttr model.screen
+
+        -- , Events.on "pointerdown" (Decode.succeed ClickedDesktop)
+        , Mouse.eventsForBaseElement model.screen MouseMsg
         , style "overflow" "hidden"
         ]
-        [ MenuBar.view model.screen model.menuBar
-        , viewScreenCorners model.screen
+        [ viewDebugger model
+        , MenuBar.view (Screen.width model.screen) model.menuBar
+        , viewScreenCorners (Screen.logical model.screen)
         , div []
             (model.fileSystem
                 |> FileSystem.volumes
@@ -333,26 +384,9 @@ viewScreenCorners screen =
         (List.map viewCorner corners)
 
 
-onPointerMove : (Coordinate -> msg) -> Attribute msg
-onPointerMove toMsg =
-    Events.on "pointermove"
-        (Decode.map2
-            (\cx cy ->
-                toMsg (Coordinate.new ( cx, cy ))
-            )
-            (Decode.field "clientX" ViewHelpers.roundFloat)
-            (Decode.field "clientY" ViewHelpers.roundFloat)
-        )
-
-
-onPointerUp : msg -> Attribute msg
-onPointerUp msg =
-    Events.on "pointerup" (Decode.succeed msg)
-
-
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    Sub.none
+    Browser.Events.onResize (\width height -> BrowserResized width height)
 
 
 main : Program Flags Model Msg

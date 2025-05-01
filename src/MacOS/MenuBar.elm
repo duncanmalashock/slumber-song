@@ -42,8 +42,8 @@ menu title disabled =
     Menu title disabled
 
 
-view : Rect -> MenuBar -> Html msg
-view screen (MenuBar { menus }) =
+view : Int -> MenuBar -> Html msg
+view width (MenuBar { menus }) =
     let
         viewMenus : List (Html msg)
         viewMenus =
@@ -61,7 +61,7 @@ view screen (MenuBar { menus }) =
         , style "background" "black"
         ]
         [ div
-            [ style "width" (px (Rect.width screen))
+            [ style "width" (px width)
             , style "height" "20px"
             , style "background" "white"
             , style "border-bottom" "solid 1px"
