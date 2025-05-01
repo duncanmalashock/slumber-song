@@ -220,8 +220,6 @@ view model =
          , style "background-image" FillPattern.dither50
          , style "position" "relative"
          , Screen.scaleAttr model.screen
-
-         -- , Events.on "pointerdown" (Decode.succeed ClickedDesktop)
          , style "overflow" "hidden"
          ]
             ++ Mouse.eventsForBaseElement model.screen MouseMsg
