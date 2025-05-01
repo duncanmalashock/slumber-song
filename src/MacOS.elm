@@ -214,17 +214,18 @@ viewDebugger model =
 view : Model -> Html Msg
 view model =
     div
-        [ style "width" (px (Screen.width model.screen))
-        , style "height" (px (Screen.height model.screen))
-        , style "background-color" "black"
-        , style "background-image" FillPattern.dither50
-        , style "position" "relative"
-        , Screen.scaleAttr model.screen
+        ([ style "width" (px (Screen.width model.screen))
+         , style "height" (px (Screen.height model.screen))
+         , style "background-color" "black"
+         , style "background-image" FillPattern.dither50
+         , style "position" "relative"
+         , Screen.scaleAttr model.screen
 
-        -- , Events.on "pointerdown" (Decode.succeed ClickedDesktop)
-        , Mouse.eventsForBaseElement model.screen MouseMsg
-        , style "overflow" "hidden"
-        ]
+         -- , Events.on "pointerdown" (Decode.succeed ClickedDesktop)
+         , style "overflow" "hidden"
+         ]
+            ++ Mouse.eventsForBaseElement model.screen MouseMsg
+        )
         [ viewDebugger model
         , MenuBar.view (Screen.width model.screen) model.menuBar
         , viewScreenCorners (Screen.logical model.screen)

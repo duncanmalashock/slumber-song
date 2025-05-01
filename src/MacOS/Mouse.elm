@@ -41,7 +41,7 @@ type Msg
 type Object
     = Object
         { id : String
-        , objectPosition : Coordinate
+        , offsetFromObjectOrigin : Coordinate
         , mousePosition : Coordinate
         }
 
@@ -68,9 +68,9 @@ update msg (Mouse internals) =
                 }
 
 
-eventsForBaseElement : Screen -> (Msg -> msg) -> Attribute msg
+eventsForBaseElement : Screen -> (Msg -> msg) -> List (Attribute msg)
 eventsForBaseElement screen toMsg =
-    onPointerMove screen (toMsg << MouseMoved)
+    [ onPointerMove screen (toMsg << MouseMoved) ]
 
 
 onPointerMove : Screen -> (Coordinate -> msg) -> Attribute msg
