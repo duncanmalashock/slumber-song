@@ -230,7 +230,7 @@ view model =
         , div []
             (model.fileSystem
                 |> FileSystem.volumes
-                |> List.map viewVolume
+                |> List.map (viewVolume model.screen)
             )
         , model.windows
             |> List.map
@@ -259,8 +259,8 @@ view model =
         ]
 
 
-viewVolume : FileSystem.Volume -> Html Msg
-viewVolume volume =
+viewVolume : Screen -> FileSystem.Volume -> Html Msg
+viewVolume screen volume =
     div
         [ style "position" "absolute"
         , style "display" "flex"
@@ -268,7 +268,8 @@ viewVolume volume =
         , style "align-items" "center"
         , style "top" (px 32)
         , style "left" (px 442)
-        , onClick (ClickedDisk volume)
+        , Mouse.onMouseDownForObject "disk" (Coordinate.new ( 442, 32 )) screen MouseMsg
+        , Mouse.onMouseUpForObject "disk" (Coordinate.new ( 442, 32 )) screen MouseMsg
         ]
         [ div
             [ style "width" (px 32)

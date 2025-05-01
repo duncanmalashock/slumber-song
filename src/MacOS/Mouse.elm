@@ -1,4 +1,4 @@
-module MacOS.Mouse exposing (Mouse, Msg(..), eventsForBaseElement, new, update)
+module MacOS.Mouse exposing (Mouse, Msg(..), eventsForBaseElement, new, onMouseDownForObject, onMouseUpForObject, update)
 
 import Html exposing (Attribute)
 import Html.Events as Events
@@ -136,6 +136,56 @@ onMouseMove screen toMsg =
                 Coordinate.new ( cx, cy )
                     |> Screen.toScreenCoordinates screen
                     |> toMsg
+            )
+            (Decode.field "clientX" ViewHelpers.roundFloat)
+            (Decode.field "clientY" ViewHelpers.roundFloat)
+        )
+
+
+onMouseDownForObject : String -> Coordinate -> Screen -> (Msg -> msg) -> Attribute msg
+onMouseDownForObject objectId objectOrigin screen toMsg =
+    Events.stopPropagationOn "pointerdown"
+        (Decode.map2
+            (\cx cy ->
+                let
+                    mousePos =
+                        Coordinate.new ( cx, cy )
+                            |> Screen.toScreenCoordinates screen
+                in
+                ( toMsg <|
+                    MouseDown
+                        { id = objectId
+                        , offsetFromObjectOrigin =
+                            Coordinate.minus objectOrigin mousePos
+                        , mousePosition = mousePos
+                        }
+                , True
+                )
+            )
+            (Decode.field "clientX" ViewHelpers.roundFloat)
+            (Decode.field "clientY" ViewHelpers.roundFloat)
+        )
+
+
+onMouseUpForObject : String -> Coordinate -> Screen -> (Msg -> msg) -> Attribute msg
+onMouseUpForObject objectId objectOrigin screen toMsg =
+    Events.stopPropagationOn "pointerup"
+        (Decode.map2
+            (\cx cy ->
+                let
+                    mousePos =
+                        Coordinate.new ( cx, cy )
+                            |> Screen.toScreenCoordinates screen
+                in
+                ( toMsg <|
+                    MouseUp
+                        { id = objectId
+                        , offsetFromObjectOrigin =
+                            Coordinate.minus objectOrigin mousePos
+                        , mousePosition = mousePos
+                        }
+                , True
+                )
             )
             (Decode.field "clientX" ViewHelpers.roundFloat)
             (Decode.field "clientY" ViewHelpers.roundFloat)
