@@ -7,7 +7,7 @@ import Json.Decode as Decode exposing (Decoder)
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.FillPattern as FillPattern
 import MacOS.Rect as Rect exposing (Rect)
-import MacOS.ViewHelpers as ViewHelpers exposing (px)
+import MacOS.ViewHelpers as ViewHelpers exposing (..)
 
 
 type alias Window =
@@ -24,8 +24,8 @@ type alias DragInfo =
     }
 
 
-view : (DragInfo -> msg) -> (Window -> msg) -> Bool -> Window -> Html msg
-view mouseDownToMsg onClickMsg isActive ({ title, rect } as window) =
+view : msg -> (DragInfo -> msg) -> (Window -> msg) -> Bool -> Window -> Html msg
+view closeBoxMsg mouseDownToMsg onClickMsg isActive ({ title, rect } as window) =
     div
         [ style "position" "absolute"
         , style "z-index" "1"
@@ -34,19 +34,18 @@ view mouseDownToMsg onClickMsg isActive ({ title, rect } as window) =
         , style "width" (px (Rect.width rect))
         , style "height" (px (Rect.height rect))
         , style "background" "white"
-        , style "background-image" FillPattern.dither25
         , style "border" "solid 1px"
         , style "box-shadow" "1px 1px 0px"
         , Events.stopPropagationOn "pointerdown" (Decode.succeed ( onClickMsg window, True ))
         ]
-        [ viewWindowTitle mouseDownToMsg isActive window
+        [ viewWindowTitle closeBoxMsg mouseDownToMsg isActive window
 
         --, div [] content
         ]
 
 
-viewWindowTitle : (DragInfo -> msg) -> Bool -> Window -> Html msg
-viewWindowTitle mouseDownToMsg isActive window =
+viewWindowTitle : msg -> (DragInfo -> msg) -> Bool -> Window -> Html msg
+viewWindowTitle closeBoxMsg mouseDownToMsg isActive window =
     div
         [ style "position" "absolute"
         , style "top" "0"
@@ -60,6 +59,11 @@ viewWindowTitle mouseDownToMsg isActive window =
         ]
         [ if isActive then
             viewWindowTitleLines
+
+          else
+            ViewHelpers.none
+        , if isActive then
+            viewWindowCloseBox closeBoxMsg
 
           else
             ViewHelpers.none
@@ -120,3 +124,28 @@ viewWindowTitleLines =
         , style "pointer-events" "none"
         ]
         (List.repeat 6 line)
+
+
+viewWindowCloseBox : msg -> Html msg
+viewWindowCloseBox closeBoxMsg =
+    div
+        [ style "position" "absolute"
+        , style "z-index" "1"
+        , style "top" (px 3)
+        , style "left" (px 7)
+        , style "width" (px 13)
+        , style "height" (px 11)
+        , style "background" "white"
+        ]
+        [ div
+            [ style "position" "absolute"
+            , style "width" (px 11)
+            , style "height" (px 11)
+            , style "left" (px 1)
+            , style "border" "1px solid black"
+            , style "background" "white"
+
+            -- , style "background-image" (imgURL "MacOS/closebox.gif")
+            ]
+            []
+        ]

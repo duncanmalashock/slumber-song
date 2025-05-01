@@ -4,11 +4,12 @@ import Browser
 import Dict exposing (Dict)
 import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
-import Html.Events as Events
+import Html.Events as Events exposing (..)
 import Json.Decode as Decode exposing (Decoder)
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
+import MacOS.FileSystem as FileSystem exposing (FileSystem)
 import MacOS.FillPattern as FillPattern
-import MacOS.MenuBar as MenuBar
+import MacOS.MenuBar as MenuBar exposing (MenuBar)
 import MacOS.Rect as Rect exposing (Rect)
 import MacOS.ViewHelpers as ViewHelpers exposing (imgURL, px)
 import MacOS.Window as Window exposing (Window)
@@ -19,20 +20,36 @@ type alias Model =
     , dragging : Maybe Window.DragInfo
     , windows : List Window
     , screen : Rect
+    , menuBar : MenuBar
+    , fileSystem : FileSystem
     }
 
 
-init : Model
-init =
-    { active = Just "Entrance"
-    , dragging = Nothing
-    , windows =
-        [ Window "Inventory" (Rect.new ( 25, 50 ) ( 150, 150 ))
-        , Window "Entrance" (Rect.new ( 200, 150 ) ( 200, 125 ))
-        , Window "Entrance" (Rect.new ( 200, 150 ) ( 200, 125 ))
-        ]
-    , screen = Rect.new ( 0, 0 ) ( 512, 342 )
-    }
+type alias Flags =
+    ()
+
+
+init : Flags -> ( Model, Cmd Msg )
+init flags =
+    ( { active = Nothing
+      , dragging = Nothing
+      , windows =
+            []
+      , screen = Rect.new ( 0, 0 ) ( 512, 342 )
+      , menuBar =
+            MenuBar.new
+                [ MenuBar.menu "File" False
+                , MenuBar.menu "Edit" False
+                , MenuBar.menu "View" False
+                , MenuBar.menu "Special" False
+                ]
+      , fileSystem =
+            FileSystem.new
+                [ FileSystem.volume "Diskette" []
+                ]
+      }
+    , Cmd.none
+    )
 
 
 type Msg
@@ -41,22 +58,24 @@ type Msg
     | PointerDownWindowTitle Window.DragInfo
     | PointerMove Coordinate
     | PointerUp
+    | ClickedDisk FileSystem.Volume
+    | ClickedWindowCloseBox
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ClickedWindow window ->
-            { model | active = Just window.title, windows = bringToFront window model.windows }
+            ( { model | active = Just window.title, windows = bringToFront window model.windows }, Cmd.none )
 
         ClickedDesktop ->
-            { model | active = Nothing }
+            ( { model | active = Nothing }, Cmd.none )
 
         PointerDownWindowTitle dragInfo ->
-            { model | dragging = Just dragInfo }
+            ( { model | dragging = Just dragInfo }, Cmd.none )
 
         PointerMove newCursorCoordinate ->
-            { model
+            ( { model
                 | dragging =
                     case model.dragging of
                         Just dragInfo ->
@@ -64,22 +83,50 @@ update msg model =
 
                         Nothing ->
                             Nothing
-            }
+              }
+            , Cmd.none
+            )
 
         PointerUp ->
             case model.dragging of
                 Just dragInfo ->
-                    { model
+                    ( { model
                         | dragging = Nothing
                         , windows =
                             model.windows
                                 |> moveDraggedWindow dragInfo
                                 |> bringToFront dragInfo.window
                         , active = Just dragInfo.window.title
-                    }
+                      }
+                    , Cmd.none
+                    )
 
                 Nothing ->
-                    { model | dragging = Nothing }
+                    ( { model | dragging = Nothing }, Cmd.none )
+
+        ClickedDisk volume ->
+            let
+                name =
+                    FileSystem.name volume
+            in
+            ( { model
+                | windows =
+                    model.windows
+                        ++ [ { title = name
+                             , rect = Rect.new ( 50, 50 ) ( 200, 150 )
+                             }
+                           ]
+                , active = Just name
+              }
+            , Cmd.none
+            )
+
+        ClickedWindowCloseBox ->
+            ( { model
+                | windows = []
+              }
+            , Cmd.none
+            )
 
 
 moveDraggedWindow : Window.DragInfo -> List Window -> List Window
@@ -128,11 +175,18 @@ view model =
         , onPointerUp PointerUp
         , style "overflow" "hidden"
         ]
-        [ MenuBar.view model.screen
+        [ MenuBar.view model.screen model.menuBar
+        , viewScreenCorners model.screen
+        , div []
+            (model.fileSystem
+                |> FileSystem.volumes
+                |> List.map viewVolume
+            )
         , model.windows
             |> List.map
                 (\window ->
                     Window.view
+                        ClickedWindowCloseBox
                         PointerDownWindowTitle
                         ClickedWindow
                         (model.active == Just window.title)
@@ -144,13 +198,45 @@ view model =
                 div []
                     [ dragOutline
                         { size = Rect.size info.window.rect
-                        , position = info.cursor |> Coordinate.minus info.offset
+                        , position =
+                            info.cursor
+                                |> Coordinate.minus info.offset
                         }
                     ]
 
             _ ->
                 ViewHelpers.none
-        , viewScreenCorners model.screen
+        ]
+
+
+viewVolume : FileSystem.Volume -> Html Msg
+viewVolume volume =
+    div
+        [ style "position" "absolute"
+        , style "display" "flex"
+        , style "flex-direction" "column"
+        , style "align-items" "center"
+        , style "top" (px 32)
+        , style "left" (px 442)
+        , onClick (ClickedDisk volume)
+        ]
+        [ div
+            [ style "width" (px 32)
+            , style "height" (px 32)
+            , style "background-image" (imgURL "MacOS/disk.gif")
+            ]
+            []
+        , div
+            [ style "height" (px 12)
+            , style "text-align" "center"
+            , style "top" (px 32)
+            , style "left" (px -23)
+            , style "background-color" "white"
+            , style "font-family" "Geneva"
+            , style "line-height" (px 11)
+            , style "padding" "0 2px"
+            ]
+            [ text (FileSystem.name volume) ]
         ]
 
 
@@ -159,15 +245,24 @@ dragOutline { size, position } =
     div
         [ style "position" "fixed"
         , style "z-index" "1"
-        , style "top" (px (Coordinate.y position))
+        , style "top" (px (Coordinate.y position - 1))
         , style "left" (px (Coordinate.x position))
         , style "width" (px (Coordinate.x size))
         , style "height" (px (Coordinate.y size))
         , style "pointer-events" "none"
-        , style "mix-blend-mode" "difference"
-        , style "border" "dotted 1px #fff"
+        , style "mix-blend-mode" "multiply"
+        , style "background-image" FillPattern.dither50
         ]
-        []
+        [ div
+            [ style "position" "relative"
+            , style "top" (px 1)
+            , style "left" (px 1)
+            , style "width" (px (Coordinate.x size - 2))
+            , style "height" (px (Coordinate.y size - 2))
+            , style "background" "white"
+            ]
+            []
+        ]
 
 
 type Corner
@@ -255,10 +350,16 @@ onPointerUp msg =
     Events.on "pointerup" (Decode.succeed msg)
 
 
-main : Program () Model Msg
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    Sub.none
+
+
+main : Program Flags Model Msg
 main =
-    Browser.sandbox
+    Browser.element
         { init = init
-        , view = view
         , update = update
+        , view = view
+        , subscriptions = subscriptions
         }

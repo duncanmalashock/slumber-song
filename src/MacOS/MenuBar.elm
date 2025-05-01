@@ -1,4 +1,4 @@
-module MacOS.MenuBar exposing (view)
+module MacOS.MenuBar exposing (MenuBar, menu, new, view)
 
 import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
@@ -8,8 +8,52 @@ import MacOS.Rect as Rect exposing (Rect)
 import MacOS.ViewHelpers as ViewHelpers exposing (px)
 
 
-view : Rect -> Html msg
-view screen =
+type MenuBar
+    = MenuBar Internals
+
+
+type alias Internals =
+    { mode : Mode
+    , menus : List Menu
+    }
+
+
+type Mode
+    = Hidden
+    | Blank
+    | AppTitle
+    | Ready
+
+
+new : List Menu -> MenuBar
+new menus =
+    MenuBar
+        { mode = Ready
+        , menus = menus
+        }
+
+
+type Menu
+    = Menu String Bool
+
+
+menu : String -> Bool -> Menu
+menu title disabled =
+    Menu title disabled
+
+
+view : Rect -> MenuBar -> Html msg
+view screen (MenuBar { menus }) =
+    let
+        viewMenus : List (Html msg)
+        viewMenus =
+            menuButton appleLogo False
+                :: List.map
+                    (\(Menu title isDisabled) ->
+                        menuButton title isDisabled
+                    )
+                    menus
+    in
     div
         [ style "position" "absolute"
         , style "top" "0"
@@ -24,13 +68,7 @@ view screen =
             , class "menu-bar"
             , style "padding" "0 10px"
             ]
-            [ menuButton appleLogo False
-            , menuButton "File" False
-            , menuButton "Edit" True
-            , menuButton "Special" True
-            , menuButton "Font" False
-            , menuButton "FontSize" False
-            ]
+            viewMenus
         ]
 
 
