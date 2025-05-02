@@ -1,4 +1,4 @@
-module MacOS.Mouse exposing (Mouse, Msg(..), debugEvents, eventsForDesktop, new, onMouseDownForObject, onMouseUpForObject, update)
+module MacOS.Mouse exposing (Event(..), Mouse, Msg(..), debugEvents, eventsForDesktop, new, onMouseDownForObject, onMouseUpForObject, update)
 
 import Html exposing (Attribute)
 import Html.Events as Events
@@ -88,13 +88,13 @@ update msg (Mouse internals) =
             (List Msg -> List Event -> List Event)
             -> List Event
             -> List Event
-        foldEvents detectorFn events =
-            detectorFn updatedMsgHistory events ++ events
+        foldEvents detectorFn newEventsSoFar =
+            detectorFn updatedMsgHistory (newEventsSoFar ++ internals.eventHistory) ++ newEventsSoFar
 
         newEventList : List Event
         newEventList =
             List.foldl foldEvents
-                internals.eventHistory
+                []
                 [ detectClickEvents
                 , detectDragEvents
                 , detectDoubleClickEvents internals.doubleClickTimingThreshold
@@ -103,7 +103,7 @@ update msg (Mouse internals) =
     ( Mouse
         { internals
             | msgHistory = updatedMsgHistory
-            , eventHistory = newEventList
+            , eventHistory = newEventList ++ internals.eventHistory
         }
     , newEventList
     )

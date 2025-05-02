@@ -8,6 +8,7 @@ import Html.Attributes as Attr exposing (..)
 import Html.Events as Events exposing (..)
 import Json.Decode as Decode exposing (Decoder)
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
+import MacOS.Event as Event exposing (Event)
 import MacOS.FileSystem as FileSystem exposing (FileSystem)
 import MacOS.FillPattern as FillPattern
 import MacOS.MenuBar as MenuBar exposing (MenuBar)
@@ -16,6 +17,7 @@ import MacOS.Rect as Rect exposing (Rect)
 import MacOS.Screen as Screen exposing (Screen)
 import MacOS.ViewHelpers as ViewHelpers exposing (imgURL, px)
 import MacOS.Window as Window exposing (Window)
+import Task
 import Time
 
 
@@ -41,13 +43,15 @@ viewDebugger model =
 
 type alias Model =
     { currentTime : Time.Posix
-    , active : Maybe String
+    , activeWindow : Maybe String
+    , activeFile : Maybe String
     , dragging : Maybe Window.DragInfo
     , windows : List Window
     , screen : Screen
     , menuBar : MenuBar
     , fileSystem : FileSystem
     , mouse : Mouse
+    , eventRegistry : Event.Registry Msg
     }
 
 
@@ -61,7 +65,8 @@ type alias Flags =
 init : Flags -> ( Model, Cmd Msg )
 init flags =
     ( { currentTime = Time.millisToPosix flags.currentTimeInMS
-      , active = Nothing
+      , activeWindow = Nothing
+      , activeFile = Nothing
       , dragging = Nothing
       , windows =
             []
@@ -83,6 +88,11 @@ init flags =
                 [ FileSystem.volume "Diskette" []
                 ]
       , mouse = Mouse.new
+      , eventRegistry =
+            Event.registry
+                |> Event.on "disk" Event.Click ClickedDisk
+                |> Event.on "disk" Event.DoubleClick DoubleClickedDisk
+                |> Event.on "desktop" Event.Click ClickedDesktop
       }
     , Cmd.none
     )
@@ -94,7 +104,8 @@ type Msg
     | PointerDownWindowTitle Window.DragInfo
     | PointerMove Coordinate
     | PointerUp
-    | ClickedDisk FileSystem.Volume
+    | ClickedDisk
+    | DoubleClickedDisk
     | ClickedWindowCloseBox
     | Tick Time.Posix
     | MouseMsg Mouse.Msg
@@ -105,10 +116,10 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ClickedWindow window ->
-            ( { model | active = Just window.title, windows = bringToFront window model.windows }, Cmd.none )
+            ( { model | activeWindow = Just window.title, windows = bringToFront window model.windows }, Cmd.none )
 
         ClickedDesktop ->
-            ( { model | active = Nothing }, Cmd.none )
+            ( { model | activeWindow = Nothing, activeFile = Nothing }, Cmd.none )
 
         PointerDownWindowTitle dragInfo ->
             ( { model | dragging = Just dragInfo }, Cmd.none )
@@ -135,7 +146,7 @@ update msg model =
                             model.windows
                                 |> moveDraggedWindow dragInfo
                                 |> bringToFront dragInfo.window
-                        , active = Just dragInfo.window.title
+                        , activeWindow = Just dragInfo.window.title
                       }
                     , Cmd.none
                     )
@@ -143,19 +154,22 @@ update msg model =
                 Nothing ->
                     ( { model | dragging = Nothing }, Cmd.none )
 
-        ClickedDisk volume ->
-            let
-                name =
-                    FileSystem.name volume
-            in
+        DoubleClickedDisk ->
             ( { model
                 | windows =
                     model.windows
-                        ++ [ { title = name
+                        ++ [ { title = "disk"
                              , rect = Rect.new ( 50, 50 ) ( 200, 150 )
                              }
                            ]
-                , active = Just name
+                , activeWindow = Just "disk"
+              }
+            , Cmd.none
+            )
+
+        ClickedDisk ->
+            ( { model
+                | activeFile = Just "disk"
               }
             , Cmd.none
             )
@@ -176,13 +190,32 @@ update msg model =
 
         MouseMsg mouseMsg ->
             let
-                ( updatedMouse, maybeEvent ) =
+                ( updatedMouse, newMouseEvents ) =
                     Mouse.update mouseMsg model.mouse
+
+                mouseEventstoMsgs : Mouse.Event -> List Msg
+                mouseEventstoMsgs mouseEvent =
+                    case mouseEvent of
+                        Mouse.ClickedObject _ { id } ->
+                            Event.eventToMsgList id Event.Click model.eventRegistry
+
+                        Mouse.DraggedObject _ { id } ->
+                            []
+
+                        Mouse.DoubleClickedObject _ { id } ->
+                            Event.eventToMsgList id Event.DoubleClick model.eventRegistry
+
+                eventCmds : Cmd Msg
+                eventCmds =
+                    newMouseEvents
+                        |> List.concatMap mouseEventstoMsgs
+                        |> List.map sendMsg
+                        |> Cmd.batch
             in
             ( { model
                 | mouse = updatedMouse
               }
-            , Cmd.none
+            , eventCmds
             )
 
         BrowserResized newWidth newHeight ->
@@ -191,6 +224,11 @@ update msg model =
               }
             , Cmd.none
             )
+
+
+sendMsg : Msg -> Cmd Msg
+sendMsg msg =
+    Task.perform identity (Task.succeed msg)
 
 
 moveDraggedWindow : Window.DragInfo -> List Window -> List Window
@@ -245,7 +283,7 @@ view model =
         , div []
             (model.fileSystem
                 |> FileSystem.volumes
-                |> List.map (viewVolume model.screen model.currentTime)
+                |> List.map (viewVolume model.activeFile model.screen model.currentTime)
             )
         , model.windows
             |> List.map
@@ -254,7 +292,7 @@ view model =
                         ClickedWindowCloseBox
                         PointerDownWindowTitle
                         ClickedWindow
-                        (model.active == Just window.title)
+                        (model.activeWindow == Just window.title)
                         window
                 )
             |> div []
@@ -274,8 +312,8 @@ view model =
         ]
 
 
-viewVolume : Screen -> Time.Posix -> FileSystem.Volume -> Html Msg
-viewVolume screen time volume =
+viewVolume : Maybe String -> Screen -> Time.Posix -> FileSystem.Volume -> Html Msg
+viewVolume activeFile screen time volume =
     div
         [ style "position" "absolute"
         , style "display" "flex"
@@ -287,10 +325,18 @@ viewVolume screen time volume =
         , Mouse.onMouseUpForObject "disk" (Coordinate.new ( 442, 32 )) screen time MouseMsg
         ]
         [ div
-            [ style "width" (px 32)
-            , style "height" (px 32)
-            , style "background-image" (imgURL "MacOS/disk.gif")
-            ]
+            ([ style "width" (px 32)
+             , style "height" (px 32)
+             , style "background-image" (imgURL "MacOS/disk.gif")
+             ]
+                ++ (case activeFile of
+                        Just "disk" ->
+                            [ style "filter" "invert(1)" ]
+
+                        _ ->
+                            []
+                   )
+            )
             []
         , div
             [ style "height" (px 12)
