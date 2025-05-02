@@ -276,10 +276,10 @@ view model =
          , style "background-color" "black"
          , style "background-image" FillPattern.dither50
          , style "position" "relative"
-         , Screen.scaleAttr model.screen
          , style "overflow" "hidden"
          ]
             ++ Mouse.eventsForDesktop model.screen model.currentTime MouseMsg
+            ++ Screen.scaleAttrs model.screen
         )
         [ viewDebugger model
         , MenuBar.view (Screen.width model.screen) model.menuBar

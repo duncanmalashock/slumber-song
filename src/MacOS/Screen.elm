@@ -1,4 +1,4 @@
-module MacOS.Screen exposing (Screen, height, logical, new, scaleAttr, toScreenCoordinates, update, width)
+module MacOS.Screen exposing (Screen, height, logical, new, scaleAttrs, toScreenCoordinates, update, width)
 
 import Html
 import Html.Attributes
@@ -125,16 +125,16 @@ toScreenCoordinates ((Screen internals) as screen) coord =
 largestScaleAvailable : { screen : Rect, browser : { x : Int, y : Int } } -> Scale
 largestScaleAvailable params =
     let
-        fits : Float -> Bool
-        fits scaleFactor =
+        fits : { scale : Float, margin : Float } -> Bool
+        fits input =
             let
                 widthIfScaled : Float
                 widthIfScaled =
-                    toFloat (Rect.width params.screen) * scaleFactor
+                    toFloat (Rect.width params.screen) * input.scale
 
                 heightIfScaled : Float
                 heightIfScaled =
-                    toFloat (Rect.height params.screen) * scaleFactor
+                    toFloat (Rect.height params.screen) * input.scale
 
                 browserWidth : Float
                 browserWidth =
@@ -144,16 +144,16 @@ largestScaleAvailable params =
                 browserHeight =
                     toFloat params.browser.y
             in
-            (widthIfScaled <= browserWidth)
-                && (heightIfScaled <= browserHeight)
+            (widthIfScaled <= browserWidth - input.margin)
+                && (heightIfScaled <= browserHeight - input.margin)
     in
-    if fits 2 then
+    if fits { scale = 2, margin = 128 } then
         Scale2
 
-    else if fits 1.5 then
+    else if fits { scale = 1.5, margin = 64 } then
         Scale1_5
 
-    else if fits 1 then
+    else if fits { scale = 1, margin = 0 } then
         Scale1
 
     else
@@ -220,10 +220,12 @@ scale (Screen internals) =
         internals.scale
 
 
-scaleAttr : Screen -> Html.Attribute msg
-scaleAttr screen =
-    Html.Attributes.style "transform"
+scaleAttrs : Screen -> List (Html.Attribute msg)
+scaleAttrs screen =
+    [ Html.Attributes.style "transform"
         ("scale(" ++ String.fromFloat (scale screen) ++ ")")
+    , Html.Attributes.style "transition" "transform 150ms"
+    ]
 
 
 scaleToFloat : Int -> Int -> Scale -> Float
