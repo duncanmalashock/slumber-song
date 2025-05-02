@@ -72,7 +72,7 @@ init flags =
             []
       , screen =
             Screen.new
-                { screen = Coordinate.new ( 512, 342 )
+                { screenInPixels = ( 512, 342 )
                 , browser = flags.browserDimensions
                 , devicePixelRatio = flags.devicePixelRatio
                 }
@@ -85,7 +85,7 @@ init flags =
                 ]
       , fileSystem =
             FileSystem.new
-                [ FileSystem.volume "Diskette" []
+                [ FileSystem.volume "disk" []
                 ]
       , mouse = Mouse.new
       , eventRegistry =
@@ -339,15 +339,23 @@ viewVolume activeFile screen time volume =
             )
             []
         , div
-            [ style "height" (px 12)
-            , style "text-align" "center"
-            , style "top" (px 32)
-            , style "left" (px -23)
-            , style "background-color" "white"
-            , style "font-family" "Geneva"
-            , style "line-height" (px 11)
-            , style "padding" "0 2px"
-            ]
+            ([ style "height" (px 12)
+             , style "text-align" "center"
+             , style "top" (px 32)
+             , style "left" (px -23)
+             , style "background-color" "white"
+             , style "font-family" "Geneva"
+             , style "line-height" (px 11)
+             , style "padding" "0 2px"
+             ]
+                ++ (case activeFile of
+                        Just "disk" ->
+                            [ style "filter" "invert(1)" ]
+
+                        _ ->
+                            []
+                   )
+            )
             [ text (FileSystem.name volume) ]
         ]
 

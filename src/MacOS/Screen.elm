@@ -1,4 +1,4 @@
-module MacOS.Screen exposing (Screen, height, logical, new, scale, scaleAttr, toScreenCoordinates, update, width)
+module MacOS.Screen exposing (Screen, height, logical, new, scaleAttr, toScreenCoordinates, update, width)
 
 import Html
 import Html.Attributes
@@ -26,22 +26,40 @@ type alias Internals =
     }
 
 
-new : { screen : Coordinate, browser : { x : Int, y : Int }, devicePixelRatio : Float } -> Screen
+new :
+    { screenInPixels : ( Int, Int )
+    , browser : { x : Int, y : Int }
+    , devicePixelRatio : Float
+    }
+    -> Screen
 new params =
     let
+        newLogical : Rect
+        newLogical =
+            Rect.new
+                ( 0, 0 )
+                ( Tuple.first params.screenInPixels
+                , Tuple.second params.screenInPixels
+                )
+
         selectedScale : Scale
         selectedScale =
-            largestScaleAvailable params
+            largestScaleAvailable
+                { screen = newLogical
+                , browser = params.browser
+                }
 
         centeredPosition : Coordinate
         centeredPosition =
-            calculatePositionInBrowser (Coordinate.x params.screen) selectedScale params
+            calculatePositionInBrowser
+                { scale = selectedScale
+                , logical = newLogical
+                , browser = params.browser
+                , devicePixelRatio = params.devicePixelRatio
+                }
     in
     Screen
-        { logical =
-            Rect.new
-                ( 0, 0 )
-                ( Coordinate.x params.screen, Coordinate.y params.screen )
+        { logical = newLogical
         , scale = selectedScale
         , positionInBrowser = centeredPosition
         , devicePixelRatio = params.devicePixelRatio
@@ -50,19 +68,23 @@ new params =
 
 
 update : { x : Int, y : Int } -> Screen -> Screen
-update newBrowserSize (Screen internals) =
+update browser (Screen internals) =
     let
-        screenSize =
-            Coordinate.new ( Rect.width internals.logical, Rect.height internals.logical )
-
-        params =
-            { screen = screenSize, browser = newBrowserSize, devicePixelRatio = internals.devicePixelRatio }
-
+        newScale : Scale
         newScale =
-            largestScaleAvailable params
+            largestScaleAvailable
+                { screen = internals.logical
+                , browser = browser
+                }
 
+        newPosition : Coordinate
         newPosition =
-            calculatePositionInBrowser (Rect.width internals.logical) newScale params
+            calculatePositionInBrowser
+                { logical = internals.logical
+                , scale = newScale
+                , browser = browser
+                , devicePixelRatio = internals.devicePixelRatio
+                }
     in
     Screen
         { internals
@@ -72,32 +94,58 @@ update newBrowserSize (Screen internals) =
 
 
 toScreenCoordinates : Screen -> Coordinate -> Coordinate
-toScreenCoordinates (Screen internals) coord =
+toScreenCoordinates ((Screen internals) as screen) coord =
     let
         scaleFactor : Float
         scaleFactor =
-            scaleToFloat (Rect.width internals.logical) internals.browserWidth internals.scale
+            scale screen
 
-        browserPos =
-            internals.positionInBrowser
+        coordX : Float
+        coordX =
+            toFloat (Coordinate.x coord)
+
+        coordY : Float
+        coordY =
+            toFloat (Coordinate.y coord)
+
+        offsetX : Float
+        offsetX =
+            toFloat (Coordinate.x internals.positionInBrowser)
+
+        offsetY : Float
+        offsetY =
+            toFloat (Coordinate.x internals.positionInBrowser)
     in
     Coordinate.new
-        ( round ((toFloat (Coordinate.x coord) - toFloat (Coordinate.x browserPos)) / scaleFactor)
-        , round ((toFloat (Coordinate.y coord) - toFloat (Coordinate.y browserPos)) / scaleFactor)
+        ( round ((coordX - offsetX) / scaleFactor)
+        , round ((coordY - offsetY) / scaleFactor)
         )
 
 
-largestScaleAvailable : { screen : Coordinate, browser : { x : Int, y : Int }, devicePixelRatio : Float } -> Scale
+largestScaleAvailable : { screen : Rect, browser : { x : Int, y : Int } } -> Scale
 largestScaleAvailable params =
     let
         fits : Float -> Bool
         fits scaleFactor =
-            toFloat (Coordinate.x params.screen)
-                * scaleFactor
-                <= toFloat params.browser.x
-                && toFloat (Coordinate.y params.screen)
-                * scaleFactor
-                <= toFloat params.browser.y
+            let
+                widthIfScaled : Float
+                widthIfScaled =
+                    toFloat (Rect.width params.screen) * scaleFactor
+
+                heightIfScaled : Float
+                heightIfScaled =
+                    toFloat (Rect.height params.screen) * scaleFactor
+
+                browserWidth : Float
+                browserWidth =
+                    toFloat params.browser.x
+
+                browserHeight : Float
+                browserHeight =
+                    toFloat params.browser.y
+            in
+            (widthIfScaled <= browserWidth)
+                && (heightIfScaled <= browserHeight)
     in
     if fits 2 then
         Scale2
@@ -112,22 +160,32 @@ largestScaleAvailable params =
         ShrinkToWidth params.browser.x
 
 
-calculatePositionInBrowser : Int -> Scale -> { screen : Coordinate, browser : { x : Int, y : Int }, devicePixelRatio : Float } -> Coordinate
-calculatePositionInBrowser logicalWidth scaleValue params =
+calculatePositionInBrowser :
+    { scale : Scale
+    , logical : Rect
+    , browser : { x : Int, y : Int }
+    , devicePixelRatio : Float
+    }
+    -> Coordinate
+calculatePositionInBrowser params =
     let
         scaleFactor : Float
         scaleFactor =
-            scaleToFloat logicalWidth params.browser.x scaleValue
+            scaleToFloat (Rect.width params.logical) params.browser.x params.scale
 
+        scaledScreenWidth : Float
         scaledScreenWidth =
-            toFloat (Coordinate.x params.screen) * scaleFactor
+            toFloat (Rect.width params.logical) * scaleFactor
 
+        scaledScreenHeight : Float
         scaledScreenHeight =
-            toFloat (Coordinate.y params.screen) * scaleFactor
+            toFloat (Rect.height params.logical) * scaleFactor
 
+        offsetX : Float
         offsetX =
             (toFloat params.browser.x - scaledScreenWidth) / 2
 
+        offsetY : Float
         offsetY =
             (toFloat params.browser.y - scaledScreenHeight) / 2
     in
@@ -156,18 +214,21 @@ height (Screen internals) =
 
 scale : Screen -> Float
 scale (Screen internals) =
-    scaleToFloat (Rect.width internals.logical) internals.browserWidth internals.scale
+    scaleToFloat
+        (Rect.width internals.logical)
+        internals.browserWidth
+        internals.scale
 
 
 scaleAttr : Screen -> Html.Attribute msg
-scaleAttr (Screen internals) =
+scaleAttr screen =
     Html.Attributes.style "transform"
-        ("scale(" ++ String.fromFloat (scaleToFloat (Rect.width internals.logical) internals.browserWidth internals.scale) ++ ")")
+        ("scale(" ++ String.fromFloat (scale screen) ++ ")")
 
 
 scaleToFloat : Int -> Int -> Scale -> Float
-scaleToFloat logicalWidth browserWidth s =
-    case s of
+scaleToFloat logicalWidth browserWidth scaleValue =
+    case scaleValue of
         ShrinkToWidth targetWidth ->
             toFloat targetWidth / toFloat logicalWidth
 
