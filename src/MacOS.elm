@@ -511,8 +511,8 @@ viewScreenCorners screen =
 subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
-        [ -- Time.every 50 Tick
-          Browser.Events.onResize BrowserResized
+        [ Time.every 50 Tick
+        , Browser.Events.onResize BrowserResized
         ]
 
 
