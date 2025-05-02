@@ -1,4 +1,4 @@
-module MacOS.Screen exposing (Screen, height, logical, new, scaleAttrs, toScreenCoordinates, update, width)
+module MacOS.Screen exposing (Screen, firstPaintDone, height, logical, new, scaleAttrs, toScreenCoordinates, update, width)
 
 import Html
 import Html.Attributes
@@ -23,6 +23,7 @@ type alias Internals =
     , positionInBrowser : Coordinate
     , devicePixelRatio : Float
     , browserWidth : Int
+    , hasDoneFirstPaint : Bool
     }
 
 
@@ -64,6 +65,7 @@ new params =
         , positionInBrowser = centeredPosition
         , devicePixelRatio = params.devicePixelRatio
         , browserWidth = params.browser.x
+        , hasDoneFirstPaint = False
         }
 
 
@@ -90,6 +92,14 @@ update browser (Screen internals) =
         { internals
             | scale = newScale
             , positionInBrowser = newPosition
+        }
+
+
+firstPaintDone : Screen -> Screen
+firstPaintDone (Screen internals) =
+    Screen
+        { internals
+            | hasDoneFirstPaint = True
         }
 
 
@@ -221,11 +231,16 @@ scale (Screen internals) =
 
 
 scaleAttrs : Screen -> List (Html.Attribute msg)
-scaleAttrs screen =
+scaleAttrs ((Screen internals) as screen) =
     [ Html.Attributes.style "transform"
         ("scale(" ++ String.fromFloat (scale screen) ++ ")")
-    , Html.Attributes.style "transition" "transform 150ms"
     ]
+        ++ (if internals.hasDoneFirstPaint then
+                [ Html.Attributes.style "transition" "transform 150ms" ]
+
+            else
+                []
+           )
 
 
 scaleToFloat : Int -> Int -> Scale -> Float

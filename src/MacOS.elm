@@ -188,6 +188,7 @@ update msg model =
         Tick time ->
             ( { model
                 | currentTime = time
+                , screen = Screen.firstPaintDone model.screen
               }
             , Cmd.none
             )
