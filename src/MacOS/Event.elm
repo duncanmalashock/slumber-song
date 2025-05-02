@@ -1,4 +1,4 @@
-module MacOS.Event exposing (Event(..), Registry, eventToMsgList, on, registry)
+module MacOS.Event exposing (Event(..), Registry, eventToMsgList, registerObject, registry)
 
 import Dict exposing (Dict)
 
@@ -50,23 +50,28 @@ eventToMsgList objectId event (Registry dict) =
             []
 
 
-on : ObjectId -> Event -> msg -> Registry msg -> Registry msg
-on objectId event msg (Registry dict) =
+registerObject : ObjectId -> List { on : Event, msg : msg } -> Registry msg -> Registry msg
+registerObject objectId handlers (Registry dict) =
+    List.foldl (on objectId) (Registry dict) handlers
+
+
+on : ObjectId -> { on : Event, msg : msg } -> Registry msg -> Registry msg
+on objectId handler (Registry dict) =
     let
         append : Maybe (List msg) -> Maybe (List msg)
         append maybeList =
             case maybeList of
                 Nothing ->
-                    Just [ msg ]
+                    Just [ handler.msg ]
 
                 Just list ->
-                    Just (msg :: list)
+                    Just (handler.msg :: list)
 
         updateEventDict : Maybe (Dict EventId (List msg)) -> Maybe (Dict EventId (List msg))
         updateEventDict maybeDict =
             Just
                 (Dict.update
-                    (eventToString event)
+                    (eventToString handler.on)
                     append
                     (Maybe.withDefault Dict.empty maybeDict)
                 )

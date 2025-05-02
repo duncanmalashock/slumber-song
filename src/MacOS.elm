@@ -90,9 +90,13 @@ init flags =
       , mouse = Mouse.new
       , eventRegistry =
             Event.registry
-                |> Event.on "disk" Event.Click ClickedDisk
-                |> Event.on "disk" Event.DoubleClick DoubleClickedDisk
-                |> Event.on "desktop" Event.Click ClickedDesktop
+                |> Event.registerObject "disk"
+                    [ { on = Event.Click, msg = ClickedDisk }
+                    , { on = Event.DoubleClick, msg = DoubleClickedDisk }
+                    ]
+                |> Event.registerObject "desktop"
+                    [ { on = Event.Click, msg = ClickedDesktop }
+                    ]
       }
     , Cmd.none
     )
