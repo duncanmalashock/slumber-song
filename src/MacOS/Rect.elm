@@ -1,6 +1,10 @@
-module MacOS.Rect exposing (Rect, addPosition, bottom, height, left, new, posX, posY, right, size, top, width)
+module MacOS.Rect exposing (Rect, addPosition, bottom, drawDotted, drawSolid, height, left, new, posX, posY, right, size, top, width)
 
+import Html exposing (..)
+import Html.Attributes as Attr exposing (..)
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
+import MacOS.FillPattern as FillPattern
+import MacOS.ViewHelpers as ViewHelpers exposing (imgURL, px)
 
 
 type Rect
@@ -68,3 +72,53 @@ right : Rect -> Int
 right (Rect internals) =
     Coordinate.x internals.position
         + Coordinate.x internals.size
+
+
+type LineStyle
+    = LineStyleSolid
+    | LineStyleDotted
+
+
+drawSolid : Rect -> Html msg
+drawSolid rect =
+    draw rect LineStyleSolid
+
+
+drawDotted : Rect -> Html msg
+drawDotted rect =
+    draw rect LineStyleDotted
+
+
+draw : Rect -> LineStyle -> Html msg
+draw rect lineStyle =
+    let
+        lineStyleAttr : Html.Attribute msg
+        lineStyleAttr =
+            case lineStyle of
+                LineStyleSolid ->
+                    style "background" "black"
+
+                LineStyleDotted ->
+                    style "background-image" FillPattern.dither50
+    in
+    div
+        [ style "position" "absolute"
+        , style "z-index" "1"
+        , style "top" (px (top rect - 1))
+        , style "left" (px (left rect))
+        , style "width" (px (width rect))
+        , style "height" (px (height rect))
+        , style "pointer-events" "none"
+        , style "mix-blend-mode" "multiply"
+        , lineStyleAttr
+        ]
+        [ div
+            [ style "position" "relative"
+            , style "top" (px 1)
+            , style "left" (px 1)
+            , style "width" (px (width rect - 2))
+            , style "height" (px (height rect - 2))
+            , style "background" "white"
+            ]
+            []
+        ]

@@ -45,13 +45,13 @@ type alias Model =
     { currentTime : Time.Posix
     , activeWindow : Maybe String
     , activeFile : Maybe String
-    , dragging : Maybe Window.DragInfo
     , windows : List Window
     , screen : Screen
     , menuBar : MenuBar
     , fileSystem : FileSystem
     , mouse : Mouse
     , eventRegistry : Event.Registry Msg
+    , draggingObject : Maybe Mouse.Object
     }
 
 
@@ -67,7 +67,6 @@ init flags =
     ( { currentTime = Time.millisToPosix flags.currentTimeInMS
       , activeWindow = Nothing
       , activeFile = Nothing
-      , dragging = Nothing
       , windows =
             []
       , screen =
@@ -97,6 +96,7 @@ init flags =
                 |> Event.registerObject "desktop"
                     [ { on = Event.Click, msg = ClickedDesktop }
                     ]
+      , draggingObject = Nothing
       }
     , Cmd.none
     )
@@ -105,15 +105,16 @@ init flags =
 type Msg
     = ClickedWindow Window
     | ClickedDesktop
-    | PointerDownWindowTitle Window.DragInfo
+    | PointerDownWindowTitle Mouse.Object
     | PointerMove Coordinate
-    | PointerUp
     | ClickedDisk
     | DoubleClickedDisk
     | ClickedWindowCloseBox
     | Tick Time.Posix
     | MouseMsg Mouse.Msg
     | BrowserResized Int Int
+    | DragStarted Mouse.Object
+    | DragEnded Mouse.Object
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -125,38 +126,31 @@ update msg model =
         ClickedDesktop ->
             ( { model | activeWindow = Nothing, activeFile = Nothing }, Cmd.none )
 
-        PointerDownWindowTitle dragInfo ->
-            ( { model | dragging = Just dragInfo }, Cmd.none )
-
-        PointerMove newCursorCoordinate ->
+        DragStarted obj ->
             ( { model
-                | dragging =
-                    case model.dragging of
-                        Just dragInfo ->
-                            Just { dragInfo | cursor = newCursorCoordinate }
-
-                        Nothing ->
-                            Nothing
+                | draggingObject = Just obj
               }
             , Cmd.none
             )
 
-        PointerUp ->
-            case model.dragging of
-                Just dragInfo ->
-                    ( { model
-                        | dragging = Nothing
-                        , windows =
-                            model.windows
-                                |> moveDraggedWindow dragInfo
-                                |> bringToFront dragInfo.window
-                        , activeWindow = Just dragInfo.window.title
-                      }
-                    , Cmd.none
-                    )
+        DragEnded obj ->
+            ( { model
+                | draggingObject = Nothing
+              }
+            , Cmd.none
+            )
 
-                Nothing ->
-                    ( { model | dragging = Nothing }, Cmd.none )
+        PointerMove newCursorCoordinate ->
+            ( model
+            , Cmd.none
+            )
+
+        PointerDownWindowTitle obj ->
+            ( { model
+                | draggingObject = Just obj
+              }
+            , Cmd.none
+            )
 
         DoubleClickedDisk ->
             ( { model
@@ -204,11 +198,14 @@ update msg model =
                         Mouse.Click _ { id } ->
                             Event.eventToMsgList id Event.Click model.eventRegistry
 
-                        Mouse.DragStart _ { id } ->
-                            []
-
                         Mouse.DoubleClick _ { id } ->
                             Event.eventToMsgList id Event.DoubleClick model.eventRegistry
+
+                        Mouse.DragStart _ { id } ->
+                            Event.eventToMsgList id Event.DragStart model.eventRegistry
+
+                        Mouse.DragEnd _ { id } ->
+                            Event.eventToMsgList id Event.DragEnd model.eventRegistry
 
                 eventCmds : Cmd Msg
                 eventCmds =
@@ -301,19 +298,6 @@ view model =
                         window
                 )
             |> div []
-        , case model.dragging of
-            Just info ->
-                div []
-                    [ dragOutline
-                        { size = Rect.size info.window.rect
-                        , position =
-                            info.cursor
-                                |> Coordinate.minus info.offset
-                        }
-                    ]
-
-            _ ->
-                ViewHelpers.none
         ]
 
 
@@ -362,31 +346,6 @@ viewVolume activeFile screen time volume =
                    )
             )
             [ text (FileSystem.name volume) ]
-        ]
-
-
-dragOutline : { size : Coordinate, position : Coordinate } -> Html msg
-dragOutline { size, position } =
-    div
-        [ style "position" "fixed"
-        , style "z-index" "1"
-        , style "top" (px (Coordinate.y position - 1))
-        , style "left" (px (Coordinate.x position))
-        , style "width" (px (Coordinate.x size))
-        , style "height" (px (Coordinate.y size))
-        , style "pointer-events" "none"
-        , style "mix-blend-mode" "multiply"
-        , style "background-image" FillPattern.dither50
-        ]
-        [ div
-            [ style "position" "relative"
-            , style "top" (px 1)
-            , style "left" (px 1)
-            , style "width" (px (Coordinate.x size - 2))
-            , style "height" (px (Coordinate.y size - 2))
-            , style "background" "white"
-            ]
-            []
         ]
 
 

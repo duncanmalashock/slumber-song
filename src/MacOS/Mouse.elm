@@ -1,4 +1,4 @@
-module MacOS.Mouse exposing (Event(..), Mouse, Msg, debugEvents, eventsForDesktop, new, onMouseDownForObject, onMouseUpForObject, update)
+module MacOS.Mouse exposing (Event(..), Mouse, Msg, Object, debugEvents, eventsForDesktop, new, onMouseDownForObject, onMouseUpForObject, update)
 
 import Html exposing (Attribute)
 import Html.Events as Events
@@ -27,6 +27,7 @@ type Event
     = Click Time.Posix Object
     | DoubleClick Time.Posix Object
     | DragStart Time.Posix Object
+    | DragEnd Time.Posix Object
 
 
 debugEvents : Mouse -> String
@@ -38,13 +39,17 @@ debugEvents (Mouse internals) =
                 Click _ { id } ->
                     "Click " ++ id
 
+                DoubleClick _ { id } ->
+                    "DoubleClick " ++ id
+
                 DragStart _ { id } ->
                     "DragStart " ++ id
 
-                DoubleClick _ { id } ->
-                    "DoubleClick " ++ id
+                DragEnd _ { id } ->
+                    "DragEnd " ++ id
     in
     internals.eventHistory
+        |> List.take 5
         |> List.map eventToString
         |> String.join ", "
 
@@ -97,7 +102,8 @@ update msg (Mouse internals) =
             List.foldl foldEvents
                 []
                 [ detectClickEvents
-                , detectDragEvents
+                , detectDragStartEvents
+                , detectDragEndEvents
                 , detectDoubleClickEvents internals.doubleClickTimingThreshold
                 ]
     in
@@ -166,11 +172,21 @@ detectDoubleClickEvents timeThreshold msgHistory eventHistory =
             []
 
 
-detectDragEvents : List Msg -> List Event -> List Event
-detectDragEvents msgHistory _ =
+detectDragStartEvents : List Msg -> List Event -> List Event
+detectDragStartEvents msgHistory _ =
     case msgHistory of
-        (MouseMoved time _) :: (MouseDown _ pressedObj) :: _ ->
-            [ DragStart time pressedObj ]
+        (MouseMoved time _) :: (MouseDown _ obj) :: _ ->
+            [ DragStart time obj ]
+
+        _ ->
+            []
+
+
+detectDragEndEvents : List Msg -> List Event -> List Event
+detectDragEndEvents msgHistory _ =
+    case msgHistory of
+        (MouseUp _ obj) :: (MouseMoved time _) :: _ ->
+            [ DragEnd time obj ]
 
         _ ->
             []

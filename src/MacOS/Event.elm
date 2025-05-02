@@ -22,6 +22,8 @@ type alias ObjectId =
 type Event
     = DoubleClick
     | Click
+    | DragStart
+    | DragEnd
 
 
 eventToString : Event -> String
@@ -32,6 +34,12 @@ eventToString event =
 
         Click ->
             "Click"
+
+        DragStart ->
+            "DragStart"
+
+        DragEnd ->
+            "DragEnd"
 
 
 registry : Registry msg

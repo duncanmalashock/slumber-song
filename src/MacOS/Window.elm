@@ -6,6 +6,7 @@ import Html.Events as Events exposing (..)
 import Json.Decode as Decode exposing (Decoder)
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.FillPattern as FillPattern
+import MacOS.Mouse as Mouse exposing (Mouse)
 import MacOS.Rect as Rect exposing (Rect)
 import MacOS.ViewHelpers as ViewHelpers exposing (..)
 
@@ -24,7 +25,7 @@ type alias DragInfo =
     }
 
 
-view : msg -> (DragInfo -> msg) -> (Window -> msg) -> Bool -> Window -> Html msg
+view : msg -> (Mouse.Object -> msg) -> (Window -> msg) -> Bool -> Window -> Html msg
 view closeBoxMsg mouseDownToMsg onClickMsg isActive ({ title, rect } as window) =
     div
         [ style "position" "absolute"
@@ -44,7 +45,7 @@ view closeBoxMsg mouseDownToMsg onClickMsg isActive ({ title, rect } as window) 
         ]
 
 
-viewWindowTitle : msg -> (DragInfo -> msg) -> Bool -> Window -> Html msg
+viewWindowTitle : msg -> (Mouse.Object -> msg) -> Bool -> Window -> Html msg
 viewWindowTitle closeBoxMsg mouseDownToMsg isActive window =
     div
         [ style "position" "absolute"
@@ -55,7 +56,13 @@ viewWindowTitle closeBoxMsg mouseDownToMsg isActive window =
         , style "border-bottom" "solid 1px"
         , style "text-align" "center"
         , style "height" "18px"
-        , onPointerDownForWindowTitle mouseDownToMsg window
+        , onMouseDown
+            (mouseDownToMsg
+                { id = "windowTitle"
+                , offsetFromObjectOrigin = Coordinate.new ( 0, 0 )
+                , mousePosition = Coordinate.new ( 0, 0 )
+                }
+            )
         ]
         [ if isActive then
             viewWindowTitleLines
@@ -78,27 +85,6 @@ viewWindowTitle closeBoxMsg mouseDownToMsg isActive window =
             ]
             [ text window.title ]
         ]
-
-
-onPointerDownForWindowTitle : (DragInfo -> msg) -> Window -> Attribute msg
-onPointerDownForWindowTitle mouseDownToMsg window =
-    Events.stopPropagationOn "pointerdown"
-        (Decode.map4
-            (\cx cy ox oy ->
-                ( mouseDownToMsg
-                    { offset = Coordinate.new ( ox + 1, oy )
-                    , cursorAtDragStart = Coordinate.new ( cx, cy )
-                    , cursor = Coordinate.new ( cx, cy )
-                    , window = window
-                    }
-                , True
-                )
-            )
-            (Decode.field "clientX" ViewHelpers.roundFloat)
-            (Decode.field "clientY" ViewHelpers.roundFloat)
-            (Decode.field "offsetX" ViewHelpers.roundFloat)
-            (Decode.field "offsetY" ViewHelpers.roundFloat)
-        )
 
 
 viewWindowTitleLines : Html msg
