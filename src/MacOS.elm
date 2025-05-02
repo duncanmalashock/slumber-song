@@ -196,13 +196,13 @@ update msg model =
                 mouseEventstoMsgs : Mouse.Event -> List Msg
                 mouseEventstoMsgs mouseEvent =
                     case mouseEvent of
-                        Mouse.ClickedObject _ { id } ->
+                        Mouse.Click _ { id } ->
                             Event.eventToMsgList id Event.Click model.eventRegistry
 
-                        Mouse.DraggedObject _ { id } ->
+                        Mouse.DragStart _ { id } ->
                             []
 
-                        Mouse.DoubleClickedObject _ { id } ->
+                        Mouse.DoubleClick _ { id } ->
                             Event.eventToMsgList id Event.DoubleClick model.eventRegistry
 
                 eventCmds : Cmd Msg

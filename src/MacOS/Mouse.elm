@@ -24,9 +24,9 @@ type alias Internals =
 
 
 type Event
-    = ClickedObject Time.Posix Object
-    | DraggedObject Time.Posix Object
-    | DoubleClickedObject Time.Posix Object
+    = Click Time.Posix Object
+    | DoubleClick Time.Posix Object
+    | DragStart Time.Posix Object
 
 
 debugEvents : Mouse -> String
@@ -39,14 +39,14 @@ debugEvents (Mouse internals) =
 eventToString : Event -> String
 eventToString event =
     case event of
-        ClickedObject _ { id } ->
-            "ClickedObject " ++ id
+        Click _ { id } ->
+            "Click " ++ id
 
-        DraggedObject _ { id } ->
-            "DraggedObject " ++ id
+        DragStart _ { id } ->
+            "DragStart " ++ id
 
-        DoubleClickedObject _ { id } ->
-            "DoubleClickedObject " ++ id
+        DoubleClick _ { id } ->
+            "DoubleClick " ++ id
 
 
 new : Mouse
@@ -117,7 +117,7 @@ detectClickEvents msgHistory _ =
             case List.Extra.findMap toMouseDown recentMsgs of
                 Just ( _, pressedObj ) ->
                     if releasedObj.id == pressedObj.id then
-                        [ ClickedObject time releasedObj ]
+                        [ Click time releasedObj ]
 
                     else
                         []
@@ -142,7 +142,7 @@ toMouseDown msg =
 detectDoubleClickEvents : Int -> List Msg -> List Event -> List Event
 detectDoubleClickEvents timeThreshold msgHistory eventHistory =
     case eventHistory of
-        (ClickedObject newTime newObj) :: (ClickedObject oldTime oldObj) :: _ ->
+        (Click newTime newObj) :: (Click oldTime oldObj) :: _ ->
             let
                 timeDiffInMillis : Int
                 timeDiffInMillis =
@@ -154,7 +154,7 @@ detectDoubleClickEvents timeThreshold msgHistory eventHistory =
                         (newObj.id == oldObj.id)
                             && (timeDiffInMillis < timeThreshold)
                     then
-                        [ DoubleClickedObject newTime newObj ]
+                        [ DoubleClick newTime newObj ]
 
                     else
                         []
@@ -170,7 +170,7 @@ detectDragEvents : List Msg -> List Event -> List Event
 detectDragEvents msgHistory _ =
     case msgHistory of
         (MouseMoved time _) :: (MouseDown _ pressedObj) :: _ ->
-            [ DraggedObject time pressedObj ]
+            [ DragStart time pressedObj ]
 
         _ ->
             []
