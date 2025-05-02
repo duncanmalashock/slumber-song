@@ -54,7 +54,7 @@ new =
         { position = Coordinate.new ( 0, 0 )
         , msgHistory = []
         , eventHistory = []
-        , doubleClickTimingThreshold = 100
+        , doubleClickTimingThreshold = 500
         }
 
 
