@@ -7,6 +7,7 @@ import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
 import Html.Events as Events exposing (..)
 import Json.Decode as Decode exposing (Decoder)
+import MacOS.Context as Context exposing (Context)
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.Event as Event exposing (Event)
 import MacOS.FileSystem as FileSystem exposing (FileSystem)
@@ -17,6 +18,7 @@ import MacOS.Rect as Rect exposing (Rect)
 import MacOS.Screen as Screen exposing (Screen)
 import MacOS.ViewHelpers as ViewHelpers exposing (imgURL, px)
 import MacOS.Window as Window exposing (Window)
+import Set
 import Task
 import Time
 
@@ -36,7 +38,7 @@ viewDebugger model =
             , style "font-family" "Geneva"
             , style "padding" "0 6px"
             ]
-            [ div [] [ text <| Mouse.debugEvents model.mouse ]
+            [ div [] [ text <| Debug.toString (Mouse.position model.mouse) ]
             ]
         ]
 
@@ -51,7 +53,7 @@ type alias Model =
     , fileSystem : FileSystem
     , mouse : Mouse
     , eventRegistry : Event.Registry Msg
-    , draggingObject : Maybe Mouse.Object
+    , draggingObject : Maybe String
     }
 
 
@@ -103,9 +105,9 @@ init flags =
 
 
 type Msg
-    = ClickedWindow Window
+    = ClickedWindow String
     | ClickedDesktop
-    | PointerDownWindowTitle Mouse.Object
+    | PointerDownWindowTitle String
     | PointerMove Coordinate
     | ClickedDisk
     | DoubleClickedDisk
@@ -114,22 +116,25 @@ type Msg
     | MouseMsg Mouse.Msg
     | BrowserResized Int Int
     | DragStarted Mouse.Object
-    | DragEnded Mouse.Object
+    | DragEnded String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        ClickedWindow window ->
-            ( { model | activeWindow = Just window.title, windows = bringToFront window model.windows }, Cmd.none )
+        ClickedWindow objectId ->
+            ( { model
+                | activeWindow = Just objectId
+                , windows = bringToFront objectId model.windows
+              }
+            , Cmd.none
+            )
 
         ClickedDesktop ->
             ( { model | activeWindow = Nothing, activeFile = Nothing }, Cmd.none )
 
         DragStarted obj ->
-            ( { model
-                | draggingObject = Just obj
-              }
+            ( model
             , Cmd.none
             )
 
@@ -145,9 +150,9 @@ update msg model =
             , Cmd.none
             )
 
-        PointerDownWindowTitle obj ->
+        PointerDownWindowTitle objectId ->
             ( { model
-                | draggingObject = Just obj
+                | draggingObject = Just objectId
               }
             , Cmd.none
             )
@@ -160,7 +165,17 @@ update msg model =
                              , rect = Rect.new ( 50, 50 ) ( 200, 150 )
                              }
                            ]
-                , activeWindow = Just "disk"
+                , activeWindow = Just "window:disk"
+                , eventRegistry =
+                    model.eventRegistry
+                        |> Event.registerObject "window:disk"
+                            [ { on = Event.Click, msg = ClickedWindow "window:disk" }
+                            ]
+                        |> Event.registerObject "window:title:disk"
+                            [ { on = Event.DragStart, msg = PointerDownWindowTitle "window:title:disk" }
+                            , { on = Event.Click, msg = ClickedWindow "window:disk" }
+                            , { on = Event.DragEnd, msg = DragEnded "window:title:disk" }
+                            ]
               }
             , Cmd.none
             )
@@ -250,15 +265,15 @@ moveDraggedWindow info windows =
             )
 
 
-bringToFront : Window -> List Window -> List Window
-bringToFront target windows =
+bringToFront : String -> List Window -> List Window
+bringToFront objectId windows =
     windows
         |> List.sortWith
             (\a b ->
-                if a.title == target.title then
+                if a.title == objectId then
                     GT
 
-                else if b.title == target.title then
+                else if b.title == objectId then
                     LT
 
                 else
@@ -266,8 +281,69 @@ bringToFront target windows =
             )
 
 
+type SubEvent
+    = MouseMove
+    | MouseUp
+    | MouseDown
+
+
+subEventsRequiredForEventType : Event -> List SubEvent
+subEventsRequiredForEventType event =
+    case event of
+        Event.DoubleClick ->
+            [ MouseDown
+            , MouseUp
+            ]
+
+        Event.Click ->
+            [ MouseDown
+            , MouseUp
+            ]
+
+        Event.DragStart ->
+            [ MouseDown
+            , MouseMove
+            ]
+
+        Event.DragEnd ->
+            [ MouseMove
+            , MouseUp
+            ]
+
+
+listenersForObject :
+    Model
+    -> { id : String, coordinate : Coordinate }
+    -> List (Attribute Msg)
+listenersForObject model { id, coordinate } =
+    let
+        toListeners : SubEvent -> List (Attribute Msg)
+        toListeners subEvent =
+            case subEvent of
+                MouseMove ->
+                    []
+
+                MouseUp ->
+                    [ Mouse.onMouseUpForObject id coordinate model.screen model.currentTime MouseMsg
+                    ]
+
+                MouseDown ->
+                    [ Mouse.onMouseDownForObject id coordinate model.screen model.currentTime MouseMsg
+                    ]
+    in
+    Event.listForObject id model.eventRegistry
+        |> List.concatMap subEventsRequiredForEventType
+        |> List.concatMap toListeners
+
+
 view : Model -> Html Msg
 view model =
+    let
+        context : Context Msg
+        context =
+            { listenersForObject = listenersForObject model
+            }
+    in
     div
         ([ style "width" (px (Screen.width model.screen))
          , style "height" (px (Screen.height model.screen))
@@ -285,34 +361,49 @@ view model =
         , div []
             (model.fileSystem
                 |> FileSystem.volumes
-                |> List.map (viewVolume model.activeFile model.screen model.currentTime)
+                |> List.map (viewVolume context model.activeFile)
             )
         , model.windows
             |> List.map
                 (\window ->
                     Window.view
+                        context
                         ClickedWindowCloseBox
                         PointerDownWindowTitle
-                        ClickedWindow
-                        (model.activeWindow == Just window.title)
+                        (ClickedWindow "window:disk")
+                        (model.activeWindow == Just "window:disk")
                         window
                 )
             |> div []
+        , case model.draggingObject of
+            Just objId ->
+                Rect.drawDotted (Rect.new ( Mouse.x model.mouse // 2 * 2, Mouse.y model.mouse // 2 * 2 ) ( 200, 150 ))
+
+            Nothing ->
+                ViewHelpers.none
         ]
 
 
-viewVolume : Maybe String -> Screen -> Time.Posix -> FileSystem.Volume -> Html Msg
-viewVolume activeFile screen time volume =
+viewVolume : Context Msg -> Maybe String -> FileSystem.Volume -> Html Msg
+viewVolume context activeFile volume =
+    let
+        coordinate : Coordinate
+        coordinate =
+            Coordinate.new ( 442, 32 )
+    in
     div
-        [ style "position" "absolute"
-        , style "display" "flex"
-        , style "flex-direction" "column"
-        , style "align-items" "center"
-        , style "top" (px 32)
-        , style "left" (px 442)
-        , Mouse.onMouseDownForObject "disk" (Coordinate.new ( 442, 32 )) screen time MouseMsg
-        , Mouse.onMouseUpForObject "disk" (Coordinate.new ( 442, 32 )) screen time MouseMsg
-        ]
+        ([ style "position" "absolute"
+         , style "display" "flex"
+         , style "flex-direction" "column"
+         , style "align-items" "center"
+         , style "top" (px 32)
+         , style "left" (px 442)
+         ]
+            ++ context.listenersForObject
+                { id = "disk"
+                , coordinate = coordinate
+                }
+        )
         [ div
             ([ style "width" (px 32)
              , style "height" (px 32)
@@ -420,8 +511,8 @@ viewScreenCorners screen =
 subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
-        [ Time.every 50 Tick
-        , Browser.Events.onResize BrowserResized
+        [ -- Time.every 50 Tick
+          Browser.Events.onResize BrowserResized
         ]
 
 

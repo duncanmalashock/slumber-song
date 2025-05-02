@@ -1,4 +1,4 @@
-module MacOS.Rect exposing (Rect, addPosition, bottom, drawDotted, drawSolid, height, left, new, posX, posY, right, size, top, width)
+module MacOS.Rect exposing (Rect, addPosition, bottom, drawDotted, drawSolid, height, left, new, posX, posY, position, right, size, top, width)
 
 import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
@@ -19,14 +19,19 @@ new ( x, y ) ( w, h ) =
         }
 
 
+position : Rect -> Coordinate
+position (Rect internals) =
+    internals.position
+
+
 posX : Rect -> Int
-posX (Rect { position }) =
-    Coordinate.x position
+posX (Rect internals) =
+    Coordinate.x internals.position
 
 
 posY : Rect -> Int
-posY (Rect { position }) =
-    Coordinate.y position
+posY (Rect internals) =
+    Coordinate.y internals.position
 
 
 addPosition : Coordinate -> Rect -> Rect

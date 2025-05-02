@@ -1,4 +1,4 @@
-module MacOS.Event exposing (Event(..), Registry, eventToMsgList, registerObject, registry)
+module MacOS.Event exposing (Event(..), Registry, eventToMsgList, listForObject, registerObject, registry)
 
 import Dict exposing (Dict)
 
@@ -26,6 +26,18 @@ type Event
     | DragEnd
 
 
+listForObject : ObjectId -> Registry msg -> List Event
+listForObject objId (Registry dict) =
+    case Dict.get objId dict of
+        Just eventDict ->
+            Dict.toList eventDict
+                |> List.map Tuple.first
+                |> List.filterMap fromString
+
+        Nothing ->
+            []
+
+
 eventToString : Event -> String
 eventToString event =
     case event of
@@ -40,6 +52,25 @@ eventToString event =
 
         DragEnd ->
             "DragEnd"
+
+
+fromString : String -> Maybe Event
+fromString eventId =
+    case eventId of
+        "DoubleClick" ->
+            Just DoubleClick
+
+        "Click" ->
+            Just Click
+
+        "DragStart" ->
+            Just DragStart
+
+        "DragEnd" ->
+            Just DragEnd
+
+        _ ->
+            Nothing
 
 
 registry : Registry msg

@@ -1,4 +1,4 @@
-module MacOS.Mouse exposing (Event(..), Mouse, Msg, Object, debugEvents, eventsForDesktop, new, onMouseDownForObject, onMouseUpForObject, update)
+module MacOS.Mouse exposing (Event(..), Mouse, Msg, Object, debugEvents, eventsForDesktop, new, onMouseDownForObject, onMouseUpForObject, position, update, x, y)
 
 import Html exposing (Attribute)
 import Html.Events as Events
@@ -21,6 +21,21 @@ type alias Internals =
     , eventHistory : List Event
     , doubleClickTimingThreshold : Int
     }
+
+
+position : Mouse -> Coordinate
+position (Mouse internals) =
+    internals.position
+
+
+x : Mouse -> Int
+x (Mouse internals) =
+    Coordinate.x internals.position
+
+
+y : Mouse -> Int
+y (Mouse internals) =
+    Coordinate.y internals.position
 
 
 type Event
@@ -106,11 +121,21 @@ update msg (Mouse internals) =
                 , detectDragEndEvents
                 , detectDoubleClickEvents internals.doubleClickTimingThreshold
                 ]
+
+        newPosition : Coordinate
+        newPosition =
+            case msg of
+                MouseMoved _ newPos ->
+                    newPos
+
+                _ ->
+                    internals.position
     in
     ( Mouse
         { internals
             | msgHistory = updatedMsgHistory
             , eventHistory = newEventList ++ internals.eventHistory
+            , position = newPosition
         }
     , newEventList
     )
@@ -206,14 +231,14 @@ onMouseDownForDesktop screen toMsg =
         (Decode.map2
             (\cx cy ->
                 let
-                    position =
+                    eventPosition =
                         Coordinate.new ( cx, cy )
                             |> Screen.toScreenCoordinates screen
                 in
                 toMsg
                     { id = "desktop"
-                    , offsetFromObjectOrigin = position
-                    , mousePosition = position
+                    , offsetFromObjectOrigin = eventPosition
+                    , mousePosition = eventPosition
                     }
             )
             (Decode.field "clientX" ViewHelpers.roundFloat)
@@ -227,14 +252,14 @@ onMouseUpForDesktop screen toMsg =
         (Decode.map2
             (\cx cy ->
                 let
-                    position =
+                    eventPosition =
                         Coordinate.new ( cx, cy )
                             |> Screen.toScreenCoordinates screen
                 in
                 toMsg
                     { id = "desktop"
-                    , offsetFromObjectOrigin = position
-                    , mousePosition = position
+                    , offsetFromObjectOrigin = eventPosition
+                    , mousePosition = eventPosition
                     }
             )
             (Decode.field "clientX" ViewHelpers.roundFloat)

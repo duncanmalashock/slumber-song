@@ -124,7 +124,7 @@ toScreenCoordinates ((Screen internals) as screen) coord =
 
         offsetY : Float
         offsetY =
-            toFloat (Coordinate.x internals.positionInBrowser)
+            toFloat (Coordinate.y internals.positionInBrowser)
     in
     Coordinate.new
         ( round ((coordX - offsetX) / scaleFactor)
