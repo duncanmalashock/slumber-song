@@ -147,7 +147,7 @@ largestScaleAvailable params =
             (widthIfScaled <= browserWidth - input.margin)
                 && (heightIfScaled <= browserHeight - input.margin)
     in
-    if fits { scale = 2, margin = 128 } then
+    if fits { scale = 2, margin = 72 } then
         Scale2
 
     else if fits { scale = 1.5, margin = 64 } then
