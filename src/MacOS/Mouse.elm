@@ -1,4 +1,4 @@
-module MacOS.Mouse exposing (Event(..), Mouse, Msg(..), debugEvents, eventsForDesktop, new, onMouseDownForObject, onMouseUpForObject, update)
+module MacOS.Mouse exposing (Event(..), Mouse, Msg, debugEvents, eventsForDesktop, new, onMouseDownForObject, onMouseUpForObject, update)
 
 import Html exposing (Attribute)
 import Html.Events as Events
@@ -31,22 +31,22 @@ type Event
 
 debugEvents : Mouse -> String
 debugEvents (Mouse internals) =
+    let
+        eventToString : Event -> String
+        eventToString event =
+            case event of
+                Click _ { id } ->
+                    "Click " ++ id
+
+                DragStart _ { id } ->
+                    "DragStart " ++ id
+
+                DoubleClick _ { id } ->
+                    "DoubleClick " ++ id
+    in
     internals.eventHistory
         |> List.map eventToString
         |> String.join ", "
-
-
-eventToString : Event -> String
-eventToString event =
-    case event of
-        Click _ { id } ->
-            "Click " ++ id
-
-        DragStart _ { id } ->
-            "DragStart " ++ id
-
-        DoubleClick _ { id } ->
-            "DoubleClick " ++ id
 
 
 new : Mouse
@@ -112,6 +112,16 @@ update msg (Mouse internals) =
 
 detectClickEvents : List Msg -> List Event -> List Event
 detectClickEvents msgHistory _ =
+    let
+        toMouseDown : Msg -> Maybe ( Time.Posix, Object )
+        toMouseDown msg =
+            case msg of
+                MouseDown time object ->
+                    Just ( time, object )
+
+                _ ->
+                    Nothing
+    in
     case msgHistory of
         (MouseUp time releasedObj) :: recentMsgs ->
             case List.Extra.findMap toMouseDown recentMsgs of
@@ -127,16 +137,6 @@ detectClickEvents msgHistory _ =
 
         _ ->
             []
-
-
-toMouseDown : Msg -> Maybe ( Time.Posix, Object )
-toMouseDown msg =
-    case msg of
-        MouseDown time object ->
-            Just ( time, object )
-
-        _ ->
-            Nothing
 
 
 detectDoubleClickEvents : Int -> List Msg -> List Event -> List Event
@@ -179,13 +179,13 @@ detectDragEvents msgHistory _ =
 eventsForDesktop : Screen -> Time.Posix -> (Msg -> msg) -> List (Attribute msg)
 eventsForDesktop screen time toMsg =
     [ onMouseMove screen (toMsg << MouseMoved time)
-    , onMouseDown screen (toMsg << MouseDown time)
-    , onMouseUp screen (toMsg << MouseUp time)
+    , onMouseDownForDesktop screen (toMsg << MouseDown time)
+    , onMouseUpForDesktop screen (toMsg << MouseUp time)
     ]
 
 
-onMouseDown : Screen -> (Object -> msg) -> Attribute msg
-onMouseDown screen toMsg =
+onMouseDownForDesktop : Screen -> (Object -> msg) -> Attribute msg
+onMouseDownForDesktop screen toMsg =
     Events.on "pointerdown"
         (Decode.map2
             (\cx cy ->
@@ -205,8 +205,8 @@ onMouseDown screen toMsg =
         )
 
 
-onMouseUp : Screen -> (Object -> msg) -> Attribute msg
-onMouseUp screen toMsg =
+onMouseUpForDesktop : Screen -> (Object -> msg) -> Attribute msg
+onMouseUpForDesktop screen toMsg =
     Events.on "pointerup"
         (Decode.map2
             (\cx cy ->
