@@ -3,6 +3,7 @@ module MacOS.Mouse exposing (Event(..), Mouse, Msg(..), debugEvents, eventsForDe
 import Html exposing (Attribute)
 import Html.Events as Events
 import Json.Decode as Decode exposing (Decoder)
+import List.Extra
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.Rect exposing (Rect)
 import MacOS.Screen as Screen exposing (Screen)
@@ -73,7 +74,7 @@ type alias Object =
 
 maxMsgListLength : Int
 maxMsgListLength =
-    4
+    32
 
 
 update : Msg -> Mouse -> ( Mouse, List Event )
@@ -112,15 +113,30 @@ update msg (Mouse internals) =
 detectClickEvents : List Msg -> List Event -> List Event
 detectClickEvents msgHistory _ =
     case msgHistory of
-        (MouseUp time releasedObj) :: (MouseDown _ pressedObj) :: _ ->
-            if releasedObj.id == pressedObj.id then
-                [ ClickedObject time releasedObj ]
+        (MouseUp time releasedObj) :: recentMsgs ->
+            case List.Extra.findMap toMouseDown recentMsgs of
+                Just ( _, pressedObj ) ->
+                    if releasedObj.id == pressedObj.id then
+                        [ ClickedObject time releasedObj ]
 
-            else
-                []
+                    else
+                        []
+
+                Nothing ->
+                    []
 
         _ ->
             []
+
+
+toMouseDown : Msg -> Maybe ( Time.Posix, Object )
+toMouseDown msg =
+    case msg of
+        MouseDown time object ->
+            Just ( time, object )
+
+        _ ->
+            Nothing
 
 
 detectDoubleClickEvents : Int -> List Msg -> List Event -> List Event
