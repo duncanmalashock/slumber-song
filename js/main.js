@@ -40,7 +40,8 @@ let app = Main.init({
       x: window.innerWidth,
       y: window.innerHeight
     },
-    devicePixelRatio: window.devicePixelRatio
+    devicePixelRatio: window.devicePixelRatio,
+    currentTimeInMS: Date.now()
   }
 });
 

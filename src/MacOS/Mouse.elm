@@ -1,4 +1,4 @@
-module MacOS.Mouse exposing (Mouse, Msg(..), eventsForBaseElement, new, onMouseDownForObject, onMouseUpForObject, update)
+module MacOS.Mouse exposing (Mouse, Msg(..), debugEvents, eventsForDesktop, new, onMouseDownForObject, onMouseUpForObject, update)
 
 import Html exposing (Attribute)
 import Html.Events as Events
@@ -7,42 +7,55 @@ import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.Rect exposing (Rect)
 import MacOS.Screen as Screen exposing (Screen)
 import MacOS.ViewHelpers as ViewHelpers
+import Time
 
 
 type Mouse
     = Mouse Internals
 
 
-type Button
-    = ButtonUp
-    | ButtonDown
-
-
 type alias Internals =
-    { button : Button
-    , position : Coordinate
-    , lastObjectInteraction : Maybe ObjectInteraction
+    { position : Coordinate
+    , msgHistory : List Msg
+    , eventHistory : List Event
     }
 
 
-type ObjectInteraction
-    = PressedMouseOver Object
-    | ReleasedMouseOver Object
+type Event
+    = ClickedObject Time.Posix Object
+    | DraggedObject Time.Posix Object
+
+
+debugEvents : Mouse -> String
+debugEvents (Mouse internals) =
+    internals.eventHistory
+        |> List.map eventToString
+        |> String.join ", "
+
+
+eventToString : Event -> String
+eventToString event =
+    case event of
+        ClickedObject _ { id } ->
+            "ClickedObject " ++ id
+
+        DraggedObject _ { id } ->
+            "DraggedObject " ++ id
 
 
 new : Mouse
 new =
     Mouse
-        { button = ButtonUp
-        , position = Coordinate.new ( 0, 0 )
-        , lastObjectInteraction = Nothing
+        { position = Coordinate.new ( 0, 0 )
+        , msgHistory = []
+        , eventHistory = []
         }
 
 
 type Msg
-    = MouseMoved Coordinate
-    | MouseUp Object
-    | MouseDown Object
+    = MouseMoved Time.Posix Coordinate
+    | MouseUp Time.Posix Object
+    | MouseDown Time.Posix Object
 
 
 type alias Object =
@@ -52,37 +65,64 @@ type alias Object =
     }
 
 
-update : Msg -> Mouse -> Mouse
+maxMsgListLength : Int
+maxMsgListLength =
+    4
+
+
+update : Msg -> Mouse -> ( Mouse, List Event )
 update msg (Mouse internals) =
-    case msg of
-        MouseMoved newPosition ->
-            Mouse
-                { internals
-                    | position = newPosition
-                }
+    let
+        updatedMsgHistory =
+            (msg :: internals.msgHistory)
+                |> List.take maxMsgListLength
 
-        MouseDown object ->
-            Mouse
-                { internals
-                    | button = ButtonDown
-                    , lastObjectInteraction =
-                        Just (PressedMouseOver object)
-                }
-
-        MouseUp object ->
-            Mouse
-                { internals
-                    | button = ButtonUp
-                    , lastObjectInteraction =
-                        Just (ReleasedMouseOver object)
-                }
+        newEventList =
+            List.concatMap
+                (\fn -> fn updatedMsgHistory)
+                [ detectClickEvents
+                , detectDragEvents
+                ]
+    in
+    ( Mouse
+        { internals
+            | msgHistory = updatedMsgHistory
+            , eventHistory =
+                newEventList ++ internals.eventHistory
+        }
+    , newEventList
+    )
 
 
-eventsForBaseElement : Screen -> (Msg -> msg) -> List (Attribute msg)
-eventsForBaseElement screen toMsg =
-    [ onMouseMove screen (toMsg << MouseMoved)
-    , onMouseDown screen (toMsg << MouseDown)
-    , onMouseUp screen (toMsg << MouseUp)
+detectClickEvents : List Msg -> List Event
+detectClickEvents history =
+    case history of
+        (MouseUp time releasedObj) :: (MouseDown _ pressedObj) :: _ ->
+            if releasedObj.id == pressedObj.id then
+                [ ClickedObject time releasedObj ]
+
+            else
+                []
+
+        _ ->
+            []
+
+
+detectDragEvents : List Msg -> List Event
+detectDragEvents history =
+    case history of
+        (MouseMoved time _) :: (MouseDown _ pressedObj) :: _ ->
+            [ DraggedObject time pressedObj ]
+
+        _ ->
+            []
+
+
+eventsForDesktop : Screen -> Time.Posix -> (Msg -> msg) -> List (Attribute msg)
+eventsForDesktop screen time toMsg =
+    [ onMouseMove screen (toMsg << MouseMoved time)
+    , onMouseDown screen (toMsg << MouseDown time)
+    , onMouseUp screen (toMsg << MouseUp time)
     ]
 
 
@@ -142,8 +182,8 @@ onMouseMove screen toMsg =
         )
 
 
-onMouseDownForObject : String -> Coordinate -> Screen -> (Msg -> msg) -> Attribute msg
-onMouseDownForObject objectId objectOrigin screen toMsg =
+onMouseDownForObject : String -> Coordinate -> Screen -> Time.Posix -> (Msg -> msg) -> Attribute msg
+onMouseDownForObject objectId objectOrigin screen time toMsg =
     Events.stopPropagationOn "pointerdown"
         (Decode.map2
             (\cx cy ->
@@ -153,7 +193,7 @@ onMouseDownForObject objectId objectOrigin screen toMsg =
                             |> Screen.toScreenCoordinates screen
                 in
                 ( toMsg <|
-                    MouseDown
+                    MouseDown time
                         { id = objectId
                         , offsetFromObjectOrigin =
                             Coordinate.minus objectOrigin mousePos
@@ -167,8 +207,8 @@ onMouseDownForObject objectId objectOrigin screen toMsg =
         )
 
 
-onMouseUpForObject : String -> Coordinate -> Screen -> (Msg -> msg) -> Attribute msg
-onMouseUpForObject objectId objectOrigin screen toMsg =
+onMouseUpForObject : String -> Coordinate -> Screen -> Time.Posix -> (Msg -> msg) -> Attribute msg
+onMouseUpForObject objectId objectOrigin screen time toMsg =
     Events.stopPropagationOn "pointerup"
         (Decode.map2
             (\cx cy ->
@@ -178,7 +218,7 @@ onMouseUpForObject objectId objectOrigin screen toMsg =
                             |> Screen.toScreenCoordinates screen
                 in
                 ( toMsg <|
-                    MouseUp
+                    MouseUp time
                         { id = objectId
                         , offsetFromObjectOrigin =
                             Coordinate.minus objectOrigin mousePos

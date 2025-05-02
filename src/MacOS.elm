@@ -16,10 +16,12 @@ import MacOS.Rect as Rect exposing (Rect)
 import MacOS.Screen as Screen exposing (Screen)
 import MacOS.ViewHelpers as ViewHelpers exposing (imgURL, px)
 import MacOS.Window as Window exposing (Window)
+import Time
 
 
 type alias Model =
-    { active : Maybe String
+    { currentTime : Time.Posix
+    , active : Maybe String
     , dragging : Maybe Window.DragInfo
     , windows : List Window
     , screen : Screen
@@ -32,12 +34,14 @@ type alias Model =
 type alias Flags =
     { browserDimensions : { x : Int, y : Int }
     , devicePixelRatio : Float
+    , currentTimeInMS : Int
     }
 
 
 init : Flags -> ( Model, Cmd Msg )
 init flags =
-    ( { active = Nothing
+    ( { currentTime = Time.millisToPosix flags.currentTimeInMS
+      , active = Nothing
       , dragging = Nothing
       , windows =
             []
@@ -72,6 +76,7 @@ type Msg
     | PointerUp
     | ClickedDisk FileSystem.Volume
     | ClickedWindowCloseBox
+    | Tick Time.Posix
     | MouseMsg Mouse.Msg
     | BrowserResized Int Int
 
@@ -142,9 +147,20 @@ update msg model =
             , Cmd.none
             )
 
-        MouseMsg mouseMsg ->
+        Tick time ->
             ( { model
-                | mouse = Mouse.update mouseMsg model.mouse
+                | currentTime = time
+              }
+            , Cmd.none
+            )
+
+        MouseMsg mouseMsg ->
+            let
+                ( updatedMouse, maybeEvent ) =
+                    Mouse.update mouseMsg model.mouse
+            in
+            ( { model
+                | mouse = updatedMouse
               }
             , Cmd.none
             )
@@ -195,9 +211,9 @@ viewDebugger model =
     div
         [ style "position" "absolute"
         , style "z-index" "2"
-        , style "top" (px 128)
+        , style "bottom" (px 16)
         , style "left" (px 16)
-        , style "width" (px 480)
+        , style "width" (px (Screen.width model.screen - 32))
         ]
         [ div
             [ style "background-color" "black"
@@ -205,8 +221,7 @@ viewDebugger model =
             , style "font-family" "Geneva"
             , style "padding" "0 6px"
             ]
-            [ div [] [ text <| Debug.toString model.screen ]
-            , div [] [ text <| Debug.toString model.mouse ]
+            [ div [] [ text <| Mouse.debugEvents model.mouse ]
             ]
         ]
 
@@ -222,7 +237,7 @@ view model =
          , Screen.scaleAttr model.screen
          , style "overflow" "hidden"
          ]
-            ++ Mouse.eventsForBaseElement model.screen MouseMsg
+            ++ Mouse.eventsForDesktop model.screen model.currentTime MouseMsg
         )
         [ viewDebugger model
         , MenuBar.view (Screen.width model.screen) model.menuBar
@@ -230,7 +245,7 @@ view model =
         , div []
             (model.fileSystem
                 |> FileSystem.volumes
-                |> List.map (viewVolume model.screen)
+                |> List.map (viewVolume model.screen model.currentTime)
             )
         , model.windows
             |> List.map
@@ -259,8 +274,8 @@ view model =
         ]
 
 
-viewVolume : Screen -> FileSystem.Volume -> Html Msg
-viewVolume screen volume =
+viewVolume : Screen -> Time.Posix -> FileSystem.Volume -> Html Msg
+viewVolume screen time volume =
     div
         [ style "position" "absolute"
         , style "display" "flex"
@@ -268,8 +283,8 @@ viewVolume screen volume =
         , style "align-items" "center"
         , style "top" (px 32)
         , style "left" (px 442)
-        , Mouse.onMouseDownForObject "disk" (Coordinate.new ( 442, 32 )) screen MouseMsg
-        , Mouse.onMouseUpForObject "disk" (Coordinate.new ( 442, 32 )) screen MouseMsg
+        , Mouse.onMouseDownForObject "disk" (Coordinate.new ( 442, 32 )) screen time MouseMsg
+        , Mouse.onMouseUpForObject "disk" (Coordinate.new ( 442, 32 )) screen time MouseMsg
         ]
         [ div
             [ style "width" (px 32)
@@ -386,7 +401,10 @@ viewScreenCorners screen =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    Browser.Events.onResize (\width height -> BrowserResized width height)
+    Sub.batch
+        [ Time.every 50 Tick
+        , Browser.Events.onResize BrowserResized
+        ]
 
 
 main : Program Flags Model Msg
