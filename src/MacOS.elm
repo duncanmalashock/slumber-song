@@ -19,6 +19,26 @@ import MacOS.Window as Window exposing (Window)
 import Time
 
 
+viewDebugger : Model -> Html Msg
+viewDebugger model =
+    div
+        [ style "position" "absolute"
+        , style "z-index" "2"
+        , style "bottom" (px 16)
+        , style "left" (px 16)
+        , style "width" (px (Screen.width model.screen - 32))
+        ]
+        [ div
+            [ style "background-color" "black"
+            , style "color" "white"
+            , style "font-family" "Geneva"
+            , style "padding" "0 6px"
+            ]
+            [ div [] [ text <| Mouse.debugEvents model.mouse ]
+            ]
+        ]
+
+
 type alias Model =
     { currentTime : Time.Posix
     , active : Maybe String
@@ -204,26 +224,6 @@ bringToFront target windows =
                 else
                     EQ
             )
-
-
-viewDebugger : Model -> Html Msg
-viewDebugger model =
-    div
-        [ style "position" "absolute"
-        , style "z-index" "2"
-        , style "bottom" (px 16)
-        , style "left" (px 16)
-        , style "width" (px (Screen.width model.screen - 32))
-        ]
-        [ div
-            [ style "background-color" "black"
-            , style "color" "white"
-            , style "font-family" "Geneva"
-            , style "padding" "0 6px"
-            ]
-            [ div [] [ text <| Mouse.debugEvents model.mouse ]
-            ]
-        ]
 
 
 view : Model -> Html Msg

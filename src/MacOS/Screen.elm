@@ -13,6 +13,7 @@ type Screen
 type Scale
     = ShrinkToWidth Int
     | Scale1
+    | Scale1_5
     | Scale2
 
 
@@ -101,6 +102,9 @@ largestScaleAvailable params =
     if fits 2 then
         Scale2
 
+    else if fits 1.5 then
+        Scale1_5
+
     else if fits 1 then
         Scale1
 
@@ -169,6 +173,9 @@ scaleToFloat logicalWidth browserWidth s =
 
         Scale1 ->
             1.0
+
+        Scale1_5 ->
+            1.5
 
         Scale2 ->
             2.0
