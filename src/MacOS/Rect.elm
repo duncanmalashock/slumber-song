@@ -97,26 +97,41 @@ drawDotted rect =
 draw : Rect -> LineStyle -> Html msg
 draw rect lineStyle =
     let
-        lineStyleAttr : Html.Attribute msg
-        lineStyleAttr =
+        lineStyleAttrs : List (Html.Attribute msg)
+        lineStyleAttrs =
             case lineStyle of
                 LineStyleSolid ->
-                    style "background" "black"
+                    [ style "background" "black" ]
 
                 LineStyleDotted ->
-                    style "background-image" FillPattern.dither50
+                    let
+                        alternatingDotPosition : List (Html.Attribute msg)
+                        alternatingDotPosition =
+                            -- Very cool trick:
+                            -- using an alternating dot pattern make the line always
+                            -- dotted over white and always black over 50% dither
+                            if modBy 2 (top rect + left rect) == 0 then
+                                []
+
+                            else
+                                [ style "background-position-x" "1px" ]
+                    in
+                    [ style "background-image" FillPattern.dither50
+                    ]
+                        ++ alternatingDotPosition
     in
     div
-        [ style "position" "absolute"
-        , style "z-index" "1"
-        , style "top" (px (top rect - 1))
-        , style "left" (px (left rect))
-        , style "width" (px (width rect))
-        , style "height" (px (height rect))
-        , style "pointer-events" "none"
-        , style "mix-blend-mode" "multiply"
-        , lineStyleAttr
-        ]
+        ([ style "position" "absolute"
+         , style "z-index" "1"
+         , style "top" (px (top rect - 1))
+         , style "left" (px (left rect))
+         , style "width" (px (width rect))
+         , style "height" (px (height rect))
+         , style "pointer-events" "none"
+         , style "mix-blend-mode" "multiply"
+         ]
+            ++ lineStyleAttrs
+        )
         [ div
             [ style "position" "relative"
             , style "top" (px 1)

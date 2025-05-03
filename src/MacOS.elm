@@ -377,7 +377,7 @@ view model =
             |> div []
         , case model.draggingObject of
             Just objId ->
-                Rect.drawDotted (Rect.new ( Mouse.x model.mouse // 2 * 2, Mouse.y model.mouse // 2 * 2 ) ( 200, 150 ))
+                Rect.drawDotted (Rect.new ( Mouse.x model.mouse, Mouse.y model.mouse ) ( 200, 150 ))
 
             Nothing ->
                 ViewHelpers.none
