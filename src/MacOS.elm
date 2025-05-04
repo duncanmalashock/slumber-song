@@ -19,6 +19,8 @@ import MacOS.Rect as Rect exposing (Rect)
 import MacOS.Screen as Screen exposing (Screen)
 import MacOS.UIObject as UIObject exposing (UIObject)
 import MacOS.ViewHelpers as ViewHelpers exposing (imgURL, px)
+import MacOS.Visible as Visible exposing (Visible)
+import MacOS.Visible.Rect
 import MacOS.Window as Window exposing (Window)
 import Set
 import Task
@@ -40,7 +42,7 @@ viewDebugger model =
             , style "font-family" "Geneva"
             , style "padding" "0 6px"
             ]
-            [ div [] [ text <| Mouse.debug model.mouse ]
+            [ div [] [ text "" ]
             ]
         ]
 
@@ -52,6 +54,15 @@ type alias Model =
     , fileSystem : FileSystem
     , mouse : Mouse
     , interface : Interface
+    , dragging : Maybe Dragging
+    }
+
+
+type alias Dragging =
+    { objId : String
+    , rect : Rect
+    , offset : Coordinate
+    , visible : Visible
     }
 
 
@@ -88,15 +99,20 @@ init flags =
                 |> Interface.add
                     [ ( "Prickly Pete"
                       , UIObject.new
-                            { rect = Rect.new ( 96, 96 ) ( 128, 128 )
+                            { rect = Rect.new ( 96, 96 ) ( 32, 32 )
                             }
+                            |> UIObject.visible
+                                (Visible.rect MacOS.Visible.Rect.StyleSolidFilled)
                       )
                     , ( "Snoopy"
                       , UIObject.new
-                            { rect = Rect.new ( 196, 64 ) ( 128, 128 )
+                            { rect = Rect.new ( 196, 64 ) ( 32, 32 )
                             }
+                            |> UIObject.visible
+                                (Visible.rect MacOS.Visible.Rect.StyleSolidFilled)
                       )
                     ]
+      , dragging = Nothing
       }
     , Cmd.none
     )
@@ -104,8 +120,9 @@ init flags =
 
 type Msg
     = Tick Time.Posix
-    | MouseMsg { clientPos : ( Int, Int ), buttonPressed : Bool }
     | BrowserResized Int Int
+    | MouseUpdated { clientPos : ( Int, Int ), buttonPressed : Bool }
+    | MouseEvent Mouse.Event
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -119,7 +136,14 @@ update msg model =
             , Cmd.none
             )
 
-        MouseMsg args ->
+        BrowserResized newWidth newHeight ->
+            ( { model
+                | screen = Screen.update { x = newWidth, y = newHeight } model.screen
+              }
+            , Cmd.none
+            )
+
+        MouseUpdated args ->
             let
                 newMousePos : Coordinate
                 newMousePos =
@@ -130,12 +154,16 @@ update msg model =
                 newMouseButtonState =
                     args.buttonPressed
 
+                hitTestResults : List String
+                hitTestResults =
+                    Interface.containingCoordinate newMousePos model.interface
+
                 mouseMsgData : Mouse.MsgData
                 mouseMsgData =
                     { atTime = model.currentTime
                     , buttonPressed = args.buttonPressed
                     , position = newMousePos
-                    , overObjIds = Interface.containingCoordinate newMousePos model.interface
+                    , overObjIds = hitTestResults
                     }
 
                 mouseStateChanged : Bool
@@ -143,47 +171,104 @@ update msg model =
                     (newMousePos /= Mouse.position model.mouse)
                         || (newMouseButtonState /= Mouse.buttonPressed model.mouse)
 
-                updatedMouse : Mouse
-                updatedMouse =
+                ( updatedMouse, newMouseEvents ) =
                     if mouseStateChanged then
                         Mouse.update
                             (Mouse.toMsg mouseMsgData)
                             model.mouse
 
                     else
-                        model.mouse
+                        ( model.mouse, [] )
 
-                --     mouseEventstoMsgs : Mouse.Event -> List Msg
-                --     mouseEventstoMsgs mouseEvent =
-                --         case mouseEvent of
-                --             Mouse.Click _ { id } ->
-                --                 Event.eventToMsgList id Event.Click model.eventRegistry
-                --             Mouse.DoubleClick _ { id } ->
-                --                 Event.eventToMsgList id Event.DoubleClick model.eventRegistry
-                --             Mouse.DragStart _ { id } ->
-                --                 Event.eventToMsgList id Event.DragStart model.eventRegistry
-                --             Mouse.DragEnd _ { id } ->
-                --                 Event.eventToMsgList id Event.DragEnd model.eventRegistry
-                --     eventCmds : Cmd Msg
-                --     eventCmds =
-                --         newMouseEvents
-                --             |> List.concatMap mouseEventstoMsgs
-                --             |> List.map sendMsg
-                --             |> Cmd.batch
+                eventCmds : Cmd Msg
+                eventCmds =
+                    newMouseEvents
+                        |> List.map MouseEvent
+                        |> List.map sendMsg
+                        |> Cmd.batch
+
+                updatedDragging =
+                    case model.dragging of
+                        Just dragging ->
+                            Just
+                                { dragging
+                                    | rect =
+                                        Rect.setPosition (Coordinate.plus newMousePos dragging.offset) dragging.rect
+                                }
+
+                        Nothing ->
+                            Nothing
             in
             ( { model
                 | mouse = updatedMouse
+                , dragging = updatedDragging
               }
-              -- , eventCmds
-            , Cmd.none
+            , eventCmds
             )
 
-        BrowserResized newWidth newHeight ->
-            ( { model
-                | screen = Screen.update { x = newWidth, y = newHeight } model.screen
-              }
-            , Cmd.none
-            )
+        MouseEvent event ->
+            case event of
+                Mouse.Clicked objId ->
+                    ( model
+                    , Cmd.none
+                    )
+
+                Mouse.DoubleClicked objId ->
+                    ( model
+                    , Cmd.none
+                    )
+
+                Mouse.DragStarted objId ->
+                    let
+                        maybeDraggedObject : Maybe UIObject
+                        maybeDraggedObject =
+                            Interface.get objId model.interface
+
+                        updatedModel : Model
+                        updatedModel =
+                            case maybeDraggedObject of
+                                Just obj ->
+                                    let
+                                        mouseOffset =
+                                            Coordinate.minus
+                                                (Mouse.position model.mouse)
+                                                (UIObject.position obj)
+                                    in
+                                    { model
+                                        | dragging =
+                                            Just
+                                                { objId = objId
+                                                , rect = UIObject.rect obj
+                                                , offset = mouseOffset
+                                                , visible = Visible.rect MacOS.Visible.Rect.StyleDotted
+                                                }
+                                    }
+
+                                Nothing ->
+                                    model
+                    in
+                    ( updatedModel
+                    , Cmd.none
+                    )
+
+                Mouse.MouseReleased ->
+                    let
+                        updatedInterface =
+                            case model.dragging of
+                                Just dragging ->
+                                    Interface.update dragging.objId
+                                        (UIObject.setPosition (Rect.position dragging.rect))
+                                        model.interface
+
+                                Nothing ->
+                                    model.interface
+                    in
+                    ( { model
+                        | dragging = Nothing
+                        , interface = updatedInterface
+                      }
+                    , Cmd.none
+                    )
 
 
 sendMsg : Msg -> Cmd Msg
@@ -200,7 +285,7 @@ moveDraggedWindow info windows =
                     { window
                         | rect =
                             window.rect
-                                |> Rect.addPosition (info.cursor |> Coordinate.minus info.cursorAtDragStart)
+                                |> Rect.plus (info.cursor |> Coordinate.minus info.cursorAtDragStart)
                     }
 
                 else
@@ -222,60 +307,6 @@ bringToFront objectId windows =
                 else
                     EQ
             )
-
-
-type SubEvent
-    = MouseMove
-    | MouseUp
-    | MouseDown
-
-
-subEventsRequiredForEventType : Event -> List SubEvent
-subEventsRequiredForEventType event =
-    case event of
-        Event.DoubleClick ->
-            [ MouseDown
-            , MouseUp
-            ]
-
-        Event.Click ->
-            [ MouseDown
-            , MouseUp
-            ]
-
-        Event.DragStart ->
-            [ MouseDown
-            , MouseMove
-            ]
-
-        Event.DragEnd ->
-            [ MouseMove
-            , MouseUp
-            ]
-
-
-
--- listenersForObject :
---     Model
---     -> { id : String, coordinate : Coordinate }
---     -> List (Attribute Msg)
--- listenersForObject model { id, coordinate } =
---     let
---         toListeners : SubEvent -> List (Attribute Msg)
---         toListeners subEvent =
---             case subEvent of
---                 MouseMove ->
---                     []
---                 MouseUp ->
---                     [ Mouse.onMouseUpForObject id coordinate model.screen model.currentTime MouseMsg
---                     ]
---                 MouseDown ->
---                     [ Mouse.onMouseDownForObject id coordinate model.screen model.currentTime MouseMsg
---                     ]
---     in
---     Event.listForObject id model.eventRegistry
---         |> List.concatMap subEventsRequiredForEventType
---         |> List.concatMap toListeners
 
 
 view : Model -> Html Msg
@@ -303,13 +334,14 @@ view model =
          , style "position" "relative"
          , style "overflow" "hidden"
          ]
-            ++ Mouse.eventsForDesktop MouseMsg
+            ++ Mouse.listeners MouseUpdated
             ++ Screen.scaleAttrs model.screen
         )
         [ viewDesktopObjects model
         , viewDesktopRectangles model
         , viewWindows model
         , viewWindowRectangles model
+        , viewDraggedObject model
         , MenuBar.view (Screen.width model.screen) model.menuBar
         , viewDialogs model
         , viewScreenCorners (Screen.logical model.screen)
@@ -336,6 +368,16 @@ viewWindows model =
 viewWindowRectangles : Model -> Html msg
 viewWindowRectangles model =
     ViewHelpers.none
+
+
+viewDraggedObject : Model -> Html msg
+viewDraggedObject model =
+    case model.dragging of
+        Just dragging ->
+            Visible.view dragging.rect dragging.visible
+
+        Nothing ->
+            ViewHelpers.none
 
 
 viewDialogs : Model -> Html msg

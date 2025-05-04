@@ -1,4 +1,18 @@
-module MacOS.Mouse exposing (Mouse, Msg, MsgData, buttonPressed, debug, eventsForDesktop, new, position, toMsg, update, x, y)
+module MacOS.Mouse exposing
+    ( Event(..)
+    , Mouse
+    , Msg
+    , MsgData
+    , buttonPressed
+    , debug
+    , listeners
+    , new
+    , position
+    , toMsg
+    , update
+    , x
+    , y
+    )
 
 import Html exposing (Attribute)
 import Html.Events as Events
@@ -19,6 +33,7 @@ type alias Internals =
     { position : Coordinate
     , buttonPressed : Bool
     , msgHistory : List Msg
+    , eventHistory : List Event
     , doubleClickTimingThreshold : Int
     }
 
@@ -65,6 +80,7 @@ new =
         , buttonPressed = False
         , msgHistory = []
         , doubleClickTimingThreshold = 500
+        , eventHistory = []
         }
 
 
@@ -87,11 +103,16 @@ toMsg data =
 
 maxMsgListLength : Int
 maxMsgListLength =
-    32
+    16
 
 
-update : Msg -> Mouse -> Mouse
-update msg (Mouse internals) =
+maxEventListLength : Int
+maxEventListLength =
+    4
+
+
+update : Msg -> Mouse -> ( Mouse, List Event )
+update ((NewMouseData msgArgs) as msg) (Mouse internals) =
     let
         updatedMsgHistory : List Msg
         updatedMsgHistory =
@@ -99,20 +120,55 @@ update msg (Mouse internals) =
                 |> List.take maxMsgListLength
 
         ( newPosition, newButtonPressed ) =
-            case msg of
-                NewMouseData args ->
-                    ( args.position, args.buttonPressed )
+            ( msgArgs.position, msgArgs.buttonPressed )
+
+        buttonChanged : Bool
+        buttonChanged =
+            msgArgs.buttonPressed /= internals.buttonPressed
+
+        detectedEvents : List Event
+        detectedEvents =
+            detectEvents
+                ( buttonChanged, newButtonPressed )
+                updatedMsgHistory
+                internals.eventHistory
+                msgArgs.overObjIds
     in
-    Mouse
+    ( Mouse
         { internals
             | msgHistory = updatedMsgHistory
             , position = newPosition
             , buttonPressed = newButtonPressed
+            , eventHistory =
+                detectedEvents
+                    ++ internals.eventHistory
+                    |> List.take maxEventListLength
         }
+    , detectedEvents
+    )
 
 
-eventsForDesktop : ({ clientPos : ( Int, Int ), buttonPressed : Bool } -> msg) -> List (Attribute msg)
-eventsForDesktop toMsg_ =
+type Event
+    = Clicked String
+    | DoubleClicked String
+    | DragStarted String
+    | MouseReleased
+
+
+detectEvents : ( Bool, Bool ) -> List msg -> List Event -> List String -> List Event
+detectEvents ( buttonChanged, buttonIsDown ) recentMsgs recentEvents overObjIds =
+    if buttonChanged && buttonIsDown then
+        List.map DragStarted overObjIds
+
+    else if buttonChanged && not buttonIsDown then
+        [ MouseReleased ]
+
+    else
+        []
+
+
+listeners : ({ clientPos : ( Int, Int ), buttonPressed : Bool } -> msg) -> List (Attribute msg)
+listeners toMsg_ =
     [ Events.on "pointermove" (mouseEventDecoder toMsg_)
     , Events.on "pointerdown" (mouseEventDecoder toMsg_)
     , Events.on "pointerup" (mouseEventDecoder toMsg_)

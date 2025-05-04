@@ -1,4 +1,4 @@
-module MacOS.Interface exposing (Interface, add, containingCoordinate, new, view)
+module MacOS.Interface exposing (Interface, add, containingCoordinate, get, new, update, view)
 
 import Dict exposing (Dict)
 import Html exposing (..)
@@ -47,6 +47,22 @@ containingCoordinate coordinate (Interface internals) =
                 else
                     Nothing
             )
+
+
+get : String -> Interface -> Maybe UIObject
+get objId (Interface internals) =
+    Dict.get objId internals.dict
+
+
+update : String -> (UIObject -> UIObject) -> Interface -> Interface
+update objId updateObj (Interface internals) =
+    Interface
+        { internals
+            | dict =
+                Dict.update objId
+                    (\maybeObj -> Maybe.map updateObj maybeObj)
+                    internals.dict
+        }
 
 
 view : Interface -> Html msg
