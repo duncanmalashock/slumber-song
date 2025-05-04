@@ -5,6 +5,7 @@ module MacOS.Mouse exposing
     , MsgData
     , buttonPressed
     , debug
+    , filterEventsByObjId
     , listeners
     , new
     , position
@@ -149,19 +150,49 @@ update ((NewMouseData msgArgs) as msg) (Mouse internals) =
 
 
 type Event
-    = Clicked String
-    | DoubleClicked String
-    | DragStarted String
-    | MouseReleased
+    = MouseDown String
+    | MouseUp
+    | Click String
+    | DoubleClick String
+    | DragStart String
+
+
+filterEventsByObjId : Maybe String -> List Event -> List Event
+filterEventsByObjId maybeObjId events =
+    case maybeObjId of
+        Just objId ->
+            events
+                |> List.filter
+                    (\e ->
+                        case e of
+                            MouseDown idToTest ->
+                                idToTest == objId
+
+                            MouseUp ->
+                                True
+
+                            Click idToTest ->
+                                idToTest == objId
+
+                            DoubleClick idToTest ->
+                                idToTest == objId
+
+                            DragStart idToTest ->
+                                idToTest == objId
+                    )
+
+        Nothing ->
+            events
 
 
 detectEvents : ( Bool, Bool ) -> List msg -> List Event -> List String -> List Event
 detectEvents ( buttonChanged, buttonIsDown ) recentMsgs recentEvents overObjIds =
     if buttonChanged && buttonIsDown then
-        List.map DragStarted overObjIds
+        List.map MouseDown overObjIds
+            ++ List.map DragStart overObjIds
 
     else if buttonChanged && not buttonIsDown then
-        [ MouseReleased ]
+        [ MouseUp ]
 
     else
         []

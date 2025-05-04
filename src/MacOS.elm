@@ -96,17 +96,18 @@ init flags =
       , mouse = Mouse.new
       , interface =
             Interface.new
-                |> Interface.add
+                |> Interface.addLayer { id = "desktop", orderConstraint = Just Interface.AlwaysFirst }
+                |> Interface.addToLayer "desktop"
                     [ ( "Prickly Pete"
                       , UIObject.new
-                            { rect = Rect.new ( 96, 96 ) ( 32, 32 )
+                            { rect = Rect.new ( 96, 96 ) ( 64, 64 )
                             }
                             |> UIObject.visible
                                 (Visible.rect MacOS.Visible.Rect.StyleSolidFilled)
                       )
                     , ( "Snoopy"
                       , UIObject.new
-                            { rect = Rect.new ( 196, 64 ) ( 32, 32 )
+                            { rect = Rect.new ( 128, 128 ) ( 64, 64 )
                             }
                             |> UIObject.visible
                                 (Visible.rect MacOS.Visible.Rect.StyleSolidFilled)
@@ -180,20 +181,28 @@ update msg model =
                     else
                         ( model.mouse, [] )
 
+                pickedId : Maybe String
+                pickedId =
+                    Interface.topmostFromList hitTestResults model.interface
+
                 eventCmds : Cmd Msg
                 eventCmds =
                     newMouseEvents
+                        |> Mouse.filterEventsByObjId pickedId
                         |> List.map MouseEvent
                         |> List.map sendMsg
                         |> Cmd.batch
 
+                updatedDragging : Maybe Dragging
                 updatedDragging =
                     case model.dragging of
                         Just dragging ->
                             Just
                                 { dragging
                                     | rect =
-                                        Rect.setPosition (Coordinate.plus newMousePos dragging.offset) dragging.rect
+                                        Rect.setPosition
+                                            (Coordinate.plus newMousePos dragging.offset)
+                                            dragging.rect
                                 }
 
                         Nothing ->
@@ -208,17 +217,41 @@ update msg model =
 
         MouseEvent event ->
             case event of
-                Mouse.Clicked objId ->
+                Mouse.MouseDown objId ->
                     ( model
                     , Cmd.none
                     )
 
-                Mouse.DoubleClicked objId ->
+                Mouse.MouseUp ->
+                    let
+                        updatedInterface =
+                            case model.dragging of
+                                Just dragging ->
+                                    Interface.update dragging.objId
+                                        (UIObject.setPosition (Rect.position dragging.rect))
+                                        model.interface
+
+                                Nothing ->
+                                    model.interface
+                    in
+                    ( { model
+                        | dragging = Nothing
+                        , interface = updatedInterface
+                      }
+                    , Cmd.none
+                    )
+
+                Mouse.Click objId ->
                     ( model
                     , Cmd.none
                     )
 
-                Mouse.DragStarted objId ->
+                Mouse.DoubleClick objId ->
+                    ( model
+                    , Cmd.none
+                    )
+
+                Mouse.DragStart objId ->
                     let
                         maybeDraggedObject : Maybe UIObject
                         maybeDraggedObject =
@@ -248,25 +281,6 @@ update msg model =
                                     model
                     in
                     ( updatedModel
-                    , Cmd.none
-                    )
-
-                Mouse.MouseReleased ->
-                    let
-                        updatedInterface =
-                            case model.dragging of
-                                Just dragging ->
-                                    Interface.update dragging.objId
-                                        (UIObject.setPosition (Rect.position dragging.rect))
-                                        model.interface
-
-                                Nothing ->
-                                    model.interface
-                    in
-                    ( { model
-                        | dragging = Nothing
-                        , interface = updatedInterface
-                      }
                     , Cmd.none
                     )
 
