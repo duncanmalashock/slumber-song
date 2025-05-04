@@ -1,4 +1,4 @@
-module MacOS.Mouse exposing (Mouse, Msg, MsgData, debug, eventsForDesktop, new, position, toMsg, update, x, y)
+module MacOS.Mouse exposing (Mouse, Msg, MsgData, buttonPressed, debug, eventsForDesktop, new, position, toMsg, update, x, y)
 
 import Html exposing (Attribute)
 import Html.Events as Events
@@ -17,6 +17,7 @@ type Mouse
 
 type alias Internals =
     { position : Coordinate
+    , buttonPressed : Bool
     , msgHistory : List Msg
     , doubleClickTimingThreshold : Int
     }
@@ -25,6 +26,11 @@ type alias Internals =
 position : Mouse -> Coordinate
 position (Mouse internals) =
     internals.position
+
+
+buttonPressed : Mouse -> Bool
+buttonPressed (Mouse internals) =
+    internals.buttonPressed
 
 
 x : Mouse -> Int
@@ -47,7 +53,7 @@ debug (Mouse internals) =
                     "[ " ++ String.join ", " args.overObjIds ++ " ]"
     in
     internals.msgHistory
-        |> List.take 1
+        |> List.take 10
         |> List.map msgToString
         |> String.join ", "
 
@@ -56,6 +62,7 @@ new : Mouse
 new =
     Mouse
         { position = Coordinate.new ( 0, 0 )
+        , buttonPressed = False
         , msgHistory = []
         , doubleClickTimingThreshold = 500
         }
@@ -67,7 +74,7 @@ type Msg
 
 type alias MsgData =
     { atTime : Time.Posix
-    , mouseButtonPressed : Bool
+    , buttonPressed : Bool
     , position : Coordinate
     , overObjIds : List String
     }
@@ -91,34 +98,34 @@ update msg (Mouse internals) =
             (msg :: internals.msgHistory)
                 |> List.take maxMsgListLength
 
-        newPosition : Coordinate
-        newPosition =
+        ( newPosition, newButtonPressed ) =
             case msg of
                 NewMouseData args ->
-                    args.position
+                    ( args.position, args.buttonPressed )
     in
     Mouse
         { internals
             | msgHistory = updatedMsgHistory
             , position = newPosition
+            , buttonPressed = newButtonPressed
         }
 
 
-eventsForDesktop : ({ clientPos : ( Int, Int ), buttonClicked : Bool } -> msg) -> List (Attribute msg)
+eventsForDesktop : ({ clientPos : ( Int, Int ), buttonPressed : Bool } -> msg) -> List (Attribute msg)
 eventsForDesktop toMsg_ =
     [ onMouseMove toMsg_
     , onMouseDown toMsg_
     ]
 
 
-onMouseMove : ({ clientPos : ( Int, Int ), buttonClicked : Bool } -> msg) -> Attribute msg
+onMouseMove : ({ clientPos : ( Int, Int ), buttonPressed : Bool } -> msg) -> Attribute msg
 onMouseMove toMsg_ =
     Events.on "pointermove"
         (Decode.map3
             (\cx cy b ->
                 toMsg_
                     { clientPos = ( cx, cy )
-                    , buttonClicked = b == 1
+                    , buttonPressed = b == 1
                     }
             )
             (Decode.field "clientX" ViewHelpers.roundFloat)
@@ -127,14 +134,14 @@ onMouseMove toMsg_ =
         )
 
 
-onMouseDown : ({ clientPos : ( Int, Int ), buttonClicked : Bool } -> msg) -> Attribute msg
+onMouseDown : ({ clientPos : ( Int, Int ), buttonPressed : Bool } -> msg) -> Attribute msg
 onMouseDown toMsg_ =
     Events.on "pointerdown"
         (Decode.map3
             (\cx cy b ->
                 toMsg_
                     { clientPos = ( cx, cy )
-                    , buttonClicked = b == 1
+                    , buttonPressed = b == 1
                     }
             )
             (Decode.field "clientX" ViewHelpers.roundFloat)
@@ -143,14 +150,14 @@ onMouseDown toMsg_ =
         )
 
 
-onMouseUp : ({ clientPos : ( Int, Int ), buttonClicked : Bool } -> msg) -> Attribute msg
+onMouseUp : ({ clientPos : ( Int, Int ), buttonPressed : Bool } -> msg) -> Attribute msg
 onMouseUp toMsg_ =
     Events.on "pointerup"
         (Decode.map3
             (\cx cy b ->
                 toMsg_
                     { clientPos = ( cx, cy )
-                    , buttonClicked = b == 1
+                    , buttonPressed = b == 1
                     }
             )
             (Decode.field "clientX" ViewHelpers.roundFloat)

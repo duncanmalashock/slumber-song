@@ -104,7 +104,7 @@ init flags =
 
 type Msg
     = Tick Time.Posix
-    | MouseMsg { clientPos : ( Int, Int ), buttonClicked : Bool }
+    | MouseMsg { clientPos : ( Int, Int ), buttonPressed : Bool }
     | BrowserResized Int Int
 
 
@@ -121,22 +121,36 @@ update msg model =
 
         MouseMsg args ->
             let
+                newMousePos : Coordinate
                 newMousePos =
                     Coordinate.new args.clientPos
                         |> Screen.toScreenCoordinates model.screen
 
+                newMouseButtonState : Bool
+                newMouseButtonState =
+                    args.buttonPressed
+
                 mouseMsgData : Mouse.MsgData
                 mouseMsgData =
                     { atTime = model.currentTime
-                    , mouseButtonPressed = args.buttonClicked
+                    , buttonPressed = args.buttonPressed
                     , position = newMousePos
                     , overObjIds = Interface.containingCoordinate newMousePos model.interface
                     }
 
+                mouseStateChanged : Bool
+                mouseStateChanged =
+                    (newMousePos /= Mouse.position model.mouse)
+                        || (newMouseButtonState /= Mouse.buttonPressed model.mouse)
+
                 updatedMouse : Mouse
                 updatedMouse =
-                    Mouse.update
-                        (Mouse.toMsg mouseMsgData)
+                    if mouseStateChanged then
+                        Mouse.update
+                            (Mouse.toMsg mouseMsgData)
+                            model.mouse
+
+                    else
                         model.mouse
 
                 --     mouseEventstoMsgs : Mouse.Event -> List Msg
