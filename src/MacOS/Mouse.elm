@@ -113,54 +113,21 @@ update msg (Mouse internals) =
 
 eventsForDesktop : ({ clientPos : ( Int, Int ), buttonPressed : Bool } -> msg) -> List (Attribute msg)
 eventsForDesktop toMsg_ =
-    [ onMouseMove toMsg_
-    , onMouseDown toMsg_
+    [ Events.on "pointermove" (mouseEventDecoder toMsg_)
+    , Events.on "pointerdown" (mouseEventDecoder toMsg_)
+    , Events.on "pointerup" (mouseEventDecoder toMsg_)
     ]
 
 
-onMouseMove : ({ clientPos : ( Int, Int ), buttonPressed : Bool } -> msg) -> Attribute msg
-onMouseMove toMsg_ =
-    Events.on "pointermove"
-        (Decode.map3
-            (\cx cy b ->
-                toMsg_
-                    { clientPos = ( cx, cy )
-                    , buttonPressed = b == 1
-                    }
-            )
-            (Decode.field "clientX" ViewHelpers.roundFloat)
-            (Decode.field "clientY" ViewHelpers.roundFloat)
-            (Decode.field "buttons" Decode.int)
+mouseEventDecoder : ({ clientPos : ( Int, Int ), buttonPressed : Bool } -> msg) -> Decoder msg
+mouseEventDecoder toMsg_ =
+    Decode.map3
+        (\cx cy b ->
+            toMsg_
+                { clientPos = ( cx, cy )
+                , buttonPressed = b == 1
+                }
         )
-
-
-onMouseDown : ({ clientPos : ( Int, Int ), buttonPressed : Bool } -> msg) -> Attribute msg
-onMouseDown toMsg_ =
-    Events.on "pointerdown"
-        (Decode.map3
-            (\cx cy b ->
-                toMsg_
-                    { clientPos = ( cx, cy )
-                    , buttonPressed = b == 1
-                    }
-            )
-            (Decode.field "clientX" ViewHelpers.roundFloat)
-            (Decode.field "clientY" ViewHelpers.roundFloat)
-            (Decode.field "buttons" Decode.int)
-        )
-
-
-onMouseUp : ({ clientPos : ( Int, Int ), buttonPressed : Bool } -> msg) -> Attribute msg
-onMouseUp toMsg_ =
-    Events.on "pointerup"
-        (Decode.map3
-            (\cx cy b ->
-                toMsg_
-                    { clientPos = ( cx, cy )
-                    , buttonPressed = b == 1
-                    }
-            )
-            (Decode.field "clientX" ViewHelpers.roundFloat)
-            (Decode.field "clientY" ViewHelpers.roundFloat)
-            (Decode.field "buttons" Decode.int)
-        )
+        (Decode.field "clientX" ViewHelpers.roundFloat)
+        (Decode.field "clientY" ViewHelpers.roundFloat)
+        (Decode.field "buttons" Decode.int)
