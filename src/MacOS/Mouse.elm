@@ -1,4 +1,4 @@
-module MacOS.Mouse exposing (Event(..), Mouse, Msg, Object, debugEvents, eventsForDesktop, new, onMouseDownForObject, onMouseUpForObject, position, update, x, y)
+module MacOS.Mouse exposing (Mouse, Msg, MsgData, debug, eventsForDesktop, new, position, toMsg, update, x, y)
 
 import Html exposing (Attribute)
 import Html.Events as Events
@@ -18,7 +18,6 @@ type Mouse
 type alias Internals =
     { position : Coordinate
     , msgHistory : List Msg
-    , eventHistory : List Event
     , doubleClickTimingThreshold : Int
     }
 
@@ -38,34 +37,18 @@ y (Mouse internals) =
     Coordinate.y internals.position
 
 
-type Event
-    = Click Time.Posix Object
-    | DoubleClick Time.Posix Object
-    | DragStart Time.Posix Object
-    | DragEnd Time.Posix Object
-
-
-debugEvents : Mouse -> String
-debugEvents (Mouse internals) =
+debug : Mouse -> String
+debug (Mouse internals) =
     let
-        eventToString : Event -> String
-        eventToString event =
+        msgToString : Msg -> String
+        msgToString event =
             case event of
-                Click _ { id } ->
-                    "Click " ++ id
-
-                DoubleClick _ { id } ->
-                    "DoubleClick " ++ id
-
-                DragStart _ { id } ->
-                    "DragStart " ++ id
-
-                DragEnd _ { id } ->
-                    "DragEnd " ++ id
+                NewMouseData args ->
+                    "[ " ++ String.join ", " args.overObjIds ++ " ]"
     in
-    internals.eventHistory
-        |> List.take 5
-        |> List.map eventToString
+    internals.msgHistory
+        |> List.take 1
+        |> List.map msgToString
         |> String.join ", "
 
 
@@ -74,22 +57,25 @@ new =
     Mouse
         { position = Coordinate.new ( 0, 0 )
         , msgHistory = []
-        , eventHistory = []
         , doubleClickTimingThreshold = 500
         }
 
 
 type Msg
-    = MouseMoved Time.Posix Coordinate
-    | MouseUp Time.Posix Object
-    | MouseDown Time.Posix Object
+    = NewMouseData MsgData
 
 
-type alias Object =
-    { id : String
-    , offsetFromObjectOrigin : Coordinate
-    , mousePosition : Coordinate
+type alias MsgData =
+    { atTime : Time.Posix
+    , mouseButtonPressed : Bool
+    , position : Coordinate
+    , overObjIds : List String
     }
+
+
+toMsg : MsgData -> Msg
+toMsg data =
+    NewMouseData data
 
 
 maxMsgListLength : Int
@@ -97,7 +83,7 @@ maxMsgListLength =
     32
 
 
-update : Msg -> Mouse -> ( Mouse, List Event )
+update : Msg -> Mouse -> Mouse
 update msg (Mouse internals) =
     let
         updatedMsgHistory : List Msg
@@ -105,227 +91,69 @@ update msg (Mouse internals) =
             (msg :: internals.msgHistory)
                 |> List.take maxMsgListLength
 
-        foldEvents :
-            (List Msg -> List Event -> List Event)
-            -> List Event
-            -> List Event
-        foldEvents detectorFn newEventsSoFar =
-            detectorFn updatedMsgHistory (newEventsSoFar ++ internals.eventHistory) ++ newEventsSoFar
-
-        newEventList : List Event
-        newEventList =
-            List.foldl foldEvents
-                []
-                [ detectClickEvents
-                , detectDragStartEvents
-                , detectDragEndEvents
-                , detectDoubleClickEvents internals.doubleClickTimingThreshold
-                ]
-
         newPosition : Coordinate
         newPosition =
             case msg of
-                MouseMoved _ newPos ->
-                    newPos
-
-                _ ->
-                    internals.position
+                NewMouseData args ->
+                    args.position
     in
-    ( Mouse
+    Mouse
         { internals
             | msgHistory = updatedMsgHistory
-            , eventHistory = newEventList ++ internals.eventHistory
             , position = newPosition
         }
-    , newEventList
-    )
 
 
-detectClickEvents : List Msg -> List Event -> List Event
-detectClickEvents msgHistory _ =
-    let
-        toMouseDown : Msg -> Maybe ( Time.Posix, Object )
-        toMouseDown msg =
-            case msg of
-                MouseDown time object ->
-                    Just ( time, object )
-
-                _ ->
-                    Nothing
-    in
-    case msgHistory of
-        (MouseUp time releasedObj) :: recentMsgs ->
-            case List.Extra.findMap toMouseDown recentMsgs of
-                Just ( _, pressedObj ) ->
-                    if releasedObj.id == pressedObj.id then
-                        [ Click time releasedObj ]
-
-                    else
-                        []
-
-                Nothing ->
-                    []
-
-        _ ->
-            []
-
-
-detectDoubleClickEvents : Int -> List Msg -> List Event -> List Event
-detectDoubleClickEvents timeThreshold msgHistory eventHistory =
-    case eventHistory of
-        (Click newTime newObj) :: (Click oldTime oldObj) :: _ ->
-            let
-                timeDiffInMillis : Int
-                timeDiffInMillis =
-                    Time.posixToMillis newTime - Time.posixToMillis oldTime
-            in
-            case msgHistory of
-                (MouseUp _ _) :: _ ->
-                    if
-                        (newObj.id == oldObj.id)
-                            && (timeDiffInMillis < timeThreshold)
-                    then
-                        [ DoubleClick newTime newObj ]
-
-                    else
-                        []
-
-                _ ->
-                    []
-
-        _ ->
-            []
-
-
-detectDragStartEvents : List Msg -> List Event -> List Event
-detectDragStartEvents msgHistory _ =
-    case msgHistory of
-        (MouseMoved time _) :: (MouseDown _ obj) :: _ ->
-            [ DragStart time obj ]
-
-        _ ->
-            []
-
-
-detectDragEndEvents : List Msg -> List Event -> List Event
-detectDragEndEvents msgHistory _ =
-    case msgHistory of
-        (MouseUp _ obj) :: (MouseMoved time _) :: _ ->
-            [ DragEnd time obj ]
-
-        _ ->
-            []
-
-
-eventsForDesktop : Screen -> Time.Posix -> (Msg -> msg) -> List (Attribute msg)
-eventsForDesktop screen time toMsg =
-    [ onMouseMove screen (toMsg << MouseMoved time)
-    , onMouseDownForDesktop screen (toMsg << MouseDown time)
-    , onMouseUpForDesktop screen (toMsg << MouseUp time)
+eventsForDesktop : ({ clientPos : ( Int, Int ), buttonClicked : Bool } -> msg) -> List (Attribute msg)
+eventsForDesktop toMsg_ =
+    [ onMouseMove toMsg_
+    , onMouseDown toMsg_
     ]
 
 
-onMouseDownForDesktop : Screen -> (Object -> msg) -> Attribute msg
-onMouseDownForDesktop screen toMsg =
-    Events.on "pointerdown"
-        (Decode.map2
-            (\cx cy ->
-                let
-                    eventPosition =
-                        Coordinate.new ( cx, cy )
-                            |> Screen.toScreenCoordinates screen
-                in
-                toMsg
-                    { id = "desktop"
-                    , offsetFromObjectOrigin = eventPosition
-                    , mousePosition = eventPosition
-                    }
-            )
-            (Decode.field "clientX" ViewHelpers.roundFloat)
-            (Decode.field "clientY" ViewHelpers.roundFloat)
-        )
-
-
-onMouseUpForDesktop : Screen -> (Object -> msg) -> Attribute msg
-onMouseUpForDesktop screen toMsg =
-    Events.on "pointerup"
-        (Decode.map2
-            (\cx cy ->
-                let
-                    eventPosition =
-                        Coordinate.new ( cx, cy )
-                            |> Screen.toScreenCoordinates screen
-                in
-                toMsg
-                    { id = "desktop"
-                    , offsetFromObjectOrigin = eventPosition
-                    , mousePosition = eventPosition
-                    }
-            )
-            (Decode.field "clientX" ViewHelpers.roundFloat)
-            (Decode.field "clientY" ViewHelpers.roundFloat)
-        )
-
-
-onMouseMove : Screen -> (Coordinate -> msg) -> Attribute msg
-onMouseMove screen toMsg =
+onMouseMove : ({ clientPos : ( Int, Int ), buttonClicked : Bool } -> msg) -> Attribute msg
+onMouseMove toMsg_ =
     Events.on "pointermove"
-        (Decode.map2
-            (\cx cy ->
-                Coordinate.new ( cx, cy )
-                    |> Screen.toScreenCoordinates screen
-                    |> toMsg
+        (Decode.map3
+            (\cx cy b ->
+                toMsg_
+                    { clientPos = ( cx, cy )
+                    , buttonClicked = b == 1
+                    }
             )
             (Decode.field "clientX" ViewHelpers.roundFloat)
             (Decode.field "clientY" ViewHelpers.roundFloat)
+            (Decode.field "buttons" Decode.int)
         )
 
 
-onMouseDownForObject : String -> Coordinate -> Screen -> Time.Posix -> (Msg -> msg) -> Attribute msg
-onMouseDownForObject objectId objectOrigin screen time toMsg =
-    Events.stopPropagationOn "pointerdown"
-        (Decode.map2
-            (\cx cy ->
-                let
-                    mousePos =
-                        Coordinate.new ( cx, cy )
-                            |> Screen.toScreenCoordinates screen
-                in
-                ( toMsg <|
-                    MouseDown time
-                        { id = objectId
-                        , offsetFromObjectOrigin =
-                            Coordinate.minus objectOrigin mousePos
-                        , mousePosition = mousePos
-                        }
-                , True
-                )
+onMouseDown : ({ clientPos : ( Int, Int ), buttonClicked : Bool } -> msg) -> Attribute msg
+onMouseDown toMsg_ =
+    Events.on "pointerdown"
+        (Decode.map3
+            (\cx cy b ->
+                toMsg_
+                    { clientPos = ( cx, cy )
+                    , buttonClicked = b == 1
+                    }
             )
             (Decode.field "clientX" ViewHelpers.roundFloat)
             (Decode.field "clientY" ViewHelpers.roundFloat)
+            (Decode.field "buttons" Decode.int)
         )
 
 
-onMouseUpForObject : String -> Coordinate -> Screen -> Time.Posix -> (Msg -> msg) -> Attribute msg
-onMouseUpForObject objectId objectOrigin screen time toMsg =
-    Events.stopPropagationOn "pointerup"
-        (Decode.map2
-            (\cx cy ->
-                let
-                    mousePos =
-                        Coordinate.new ( cx, cy )
-                            |> Screen.toScreenCoordinates screen
-                in
-                ( toMsg <|
-                    MouseUp time
-                        { id = objectId
-                        , offsetFromObjectOrigin =
-                            Coordinate.minus objectOrigin mousePos
-                        , mousePosition = mousePos
-                        }
-                , True
-                )
+onMouseUp : ({ clientPos : ( Int, Int ), buttonClicked : Bool } -> msg) -> Attribute msg
+onMouseUp toMsg_ =
+    Events.on "pointerup"
+        (Decode.map3
+            (\cx cy b ->
+                toMsg_
+                    { clientPos = ( cx, cy )
+                    , buttonClicked = b == 1
+                    }
             )
             (Decode.field "clientX" ViewHelpers.roundFloat)
             (Decode.field "clientY" ViewHelpers.roundFloat)
+            (Decode.field "buttons" Decode.int)
         )

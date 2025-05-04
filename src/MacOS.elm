@@ -12,10 +12,12 @@ import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.Event as Event exposing (Event)
 import MacOS.FileSystem as FileSystem exposing (FileSystem)
 import MacOS.FillPattern as FillPattern
+import MacOS.Interface as Interface exposing (Interface)
 import MacOS.MenuBar as MenuBar exposing (MenuBar)
 import MacOS.Mouse as Mouse exposing (Mouse)
 import MacOS.Rect as Rect exposing (Rect)
 import MacOS.Screen as Screen exposing (Screen)
+import MacOS.UIObject as UIObject exposing (UIObject)
 import MacOS.ViewHelpers as ViewHelpers exposing (imgURL, px)
 import MacOS.Window as Window exposing (Window)
 import Set
@@ -38,22 +40,18 @@ viewDebugger model =
             , style "font-family" "Geneva"
             , style "padding" "0 6px"
             ]
-            [ div [] [ text <| Debug.toString (Mouse.position model.mouse) ]
+            [ div [] [ text <| Mouse.debug model.mouse ]
             ]
         ]
 
 
 type alias Model =
     { currentTime : Time.Posix
-    , activeWindow : Maybe String
-    , activeFile : Maybe String
-    , windows : List Window
     , screen : Screen
     , menuBar : MenuBar
     , fileSystem : FileSystem
     , mouse : Mouse
-    , eventRegistry : Event.Registry Msg
-    , draggingObject : Maybe String
+    , interface : Interface
     }
 
 
@@ -67,10 +65,6 @@ type alias Flags =
 init : Flags -> ( Model, Cmd Msg )
 init flags =
     ( { currentTime = Time.millisToPosix flags.currentTimeInMS
-      , activeWindow = Nothing
-      , activeFile = Nothing
-      , windows =
-            []
       , screen =
             Screen.new
                 { screenInPixels = ( 512, 342 )
@@ -89,111 +83,34 @@ init flags =
                 [ FileSystem.volume "disk" []
                 ]
       , mouse = Mouse.new
-      , eventRegistry =
-            Event.registry
-                |> Event.registerObject "disk"
-                    [ { on = Event.Click, msg = ClickedDisk }
-                    , { on = Event.DoubleClick, msg = DoubleClickedDisk }
+      , interface =
+            Interface.new
+                |> Interface.add
+                    [ ( "Prickly Pete"
+                      , UIObject.new
+                            { rect = Rect.new ( 96, 96 ) ( 128, 128 )
+                            }
+                      )
+                    , ( "Snoopy"
+                      , UIObject.new
+                            { rect = Rect.new ( 196, 64 ) ( 128, 128 )
+                            }
+                      )
                     ]
-                |> Event.registerObject "desktop"
-                    [ { on = Event.Click, msg = ClickedDesktop }
-                    ]
-      , draggingObject = Nothing
       }
     , Cmd.none
     )
 
 
 type Msg
-    = ClickedWindow String
-    | ClickedDesktop
-    | PointerDownWindowTitle String
-    | PointerMove Coordinate
-    | ClickedDisk
-    | DoubleClickedDisk
-    | ClickedWindowCloseBox
-    | Tick Time.Posix
-    | MouseMsg Mouse.Msg
+    = Tick Time.Posix
+    | MouseMsg { clientPos : ( Int, Int ), buttonClicked : Bool }
     | BrowserResized Int Int
-    | DragStarted Mouse.Object
-    | DragEnded String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        ClickedWindow objectId ->
-            ( { model
-                | activeWindow = Just objectId
-                , windows = bringToFront objectId model.windows
-              }
-            , Cmd.none
-            )
-
-        ClickedDesktop ->
-            ( { model | activeWindow = Nothing, activeFile = Nothing }, Cmd.none )
-
-        DragStarted obj ->
-            ( model
-            , Cmd.none
-            )
-
-        DragEnded obj ->
-            ( { model
-                | draggingObject = Nothing
-              }
-            , Cmd.none
-            )
-
-        PointerMove newCursorCoordinate ->
-            ( model
-            , Cmd.none
-            )
-
-        PointerDownWindowTitle objectId ->
-            ( { model
-                | draggingObject = Just objectId
-              }
-            , Cmd.none
-            )
-
-        DoubleClickedDisk ->
-            ( { model
-                | windows =
-                    model.windows
-                        ++ [ { title = "disk"
-                             , rect = Rect.new ( 50, 50 ) ( 200, 150 )
-                             }
-                           ]
-                , activeWindow = Just "window:disk"
-                , eventRegistry =
-                    model.eventRegistry
-                        |> Event.registerObject "window:disk"
-                            [ { on = Event.Click, msg = ClickedWindow "window:disk" }
-                            ]
-                        |> Event.registerObject "window:title:disk"
-                            [ { on = Event.DragStart, msg = PointerDownWindowTitle "window:title:disk" }
-                            , { on = Event.Click, msg = ClickedWindow "window:disk" }
-                            , { on = Event.DragEnd, msg = DragEnded "window:title:disk" }
-                            ]
-              }
-            , Cmd.none
-            )
-
-        ClickedDisk ->
-            ( { model
-                | activeFile = Just "disk"
-              }
-            , Cmd.none
-            )
-
-        ClickedWindowCloseBox ->
-            ( { model
-                | windows = []
-              }
-            , Cmd.none
-            )
-
         Tick time ->
             ( { model
                 | currentTime = time
@@ -202,37 +119,49 @@ update msg model =
             , Cmd.none
             )
 
-        MouseMsg mouseMsg ->
+        MouseMsg args ->
             let
-                ( updatedMouse, newMouseEvents ) =
-                    Mouse.update mouseMsg model.mouse
+                newMousePos =
+                    Coordinate.new args.clientPos
+                        |> Screen.toScreenCoordinates model.screen
 
-                mouseEventstoMsgs : Mouse.Event -> List Msg
-                mouseEventstoMsgs mouseEvent =
-                    case mouseEvent of
-                        Mouse.Click _ { id } ->
-                            Event.eventToMsgList id Event.Click model.eventRegistry
+                mouseMsgData : Mouse.MsgData
+                mouseMsgData =
+                    { atTime = model.currentTime
+                    , mouseButtonPressed = args.buttonClicked
+                    , position = newMousePos
+                    , overObjIds = Interface.containingCoordinate newMousePos model.interface
+                    }
 
-                        Mouse.DoubleClick _ { id } ->
-                            Event.eventToMsgList id Event.DoubleClick model.eventRegistry
+                updatedMouse : Mouse
+                updatedMouse =
+                    Mouse.update
+                        (Mouse.toMsg mouseMsgData)
+                        model.mouse
 
-                        Mouse.DragStart _ { id } ->
-                            Event.eventToMsgList id Event.DragStart model.eventRegistry
-
-                        Mouse.DragEnd _ { id } ->
-                            Event.eventToMsgList id Event.DragEnd model.eventRegistry
-
-                eventCmds : Cmd Msg
-                eventCmds =
-                    newMouseEvents
-                        |> List.concatMap mouseEventstoMsgs
-                        |> List.map sendMsg
-                        |> Cmd.batch
+                --     mouseEventstoMsgs : Mouse.Event -> List Msg
+                --     mouseEventstoMsgs mouseEvent =
+                --         case mouseEvent of
+                --             Mouse.Click _ { id } ->
+                --                 Event.eventToMsgList id Event.Click model.eventRegistry
+                --             Mouse.DoubleClick _ { id } ->
+                --                 Event.eventToMsgList id Event.DoubleClick model.eventRegistry
+                --             Mouse.DragStart _ { id } ->
+                --                 Event.eventToMsgList id Event.DragStart model.eventRegistry
+                --             Mouse.DragEnd _ { id } ->
+                --                 Event.eventToMsgList id Event.DragEnd model.eventRegistry
+                --     eventCmds : Cmd Msg
+                --     eventCmds =
+                --         newMouseEvents
+                --             |> List.concatMap mouseEventstoMsgs
+                --             |> List.map sendMsg
+                --             |> Cmd.batch
             in
             ( { model
                 | mouse = updatedMouse
               }
-            , eventCmds
+              -- , eventCmds
+            , Cmd.none
             )
 
         BrowserResized newWidth newHeight ->
@@ -311,39 +240,47 @@ subEventsRequiredForEventType event =
             ]
 
 
-listenersForObject :
-    Model
-    -> { id : String, coordinate : Coordinate }
-    -> List (Attribute Msg)
-listenersForObject model { id, coordinate } =
-    let
-        toListeners : SubEvent -> List (Attribute Msg)
-        toListeners subEvent =
-            case subEvent of
-                MouseMove ->
-                    []
 
-                MouseUp ->
-                    [ Mouse.onMouseUpForObject id coordinate model.screen model.currentTime MouseMsg
-                    ]
-
-                MouseDown ->
-                    [ Mouse.onMouseDownForObject id coordinate model.screen model.currentTime MouseMsg
-                    ]
-    in
-    Event.listForObject id model.eventRegistry
-        |> List.concatMap subEventsRequiredForEventType
-        |> List.concatMap toListeners
+-- listenersForObject :
+--     Model
+--     -> { id : String, coordinate : Coordinate }
+--     -> List (Attribute Msg)
+-- listenersForObject model { id, coordinate } =
+--     let
+--         toListeners : SubEvent -> List (Attribute Msg)
+--         toListeners subEvent =
+--             case subEvent of
+--                 MouseMove ->
+--                     []
+--                 MouseUp ->
+--                     [ Mouse.onMouseUpForObject id coordinate model.screen model.currentTime MouseMsg
+--                     ]
+--                 MouseDown ->
+--                     [ Mouse.onMouseDownForObject id coordinate model.screen model.currentTime MouseMsg
+--                     ]
+--     in
+--     Event.listForObject id model.eventRegistry
+--         |> List.concatMap subEventsRequiredForEventType
+--         |> List.concatMap toListeners
 
 
 view : Model -> Html Msg
 view model =
-    let
-        context : Context Msg
-        context =
-            { listenersForObject = listenersForObject model
-            }
-    in
+    {-
+       Interface Layers
+       (From bottom to top)
+
+       - Desktop
+       - Desktop Objects
+       - Desktop-related Rectangles
+       - Windows
+       - Window-related Rectangles
+       - Menu Bar & Menus
+       - Dialogs
+       - Rounded Screen Corners
+       - Debugger
+       - Cursor
+    -}
     div
         ([ style "width" (px (Screen.width model.screen))
          , style "height" (px (Screen.height model.screen))
@@ -352,36 +289,49 @@ view model =
          , style "position" "relative"
          , style "overflow" "hidden"
          ]
-            ++ Mouse.eventsForDesktop model.screen model.currentTime MouseMsg
+            ++ Mouse.eventsForDesktop MouseMsg
             ++ Screen.scaleAttrs model.screen
         )
-        [ viewDebugger model
+        [ viewDesktopObjects model
+        , viewDesktopRectangles model
+        , viewWindows model
+        , viewWindowRectangles model
         , MenuBar.view (Screen.width model.screen) model.menuBar
+        , viewDialogs model
         , viewScreenCorners (Screen.logical model.screen)
-        , div []
-            (model.fileSystem
-                |> FileSystem.volumes
-                |> List.map (viewVolume context model.activeFile)
-            )
-        , model.windows
-            |> List.map
-                (\window ->
-                    Window.view
-                        context
-                        ClickedWindowCloseBox
-                        PointerDownWindowTitle
-                        (ClickedWindow "window:disk")
-                        (model.activeWindow == Just "window:disk")
-                        window
-                )
-            |> div []
-        , case model.draggingObject of
-            Just objId ->
-                Rect.drawDotted (Rect.new ( Mouse.x model.mouse, Mouse.y model.mouse ) ( 200, 150 ))
-
-            Nothing ->
-                ViewHelpers.none
+        , viewDebugger model
+        , viewCursor model
         ]
+
+
+viewDesktopObjects : Model -> Html msg
+viewDesktopObjects model =
+    Interface.view model.interface
+
+
+viewDesktopRectangles : Model -> Html msg
+viewDesktopRectangles model =
+    ViewHelpers.none
+
+
+viewWindows : Model -> Html msg
+viewWindows model =
+    ViewHelpers.none
+
+
+viewWindowRectangles : Model -> Html msg
+viewWindowRectangles model =
+    ViewHelpers.none
+
+
+viewDialogs : Model -> Html msg
+viewDialogs model =
+    ViewHelpers.none
+
+
+viewCursor : Model -> Html msg
+viewCursor model =
+    ViewHelpers.none
 
 
 viewVolume : Context Msg -> Maybe String -> FileSystem.Volume -> Html Msg

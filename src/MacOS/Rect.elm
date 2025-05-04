@@ -1,4 +1,4 @@
-module MacOS.Rect exposing (Rect, addPosition, bottom, drawDotted, drawSolid, height, left, new, posX, posY, position, right, size, top, width)
+module MacOS.Rect exposing (Rect, addPosition, bottom, containsCoordinate, drawDotted, drawSolid, drawSolidFilled, height, left, new, posX, posY, position, right, size, top, width)
 
 import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
@@ -22,6 +22,23 @@ new ( x, y ) ( w, h ) =
 position : Rect -> Coordinate
 position (Rect internals) =
     internals.position
+
+
+containsCoordinate : Coordinate -> Rect -> Bool
+containsCoordinate coordinate rect =
+    let
+        px : Int
+        px =
+            Coordinate.x coordinate
+
+        py : Int
+        py =
+            Coordinate.y coordinate
+    in
+    (px >= left rect)
+        && (px <= right rect)
+        && (py >= top rect)
+        && (py <= bottom rect)
 
 
 posX : Rect -> Int
@@ -82,11 +99,17 @@ right (Rect internals) =
 type LineStyle
     = LineStyleSolid
     | LineStyleDotted
+    | LineStyleSolidFilled
 
 
 drawSolid : Rect -> Html msg
 drawSolid rect =
     draw rect LineStyleSolid
+
+
+drawSolidFilled : Rect -> Html msg
+drawSolidFilled rect =
+    draw rect LineStyleSolidFilled
 
 
 drawDotted : Rect -> Html msg
@@ -101,7 +124,13 @@ draw rect lineStyle =
         lineStyleAttrs =
             case lineStyle of
                 LineStyleSolid ->
-                    [ style "background" "black" ]
+                    [ style "background" "black"
+                    , style "mix-blend-mode" "multiply"
+                    ]
+
+                LineStyleSolidFilled ->
+                    [ style "background" "black"
+                    ]
 
                 LineStyleDotted ->
                     let
@@ -117,6 +146,7 @@ draw rect lineStyle =
                                 [ style "background-position-x" "1px" ]
                     in
                     [ style "background-image" FillPattern.dither50
+                    , style "mix-blend-mode" "multiply"
                     ]
                         ++ alternatingDotPosition
     in
@@ -128,7 +158,6 @@ draw rect lineStyle =
          , style "width" (px (width rect))
          , style "height" (px (height rect))
          , style "pointer-events" "none"
-         , style "mix-blend-mode" "multiply"
          ]
             ++ lineStyleAttrs
         )
