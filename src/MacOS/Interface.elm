@@ -1,4 +1,4 @@
-module MacOS.Interface exposing (Interface, OrderConstraint(..), addLayer, addToLayer, containingCoordinate, get, new, topmostFromList, update, view)
+module MacOS.Interface exposing (Interface, OrderConstraint(..), addLayer, addToLayer, bringObjectToFront, containingCoordinate, get, new, topmostFromList, update, view)
 
 import Dict exposing (Dict)
 import Html exposing (..)
@@ -25,6 +25,7 @@ type alias Internals =
     { uiObjects : Dict ObjectId UIObject
     , drawOrder : Dict LayerId (List ObjectId)
     , layerOrder : List ( LayerId, Maybe OrderConstraint )
+    , objectToLayer : Dict ObjectId LayerId
     }
 
 
@@ -34,6 +35,7 @@ new =
         { uiObjects = Dict.empty
         , drawOrder = Dict.empty
         , layerOrder = []
+        , objectToLayer = Dict.empty
         }
 
 
@@ -107,8 +109,9 @@ addSingle layerId ( objectId, obj ) (Interface internals) =
             | uiObjects = Dict.insert objectId obj internals.uiObjects
             , drawOrder =
                 Dict.update layerId
-                    (\maybeList -> Maybe.map (\l -> List.append l [ objectId ]) maybeList)
+                    (\maybeList -> Maybe.map (\l -> l ++ [ objectId ]) maybeList)
                     internals.drawOrder
+            , objectToLayer = Dict.insert objectId layerId internals.objectToLayer
         }
 
 
@@ -130,6 +133,26 @@ get objId (Interface internals) =
     Dict.get objId internals.uiObjects
 
 
+bringObjectToFront : ObjectId -> Interface -> Interface
+bringObjectToFront objectId (Interface internals) =
+    case Dict.get objectId internals.objectToLayer of
+        Just layerId ->
+            let
+                updatedDrawOrder =
+                    Dict.update layerId
+                        (Maybe.map
+                            (\ids ->
+                                List.filter ((/=) objectId) ids ++ [ objectId ]
+                            )
+                        )
+                        internals.drawOrder
+            in
+            Interface { internals | drawOrder = updatedDrawOrder }
+
+        Nothing ->
+            Interface internals
+
+
 update : ObjectId -> (UIObject -> UIObject) -> Interface -> Interface
 update objId updateObj (Interface internals) =
     Interface
@@ -143,8 +166,9 @@ update objId updateObj (Interface internals) =
 
 view : Interface -> Html msg
 view (Interface internals) =
-    Dict.toList internals.uiObjects
-        |> List.map Tuple.second
+    internals.layerOrder
+        |> List.filterMap (\( layerId, _ ) -> Dict.get layerId internals.drawOrder)
+        |> List.concat
+        |> List.filterMap (\objectId -> Dict.get objectId internals.uiObjects)
         |> List.map UIObject.view
-        |> Html.div
-            []
+        |> Html.div []

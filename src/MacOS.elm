@@ -31,7 +31,6 @@ viewDebugger : Model -> Html Msg
 viewDebugger model =
     div
         [ style "position" "absolute"
-        , style "z-index" "2"
         , style "bottom" (px 16)
         , style "left" (px 16)
         , style "width" (px (Screen.width model.screen - 32))
@@ -42,7 +41,7 @@ viewDebugger model =
             , style "font-family" "Geneva"
             , style "padding" "0 6px"
             ]
-            [ div [] [ text "" ]
+            [ div [] [ text "hi! i'm the debugger. it's a living..." ]
             ]
         ]
 
@@ -261,7 +260,10 @@ update msg model =
                         updatedModel =
                             case maybeDraggedObject of
                                 Just obj ->
+                                    -- Note:
+                                    -- Test whether object is draggable
                                     let
+                                        mouseOffset : Coordinate
                                         mouseOffset =
                                             Coordinate.minus
                                                 (Mouse.position model.mouse)
@@ -275,6 +277,7 @@ update msg model =
                                                 , offset = mouseOffset
                                                 , visible = Visible.rect MacOS.Visible.Rect.StyleDotted
                                                 }
+                                        , interface = Interface.bringObjectToFront objId model.interface
                                     }
 
                                 Nothing ->

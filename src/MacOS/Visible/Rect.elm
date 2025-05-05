@@ -48,7 +48,6 @@ draw config rect =
     in
     div
         ([ style "position" "absolute"
-         , style "z-index" "1"
          , style "top" (px (Rect.top rect - 1))
          , style "left" (px (Rect.left rect))
          , style "width" (px (Rect.width rect))
