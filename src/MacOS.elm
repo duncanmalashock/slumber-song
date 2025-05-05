@@ -95,18 +95,41 @@ init flags =
       , mouse = Mouse.new
       , interface =
             Interface.new
-                |> Interface.addLayer { id = "desktop", orderConstraint = Just Interface.AlwaysFirst }
+                |> Interface.addLayer
+                    { id = "desktop"
+                    , orderConstraint = Just Interface.AlwaysFirst
+                    }
+                |> Interface.addLayer
+                    { id = "windows"
+                    , orderConstraint = Nothing
+                    }
                 |> Interface.addToLayer "desktop"
                     [ ( "Prickly Pete"
                       , UIObject.new
-                            { rect = Rect.new ( 96, 96 ) ( 64, 64 )
+                            { rect = Rect.new ( 450, 40 ) ( 32, 32 )
                             }
                             |> UIObject.visible
                                 (Visible.rect MacOS.Visible.Rect.StyleSolidFilled)
                       )
                     , ( "Snoopy"
                       , UIObject.new
-                            { rect = Rect.new ( 128, 128 ) ( 64, 64 )
+                            { rect = Rect.new ( 450, 90 ) ( 32, 32 )
+                            }
+                            |> UIObject.visible
+                                (Visible.rect MacOS.Visible.Rect.StyleSolidFilled)
+                      )
+                    ]
+                |> Interface.addToLayer "windows"
+                    [ ( "1"
+                      , UIObject.new
+                            { rect = Rect.new ( 200, 80 ) ( 180, 180 )
+                            }
+                            |> UIObject.visible
+                                (Visible.rect MacOS.Visible.Rect.StyleSolidFilled)
+                      )
+                    , ( "2"
+                      , UIObject.new
+                            { rect = Rect.new ( 40, 50 ) ( 250, 180 )
                             }
                             |> UIObject.visible
                                 (Visible.rect MacOS.Visible.Rect.StyleSolidFilled)
@@ -291,39 +314,6 @@ update msg model =
 sendMsg : Msg -> Cmd Msg
 sendMsg msg =
     Task.perform identity (Task.succeed msg)
-
-
-moveDraggedWindow : Window.DragInfo -> List Window -> List Window
-moveDraggedWindow info windows =
-    windows
-        |> List.map
-            (\window ->
-                if window.title == info.window.title then
-                    { window
-                        | rect =
-                            window.rect
-                                |> Rect.plus (info.cursor |> Coordinate.minus info.cursorAtDragStart)
-                    }
-
-                else
-                    window
-            )
-
-
-bringToFront : String -> List Window -> List Window
-bringToFront objectId windows =
-    windows
-        |> List.sortWith
-            (\a b ->
-                if a.title == objectId then
-                    GT
-
-                else if b.title == objectId then
-                    LT
-
-                else
-                    EQ
-            )
 
 
 view : Model -> Html Msg
