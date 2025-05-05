@@ -106,6 +106,10 @@ init flags =
                             }
                             |> UIObject.visible
                                 (Visible.rect MacOS.Visible.Rect.StyleSolidFilled)
+                            |> UIObject.selectable
+                                { selected = False
+                                , view = Visible.rect MacOS.Visible.Rect.StyleFillBlack
+                                }
                             |> UIObject.draggable
                                 { traveling = Visible.rect MacOS.Visible.Rect.StyleDotted
                                 }
@@ -233,7 +237,16 @@ update msg model =
         MouseEvent event ->
             case event of
                 Mouse.MouseDown objId ->
-                    ( model
+                    let
+                        updatedModel =
+                            { model
+                                | interface =
+                                    Interface.update objId
+                                        (UIObject.setSelected True)
+                                        model.interface
+                            }
+                    in
+                    ( updatedModel
                     , Cmd.none
                     )
 

@@ -1,4 +1,4 @@
-module MacOS.UIObject exposing (UIObject, containsCoordinate, draggable, getDraggable, new, position, rect, setPosition, view, visible)
+module MacOS.UIObject exposing (UIObject, containsCoordinate, draggable, getDraggable, new, position, rect, selectable, setPosition, setSelected, view, visible)
 
 import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
@@ -16,6 +16,7 @@ type UIObject
 type alias Internals =
     { rect : Rect
     , visible : Maybe Visible
+    , selectable : Maybe Selectable
     , draggable : Maybe Draggable
     }
 
@@ -24,11 +25,18 @@ type alias Draggable =
     { traveling : Visible }
 
 
+type alias Selectable =
+    { view : Visible
+    , selected : Bool
+    }
+
+
 new : { rect : Rect } -> UIObject
 new params =
     UIObject
         { rect = params.rect
         , visible = Nothing
+        , selectable = Nothing
         , draggable = Nothing
         }
 
@@ -41,7 +49,15 @@ visible vis (UIObject internals) =
         }
 
 
-draggable : { traveling : Visible } -> UIObject -> UIObject
+selectable : Selectable -> UIObject -> UIObject
+selectable vis (UIObject internals) =
+    UIObject
+        { internals
+            | selectable = Just vis
+        }
+
+
+draggable : Draggable -> UIObject -> UIObject
 draggable params (UIObject internals) =
     UIObject
         { internals
@@ -75,11 +91,37 @@ setPosition newValue (UIObject internals) =
         }
 
 
+setSelected : Bool -> UIObject -> UIObject
+setSelected newValue (UIObject internals) =
+    UIObject
+        { internals
+            | selectable =
+                case internals.selectable of
+                    Just s ->
+                        Just
+                            { s
+                                | selected = newValue
+                            }
+
+                    Nothing ->
+                        Nothing
+        }
+
+
 view : UIObject -> Html msg
 view (UIObject internals) =
     case internals.visible of
         Just vis ->
-            Visible.view internals.rect vis
+            case internals.selectable of
+                Just s ->
+                    if s.selected then
+                        Visible.view internals.rect s.view
+
+                    else
+                        Visible.view internals.rect vis
+
+                Nothing ->
+                    Visible.view internals.rect vis
 
         Nothing ->
             ViewHelpers.none

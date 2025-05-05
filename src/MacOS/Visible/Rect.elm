@@ -11,6 +11,7 @@ type Config
     = StyleSolid
     | StyleDotted
     | StyleSolidFilled
+    | StyleFillBlack
 
 
 draw : Config -> Rect -> Html msg
@@ -21,7 +22,10 @@ draw config rect =
             case config of
                 StyleSolid ->
                     [ style "background" "black"
-                    , style "mix-blend-mode" "multiply"
+                    ]
+
+                StyleFillBlack ->
+                    [ style "background" "white"
                     ]
 
                 StyleSolidFilled ->
@@ -62,7 +66,18 @@ draw config rect =
             , style "left" (px 1)
             , style "width" (px (Rect.width rect - 2))
             , style "height" (px (Rect.height rect - 2))
-            , style "background" "white"
+            , case config of
+                StyleSolid ->
+                    style "background" "white"
+
+                StyleFillBlack ->
+                    style "background" "black"
+
+                StyleSolidFilled ->
+                    style "background" "white"
+
+                StyleDotted ->
+                    style "background" "white"
             ]
             []
         ]
