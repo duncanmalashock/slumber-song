@@ -1,4 +1,4 @@
-module MacOS.UIObject exposing (UIObject, containsCoordinate, new, position, rect, setPosition, view, visible)
+module MacOS.UIObject exposing (UIObject, containsCoordinate, draggable, getDraggable, new, position, rect, setPosition, view, visible)
 
 import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
@@ -20,8 +20,8 @@ type alias Internals =
     }
 
 
-type Draggable
-    = Draggable { traveling : Visible }
+type alias Draggable =
+    { traveling : Visible }
 
 
 new : { rect : Rect } -> UIObject
@@ -39,6 +39,22 @@ visible vis (UIObject internals) =
         { internals
             | visible = Just vis
         }
+
+
+draggable : { traveling : Visible } -> UIObject -> UIObject
+draggable params (UIObject internals) =
+    UIObject
+        { internals
+            | draggable =
+                Just
+                    { traveling = params.traveling
+                    }
+        }
+
+
+getDraggable : UIObject -> Maybe Draggable
+getDraggable (UIObject internals) =
+    internals.draggable
 
 
 rect : UIObject -> Rect

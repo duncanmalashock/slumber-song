@@ -99,10 +99,6 @@ init flags =
                     { id = "desktop"
                     , orderConstraint = Just Interface.AlwaysFirst
                     }
-                |> Interface.addLayer
-                    { id = "windows"
-                    , orderConstraint = Nothing
-                    }
                 |> Interface.addToLayer "desktop"
                     [ ( "Prickly Pete"
                       , UIObject.new
@@ -110,6 +106,9 @@ init flags =
                             }
                             |> UIObject.visible
                                 (Visible.rect MacOS.Visible.Rect.StyleSolidFilled)
+                            |> UIObject.draggable
+                                { traveling = Visible.rect MacOS.Visible.Rect.StyleDotted
+                                }
                       )
                     , ( "Snoopy"
                       , UIObject.new
@@ -117,19 +116,13 @@ init flags =
                             }
                             |> UIObject.visible
                                 (Visible.rect MacOS.Visible.Rect.StyleSolidFilled)
+                            |> UIObject.draggable
+                                { traveling = Visible.rect MacOS.Visible.Rect.StyleSolidFilled
+                                }
                       )
-                    ]
-                |> Interface.addToLayer "windows"
-                    [ ( "1"
+                    , ( "Spike"
                       , UIObject.new
-                            { rect = Rect.new ( 200, 80 ) ( 180, 180 )
-                            }
-                            |> UIObject.visible
-                                (Visible.rect MacOS.Visible.Rect.StyleSolidFilled)
-                      )
-                    , ( "2"
-                      , UIObject.new
-                            { rect = Rect.new ( 40, 50 ) ( 250, 180 )
+                            { rect = Rect.new ( 450, 140 ) ( 32, 32 )
                             }
                             |> UIObject.visible
                                 (Visible.rect MacOS.Visible.Rect.StyleSolidFilled)
@@ -279,10 +272,17 @@ update msg model =
                         maybeDraggedObject =
                             Interface.get objId model.interface
 
+                        maybeDragVis : Maybe Visible
+                        maybeDragVis =
+                            Maybe.andThen
+                                UIObject.getDraggable
+                                maybeDraggedObject
+                                |> Maybe.map .traveling
+
                         updatedModel : Model
                         updatedModel =
-                            case maybeDraggedObject of
-                                Just obj ->
+                            case ( maybeDraggedObject, maybeDragVis ) of
+                                ( Just obj, Just dragVis ) ->
                                     -- Note:
                                     -- Test whether object is draggable
                                     let
@@ -298,12 +298,12 @@ update msg model =
                                                 { objId = objId
                                                 , rect = UIObject.rect obj
                                                 , offset = mouseOffset
-                                                , visible = Visible.rect MacOS.Visible.Rect.StyleDotted
+                                                , visible = dragVis
                                                 }
                                         , interface = Interface.bringObjectToFront objId model.interface
                                     }
 
-                                Nothing ->
+                                _ ->
                                     model
                     in
                     ( updatedModel
