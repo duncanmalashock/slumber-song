@@ -52,7 +52,7 @@ type alias Model =
     , menuBar : MenuBar
     , fileSystem : FileSystem
     , mouse : Mouse
-    , interface : Interface
+    , interface : Interface Msg
     , dragging : Maybe Dragging
     }
 
@@ -99,8 +99,12 @@ init flags =
                     { id = "desktop"
                     , orderConstraint = Just Interface.AlwaysFirst
                     }
+                |> Interface.addLayer
+                    { id = "windows"
+                    , orderConstraint = Nothing
+                    }
                 |> Interface.addToLayer "desktop"
-                    [ ( "Prickly Pete"
+                    [ ( "Disk"
                       , UIObject.new
                             { rect = Rect.new ( 450, 40 ) ( 32, 32 )
                             }
@@ -113,23 +117,7 @@ init flags =
                             |> UIObject.draggable
                                 { traveling = Visible.rect MacOS.Visible.Rect.StyleDotted
                                 }
-                      )
-                    , ( "Snoopy"
-                      , UIObject.new
-                            { rect = Rect.new ( 450, 90 ) ( 32, 32 )
-                            }
-                            |> UIObject.visible
-                                (Visible.rect MacOS.Visible.Rect.StyleSolidFilled)
-                            |> UIObject.draggable
-                                { traveling = Visible.rect MacOS.Visible.Rect.StyleSolidFilled
-                                }
-                      )
-                    , ( "Spike"
-                      , UIObject.new
-                            { rect = Rect.new ( 450, 140 ) ( 32, 32 )
-                            }
-                            |> UIObject.visible
-                                (Visible.rect MacOS.Visible.Rect.StyleSolidFilled)
+                            |> UIObject.onMouseDown ClickedDisk
                       )
                     ]
       , dragging = Nothing
@@ -143,6 +131,8 @@ type Msg
     | BrowserResized Int Int
     | MouseUpdated { clientPos : ( Int, Int ), buttonPressed : Bool }
     | MouseEvent Mouse.Event
+    | ClickedDisk
+    | ClickedWindow
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -151,14 +141,16 @@ update msg model =
         Tick time ->
             ( { model
                 | currentTime = time
-                , screen = Screen.firstPaintDone model.screen
               }
             , Cmd.none
             )
 
         BrowserResized newWidth newHeight ->
             ( { model
-                | screen = Screen.update { x = newWidth, y = newHeight } model.screen
+                | screen =
+                    model.screen
+                        |> Screen.firstPaintDone
+                        |> Screen.update { x = newWidth, y = newHeight }
               }
             , Cmd.none
             )
@@ -234,7 +226,47 @@ update msg model =
             , eventCmds
             )
 
+        ClickedDisk ->
+            ( { model
+                | interface =
+                    model.interface
+                        |> Interface.addToLayer "windows"
+                            [ ( "window1"
+                              , UIObject.new
+                                    { rect = Rect.new ( 32, 32 ) ( 350, 250 )
+                                    }
+                                    |> UIObject.visible
+                                        (Visible.rect MacOS.Visible.Rect.StyleSolidFilled)
+                                    |> UIObject.draggable
+                                        { traveling = Visible.rect MacOS.Visible.Rect.StyleDotted
+                                        }
+                                    |> UIObject.onMouseDown ClickedWindow
+                              )
+                            ]
+              }
+            , Cmd.none
+            )
+
+        ClickedWindow ->
+            ( { model
+                | interface =
+                    model.interface
+                        |> Interface.remove "window1"
+              }
+            , Cmd.none
+            )
+
         MouseEvent event ->
+            let
+                maybeMsgFromEventHandler : Maybe Msg
+                maybeMsgFromEventHandler =
+                    Interface.msgForMouseEvent event model.interface
+
+                cmd : Cmd Msg
+                cmd =
+                    Maybe.map sendMsg maybeMsgFromEventHandler
+                        |> Maybe.withDefault Cmd.none
+            in
             case event of
                 Mouse.MouseDown objId ->
                     let
@@ -247,7 +279,7 @@ update msg model =
                             }
                     in
                     ( updatedModel
-                    , Cmd.none
+                    , cmd
                     )
 
                 Mouse.MouseUp ->
@@ -266,22 +298,22 @@ update msg model =
                         | dragging = Nothing
                         , interface = updatedInterface
                       }
-                    , Cmd.none
+                    , cmd
                     )
 
                 Mouse.Click objId ->
                     ( model
-                    , Cmd.none
+                    , cmd
                     )
 
                 Mouse.DoubleClick objId ->
                     ( model
-                    , Cmd.none
+                    , cmd
                     )
 
                 Mouse.DragStart objId ->
                     let
-                        maybeDraggedObject : Maybe UIObject
+                        maybeDraggedObject : Maybe (UIObject Msg)
                         maybeDraggedObject =
                             Interface.get objId model.interface
 
@@ -320,7 +352,7 @@ update msg model =
                                     model
                     in
                     ( updatedModel
-                    , Cmd.none
+                    , cmd
                     )
 
 
@@ -370,7 +402,7 @@ view model =
         ]
 
 
-viewDesktopObjects : Model -> Html msg
+viewDesktopObjects : Model -> Html Msg
 viewDesktopObjects model =
     Interface.view model.interface
 
@@ -537,8 +569,8 @@ viewScreenCorners screen =
 subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
-        [ Time.every 50 Tick
-        , Browser.Events.onResize BrowserResized
+        [ Browser.Events.onResize BrowserResized
+        , Time.every 50 Tick
         ]
 
 

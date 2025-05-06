@@ -1,23 +1,46 @@
-module MacOS.UIObject exposing (UIObject, containsCoordinate, draggable, getDraggable, new, position, rect, selectable, setPosition, setSelected, view, visible)
+module MacOS.UIObject exposing
+    ( UIObject
+    , containsCoordinate
+    , draggable
+    , getDraggable
+    , getMouseEventHandler
+    , new
+    , onClick
+    , onDoubleClick
+    , onDragStart
+    , onMouseDown
+    , position
+    , rect
+    , selectable
+    , setPosition
+    , setSelected
+    , view
+    , visible
+    )
 
 import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
 import Html.Events as Events exposing (..)
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
+import MacOS.Mouse as Mouse
 import MacOS.Rect as Rect exposing (Rect)
 import MacOS.ViewHelpers as ViewHelpers
 import MacOS.Visible as Visible exposing (Visible)
 
 
-type UIObject
-    = UIObject Internals
+type UIObject msg
+    = UIObject (Internals msg)
 
 
-type alias Internals =
+type alias Internals msg =
     { rect : Rect
     , visible : Maybe Visible
     , selectable : Maybe Selectable
     , draggable : Maybe Draggable
+    , onMouseDown : Maybe msg
+    , onClick : Maybe msg
+    , onDoubleClick : Maybe msg
+    , onDragStart : Maybe msg
     }
 
 
@@ -31,17 +54,72 @@ type alias Selectable =
     }
 
 
-new : { rect : Rect } -> UIObject
+new : { rect : Rect } -> UIObject msg
 new params =
     UIObject
         { rect = params.rect
         , visible = Nothing
         , selectable = Nothing
         , draggable = Nothing
+        , onMouseDown = Nothing
+        , onClick = Nothing
+        , onDoubleClick = Nothing
+        , onDragStart = Nothing
         }
 
 
-visible : Visible -> UIObject -> UIObject
+onMouseDown : msg -> UIObject msg -> UIObject msg
+onMouseDown msg (UIObject internals) =
+    UIObject
+        { internals
+            | onMouseDown = Just msg
+        }
+
+
+onClick : msg -> UIObject msg -> UIObject msg
+onClick msg (UIObject internals) =
+    UIObject
+        { internals
+            | onClick = Just msg
+        }
+
+
+onDoubleClick : msg -> UIObject msg -> UIObject msg
+onDoubleClick msg (UIObject internals) =
+    UIObject
+        { internals
+            | onDoubleClick = Just msg
+        }
+
+
+onDragStart : msg -> UIObject msg -> UIObject msg
+onDragStart msg (UIObject internals) =
+    UIObject
+        { internals
+            | onDragStart = Just msg
+        }
+
+
+getMouseEventHandler : Mouse.Event -> UIObject msg -> Maybe msg
+getMouseEventHandler mouseEvent (UIObject internals) =
+    case mouseEvent of
+        Mouse.MouseDown _ ->
+            internals.onMouseDown
+
+        Mouse.MouseUp ->
+            Nothing
+
+        Mouse.Click _ ->
+            internals.onClick
+
+        Mouse.DoubleClick _ ->
+            internals.onDoubleClick
+
+        Mouse.DragStart _ ->
+            internals.onDragStart
+
+
+visible : Visible -> UIObject msg -> UIObject msg
 visible vis (UIObject internals) =
     UIObject
         { internals
@@ -49,7 +127,7 @@ visible vis (UIObject internals) =
         }
 
 
-selectable : Selectable -> UIObject -> UIObject
+selectable : Selectable -> UIObject msg -> UIObject msg
 selectable vis (UIObject internals) =
     UIObject
         { internals
@@ -57,7 +135,7 @@ selectable vis (UIObject internals) =
         }
 
 
-draggable : Draggable -> UIObject -> UIObject
+draggable : Draggable -> UIObject msg -> UIObject msg
 draggable params (UIObject internals) =
     UIObject
         { internals
@@ -68,22 +146,22 @@ draggable params (UIObject internals) =
         }
 
 
-getDraggable : UIObject -> Maybe Draggable
+getDraggable : UIObject msg -> Maybe Draggable
 getDraggable (UIObject internals) =
     internals.draggable
 
 
-rect : UIObject -> Rect
+rect : UIObject msg -> Rect
 rect (UIObject internals) =
     internals.rect
 
 
-position : UIObject -> Coordinate
+position : UIObject msg -> Coordinate
 position (UIObject internals) =
     Rect.position internals.rect
 
 
-setPosition : Coordinate -> UIObject -> UIObject
+setPosition : Coordinate -> UIObject msg -> UIObject msg
 setPosition newValue (UIObject internals) =
     UIObject
         { internals
@@ -91,7 +169,7 @@ setPosition newValue (UIObject internals) =
         }
 
 
-setSelected : Bool -> UIObject -> UIObject
+setSelected : Bool -> UIObject msg -> UIObject msg
 setSelected newValue (UIObject internals) =
     UIObject
         { internals
@@ -108,7 +186,7 @@ setSelected newValue (UIObject internals) =
         }
 
 
-view : UIObject -> Html msg
+view : UIObject msg -> Html msg
 view (UIObject internals) =
     case internals.visible of
         Just vis ->
@@ -127,6 +205,6 @@ view (UIObject internals) =
             ViewHelpers.none
 
 
-containsCoordinate : Coordinate -> UIObject -> Bool
+containsCoordinate : Coordinate -> UIObject msg -> Bool
 containsCoordinate coordinate (UIObject internals) =
     Rect.containsCoordinate coordinate internals.rect
