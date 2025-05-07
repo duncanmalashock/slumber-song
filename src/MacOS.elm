@@ -185,7 +185,42 @@ type Msg
     | MouseUpdated { clientPos : ( Int, Int ), buttonPressed : Bool }
     | MouseEvent Mouse.Event
     | ClickedDisk
-    | ClickedWindow
+    | ClickedCloseBoxForWindow String
+
+
+setupGameWindows : List Instruction
+setupGameWindows =
+    [ Instruction.CreateWindow
+        { withId = "inventory"
+        , at = Rect.new ( 8, 28 ) ( 118, 225 )
+        , title = "inventory"
+        }
+    , Instruction.CreateWindow
+        { withId = "commands"
+        , at = Rect.new ( 128, 21 ) ( 256, 64 )
+        , title = "commands"
+        }
+    , Instruction.CreateWindow
+        { withId = "scene"
+        , at = Rect.new ( 128, 64 ) ( 256, 189 )
+        , title = "Entrance"
+        }
+    , Instruction.CreateWindow
+        { withId = "narration"
+        , at = Rect.new ( 8, 255 ) ( 496, 85 )
+        , title = "Untitled"
+        }
+    , Instruction.CreateWindow
+        { withId = "self-rune"
+        , at = Rect.new ( 400, 32 ) ( 77, 41 )
+        , title = "self"
+        }
+    , Instruction.CreateWindow
+        { withId = "exits"
+        , at = Rect.new ( 400, 90 ) ( 77, 96 )
+        , title = "Exits"
+        }
+    ]
 
 
 handleInstruction : { timeStarted : Time.Posix, instruction : Instruction } -> Model -> ( Model, Cmd Msg )
@@ -271,7 +306,7 @@ handleInstruction { timeStarted, instruction } model =
             let
                 updatedInterface =
                     model.interface
-                        |> Interface.remove "window1"
+                        |> Interface.remove withId
             in
             ( { model
                 | currentInstruction = Nothing
@@ -293,7 +328,7 @@ handleInstruction { timeStarted, instruction } model =
                                         (Visible.window
                                             { title = title
                                             , isActive = True
-                                            , closeMsg = ClickedWindow
+                                            , closeMsg = ClickedCloseBoxForWindow withId
                                             }
                                         )
                                     |> UIObject.draggable
@@ -454,12 +489,12 @@ update msg model =
             , Cmd.none
             )
 
-        ClickedWindow ->
+        ClickedCloseBoxForWindow windowId ->
             ( { model
                 | dragging = Nothing
                 , instructions =
                     model.instructions
-                        ++ [ Instruction.RemoveWindow { withId = "window1" }
+                        ++ [ Instruction.RemoveWindow { withId = windowId }
                            , Instruction.AnimateZoom
                                 { from = Rect.new ( 64, 64 ) ( 200, 200 )
                                 , to = Rect.new ( 450, 40 ) ( 32, 32 )
