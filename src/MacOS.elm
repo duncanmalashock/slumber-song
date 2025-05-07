@@ -22,7 +22,7 @@ import MacOS.UIObject as UIObject exposing (UIObject)
 import MacOS.ViewHelpers as ViewHelpers exposing (imgURL, px)
 import MacOS.Visible as Visible exposing (Visible)
 import MacOS.Visible.Rect
-import MacOS.Window as Window exposing (Window)
+import MacOS.Window as Window
 import Set
 import Task
 import Time
@@ -70,7 +70,7 @@ type alias Dragging =
     { objId : String
     , rect : Rect
     , offset : Coordinate
-    , visible : Visible
+    , visible : Visible Msg
     }
 
 
@@ -280,7 +280,7 @@ handleInstruction { timeStarted, instruction } model =
             , Cmd.none
             )
 
-        Instruction.CreateWindow { withId, at } ->
+        Instruction.CreateWindow { withId, at, title } ->
             let
                 updatedInterface =
                     model.interface
@@ -290,11 +290,15 @@ handleInstruction { timeStarted, instruction } model =
                                     { rect = at
                                     }
                                     |> UIObject.visible
-                                        (Visible.rect MacOS.Visible.Rect.StyleSolidFilled)
+                                        (Visible.window
+                                            { title = title
+                                            , isActive = True
+                                            , closeMsg = ClickedWindow
+                                            }
+                                        )
                                     |> UIObject.draggable
                                         { traveling = Visible.rect MacOS.Visible.Rect.StyleDotted
                                         }
-                                    |> UIObject.onMouseDown ClickedWindow
                               )
                             ]
             in
@@ -443,6 +447,7 @@ update msg model =
                            , Instruction.CreateWindow
                                 { withId = "window1"
                                 , at = Rect.new ( 64, 64 ) ( 200, 200 )
+                                , title = "window"
                                 }
                            ]
               }
@@ -526,7 +531,7 @@ update msg model =
                         maybeDraggedObject =
                             Interface.get objId model.interface
 
-                        maybeDragVis : Maybe Visible
+                        maybeDragVis : Maybe (Visible Msg)
                         maybeDragVis =
                             Maybe.andThen
                                 UIObject.getDraggable
@@ -630,7 +635,7 @@ viewWindowRectangles model =
     ViewHelpers.none
 
 
-viewDraggedObject : Model -> Html msg
+viewDraggedObject : Model -> Html Msg
 viewDraggedObject model =
     case model.dragging of
         Just dragging ->

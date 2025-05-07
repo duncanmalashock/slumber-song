@@ -35,9 +35,9 @@ type UIObject msg
 
 type alias Internals msg =
     { rect : Rect
-    , visible : Maybe Visible
-    , selectable : Maybe Selectable
-    , draggable : Maybe Draggable
+    , visible : Maybe (Visible msg)
+    , selectable : Maybe (Selectable msg)
+    , draggable : Maybe (Draggable msg)
     , onMouseDown : Maybe msg
     , onClick : Maybe msg
     , onDoubleClick : Maybe msg
@@ -45,12 +45,12 @@ type alias Internals msg =
     }
 
 
-type alias Draggable =
-    { traveling : Visible }
+type alias Draggable msg =
+    { traveling : Visible msg }
 
 
-type alias Selectable =
-    { view : Visible
+type alias Selectable msg =
+    { view : Visible msg
     , selected : Bool
     }
 
@@ -120,7 +120,7 @@ getMouseEventHandler mouseEvent (UIObject internals) =
             internals.onDragStart
 
 
-visible : Visible -> UIObject msg -> UIObject msg
+visible : Visible msg -> UIObject msg -> UIObject msg
 visible vis (UIObject internals) =
     UIObject
         { internals
@@ -128,7 +128,7 @@ visible vis (UIObject internals) =
         }
 
 
-selectable : Selectable -> UIObject msg -> UIObject msg
+selectable : Selectable msg -> UIObject msg -> UIObject msg
 selectable vis (UIObject internals) =
     UIObject
         { internals
@@ -136,7 +136,7 @@ selectable vis (UIObject internals) =
         }
 
 
-draggable : Draggable -> UIObject msg -> UIObject msg
+draggable : Draggable msg -> UIObject msg -> UIObject msg
 draggable params (UIObject internals) =
     UIObject
         { internals
@@ -147,7 +147,7 @@ draggable params (UIObject internals) =
         }
 
 
-getDraggable : UIObject msg -> Maybe Draggable
+getDraggable : UIObject msg -> Maybe (Draggable msg)
 getDraggable (UIObject internals) =
     internals.draggable
 

@@ -77,7 +77,7 @@ debug (Mouse internals) =
 new : Mouse
 new =
     Mouse
-        { position = Coordinate.new ( 0, 0 )
+        { position = Coordinate.new ( 16, 16 )
         , buttonPressed = False
         , msgHistory = []
         , doubleClickTimingThreshold = 500

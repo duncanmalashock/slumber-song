@@ -1,4 +1,4 @@
-module MacOS.Window exposing (DragInfo, Window, view)
+module MacOS.Window exposing (Config, view)
 
 import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
@@ -12,81 +12,62 @@ import MacOS.Rect as Rect exposing (Rect)
 import MacOS.ViewHelpers as ViewHelpers exposing (..)
 
 
-type alias Window =
+type alias Config msg =
     { title : String
-    , rect : Rect
+    , isActive : Bool
+    , closeMsg : msg
     }
 
 
-type alias DragInfo =
-    { window : Window
-    , offset : Coordinate
-    , cursorAtDragStart : Coordinate
-    , cursor : Coordinate
-    }
-
-
-view : Context msg -> msg -> (String -> msg) -> msg -> Bool -> Window -> Html msg
-view context closeBoxMsg mouseDownToMsg onClickMsg isActive ({ title, rect } as window) =
+view : Config msg -> Rect -> Html msg
+view config rect =
     div
-        ([ style "position" "absolute"
-         , style "z-index" "1"
-         , style "top" (px (Rect.posY rect))
-         , style "left" (px (Rect.posX rect))
-         , style "width" (px (Rect.width rect))
-         , style "height" (px (Rect.height rect))
-         , style "background" "white"
-         , style "border" "solid 1px"
-         , style "box-shadow" "1px 1px 0px"
-         ]
-            ++ context.listenersForObject
-                { id = "window:disk"
-                , coordinate = Rect.position rect
-                }
-        )
-        [ viewWindowTitle context (Rect.position rect) closeBoxMsg mouseDownToMsg isActive window
+        [ style "position" "absolute"
+        , style "top" (px (Rect.posY rect))
+        , style "left" (px (Rect.posX rect))
+        , style "width" (px (Rect.width rect))
+        , style "height" (px (Rect.height rect))
+        , style "background" "white"
+        , style "border" "solid 1px"
+        , style "box-shadow" "1px 1px 0px"
+        ]
+        [ viewWindowTitle config rect
 
         --, div [] content
         ]
 
 
-viewWindowTitle : Context msg -> Coordinate -> msg -> (String -> msg) -> Bool -> Window -> Html msg
-viewWindowTitle context position closeBoxMsg mouseDownToMsg isActive window =
+viewWindowTitle : Config msg -> Rect -> Html msg
+viewWindowTitle config rect =
     div
-        ([ style "position" "absolute"
-         , style "top" "0"
-         , style "left" "0"
-         , style "right" "0"
-         , style "background" "white"
-         , style "border-bottom" "solid 1px"
-         , style "text-align" "center"
-         , style "height" "18px"
-         ]
-            ++ context.listenersForObject
-                { id = "window:title:disk"
-                , coordinate = position
-                }
-        )
-        [ if isActive then
+        [ style "position" "absolute"
+        , style "top" "0"
+        , style "left" "0"
+        , style "right" "0"
+        , style "background" "white"
+        , style "border-bottom" "solid 1px"
+        , style "text-align" "center"
+        , style "height" "18px"
+        ]
+        [ if config.isActive then
             viewWindowTitleLines
 
           else
             ViewHelpers.none
-        , if isActive then
-            viewWindowCloseBox closeBoxMsg
+        , if config.isActive then
+            viewWindowCloseBox config.closeMsg
 
           else
             ViewHelpers.none
         , span
             [ style "position" "relative"
-            , style "z-index" "2"
             , style "background" "white"
             , style "padding" "0 5px"
             , style "display" "inline-block"
             , style "transform" "translateY(0.5px)"
             , style "pointer-events" "none"
             ]
-            [ text window.title ]
+            [ text config.title ]
         ]
 
 
@@ -104,7 +85,6 @@ viewWindowTitleLines =
     in
     div
         [ style "position" "absolute"
-        , style "z-index" "1"
         , style "inset" "0"
         , style "display" "flex"
         , style "flex-direction" "column"
@@ -119,7 +99,6 @@ viewWindowCloseBox : msg -> Html msg
 viewWindowCloseBox closeBoxMsg =
     div
         [ style "position" "absolute"
-        , style "z-index" "1"
         , style "top" (px 3)
         , style "left" (px 7)
         , style "width" (px 13)
