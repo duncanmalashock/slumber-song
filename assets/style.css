@@ -43,6 +43,7 @@ button {
 button:hover {
   background: black;
   color: white;
+  cursor: none;
 }
 
 .menu-bar>*:not(:first-child) {

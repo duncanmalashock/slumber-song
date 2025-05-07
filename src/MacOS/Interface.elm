@@ -1,4 +1,4 @@
-module MacOS.Interface exposing (Interface, OrderConstraint(..), addLayer, addToLayer, bringObjectToFront, containingCoordinate, get, msgForMouseEvent, new, remove, topmostFromList, update, view)
+module MacOS.Interface exposing (Interface, OrderConstraint(..), addLayer, addToLayer, bringObjectToFront, containingCoordinate, get, msgForMouseEvent, new, remove, topmostFromList, update, updateList, view)
 
 import Dict exposing (Dict)
 import Html exposing (..)
@@ -228,6 +228,11 @@ bringObjectToFront objectId (Interface internals) =
 
         Nothing ->
             Interface internals
+
+
+updateList : List ( ObjectId, UIObject msg -> UIObject msg ) -> Interface msg -> Interface msg
+updateList newPairs interface =
+    List.foldl (\( key, updater ) -> update key updater) interface newPairs
 
 
 update : ObjectId -> (UIObject msg -> UIObject msg) -> Interface msg -> Interface msg

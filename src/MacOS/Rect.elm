@@ -1,4 +1,4 @@
-module MacOS.Rect exposing (Rect, bottom, containsCoordinate, height, left, new, plus, posX, posY, position, right, setPosition, size, top, width)
+module MacOS.Rect exposing (Rect, bottom, containsCoordinate, height, interpolate, left, new, plus, posX, posY, position, right, setPosition, size, top, width)
 
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 
@@ -25,6 +25,43 @@ setPosition newValue (Rect internals) =
     Rect
         { internals
             | position = newValue
+        }
+
+
+interpolate : Rect -> Rect -> Float -> Rect
+interpolate (Rect r1) (Rect r2) percent =
+    let
+        interpolateInt : Int -> Int -> Int
+        interpolateInt a b =
+            round <| toFloat a + percent * (toFloat b - toFloat a)
+
+        pos1 =
+            r1.position
+
+        pos2 =
+            r2.position
+
+        size1 =
+            r1.size
+
+        size2 =
+            r2.size
+
+        interpX =
+            interpolateInt (Coordinate.x pos1) (Coordinate.x pos2)
+
+        interpY =
+            interpolateInt (Coordinate.y pos1) (Coordinate.y pos2)
+
+        interpW =
+            interpolateInt (Coordinate.x size1) (Coordinate.x size2)
+
+        interpH =
+            interpolateInt (Coordinate.y size1) (Coordinate.y size2)
+    in
+    Rect
+        { position = Coordinate.new ( interpX, interpY )
+        , size = Coordinate.new ( interpW, interpH )
         }
 
 

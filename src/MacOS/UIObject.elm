@@ -13,6 +13,7 @@ module MacOS.UIObject exposing
     , rect
     , selectable
     , setPosition
+    , setRect
     , setSelected
     , view
     , visible
@@ -166,6 +167,14 @@ setPosition newValue (UIObject internals) =
     UIObject
         { internals
             | rect = Rect.setPosition newValue internals.rect
+        }
+
+
+setRect : Rect -> UIObject msg -> UIObject msg
+setRect newValue (UIObject internals) =
+    UIObject
+        { internals
+            | rect = newValue
         }
 
 

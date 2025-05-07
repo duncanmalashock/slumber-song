@@ -12,6 +12,7 @@ import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.Event as Event exposing (Event)
 import MacOS.FileSystem as FileSystem exposing (FileSystem)
 import MacOS.FillPattern as FillPattern
+import MacOS.Instruction as Instruction exposing (Instruction)
 import MacOS.Interface as Interface exposing (Interface)
 import MacOS.MenuBar as MenuBar exposing (MenuBar)
 import MacOS.Mouse as Mouse exposing (Mouse)
@@ -41,7 +42,7 @@ viewDebugger model =
             , style "font-family" "Geneva"
             , style "padding" "0 6px"
             ]
-            [ div [] [ text "hi! i'm the debugger. it's a living..." ]
+            [-- div [] [ text <| Debug.toString model.currentInstruction ]
             ]
         ]
 
@@ -52,9 +53,17 @@ type alias Model =
     , menuBar : MenuBar
     , fileSystem : FileSystem
     , mouse : Mouse
+    , cursor : Maybe Cursor
     , interface : Interface Msg
     , dragging : Maybe Dragging
+    , instructions : List Instruction
+    , currentInstruction : Maybe { timeStarted : Time.Posix, instruction : Instruction }
     }
+
+
+type Cursor
+    = CursorPointer
+    | CursorWatch
 
 
 type alias Dragging =
@@ -74,6 +83,13 @@ type alias Flags =
 
 init : Flags -> ( Model, Cmd Msg )
 init flags =
+    let
+        from =
+            Rect.new ( 32, 64 ) ( 350, 250 )
+
+        to =
+            Rect.new ( 450, 40 ) ( 32, 32 )
+    in
     ( { currentTime = Time.millisToPosix flags.currentTimeInMS
       , screen =
             Screen.new
@@ -93,12 +109,47 @@ init flags =
                 [ FileSystem.volume "disk" []
                 ]
       , mouse = Mouse.new
+      , cursor = Just CursorPointer
       , interface =
             Interface.new
                 |> Interface.addLayer
                     { id = "desktop"
                     , orderConstraint = Just Interface.AlwaysFirst
                     }
+                |> Interface.addLayer
+                    { id = "desktopRects"
+                    , orderConstraint = Nothing
+                    }
+                |> Interface.addToLayer "desktopRects"
+                    [ ( "zoomRect0"
+                      , UIObject.new
+                            { rect = Rect.new ( 0, 0 ) ( 0, 0 )
+                            }
+                            |> UIObject.visible
+                                (Visible.rect MacOS.Visible.Rect.StyleDotted)
+                      )
+                    , ( "zoomRect1"
+                      , UIObject.new
+                            { rect = Rect.new ( 0, 0 ) ( 0, 0 )
+                            }
+                            |> UIObject.visible
+                                (Visible.rect MacOS.Visible.Rect.StyleDotted)
+                      )
+                    , ( "zoomRect2"
+                      , UIObject.new
+                            { rect = Rect.new ( 0, 0 ) ( 0, 0 )
+                            }
+                            |> UIObject.visible
+                                (Visible.rect MacOS.Visible.Rect.StyleDotted)
+                      )
+                    , ( "zoomRect3"
+                      , UIObject.new
+                            { rect = Rect.new ( 0, 0 ) ( 0, 0 )
+                            }
+                            |> UIObject.visible
+                                (Visible.rect MacOS.Visible.Rect.StyleDotted)
+                      )
+                    ]
                 |> Interface.addLayer
                     { id = "windows"
                     , orderConstraint = Nothing
@@ -121,6 +172,8 @@ init flags =
                       )
                     ]
       , dragging = Nothing
+      , instructions = []
+      , currentInstruction = Nothing
       }
     , Cmd.none
     )
@@ -135,15 +188,161 @@ type Msg
     | ClickedWindow
 
 
+handleInstruction : { timeStarted : Time.Posix, instruction : Instruction } -> Model -> ( Model, Cmd Msg )
+handleInstruction { timeStarted, instruction } model =
+    case instruction of
+        Instruction.AnimateZoom { from, to, zoomingIn } ->
+            let
+                animationDuration : number
+                animationDuration =
+                    250
+
+                animationPhase : Int
+                animationPhase =
+                    (toFloat (Time.posixToMillis model.currentTime - Time.posixToMillis timeStarted)
+                        / animationDuration
+                    )
+                        * 16
+                        |> ceiling
+
+                animationComplete : Bool
+                animationComplete =
+                    Time.posixToMillis model.currentTime - Time.posixToMillis timeStarted >= animationDuration
+
+                zoomRect : Int -> Rect
+                zoomRect x =
+                    -- x ranges from 0 to 11
+                    if zoomingIn then
+                        let
+                            flopped =
+                                0.69 ^ toFloat ((x * -1 + 11) + 1)
+                        in
+                        Rect.interpolate from to flopped
+
+                    else
+                        Rect.interpolate to from (0.69 ^ toFloat (x + 1))
+
+                zoomRects : List ( String, Rect )
+                zoomRects =
+                    if animationComplete then
+                        List.range 0 3
+                            |> List.map
+                                (\i ->
+                                    ( "zoomRect" ++ String.fromInt i
+                                    , Rect.new ( 0, 0 ) ( 0, 0 )
+                                    )
+                                )
+
+                    else
+                        List.range 0 3
+                            |> List.map
+                                (\i ->
+                                    let
+                                        clamped =
+                                            (i + (animationPhase - 4))
+                                                |> Basics.clamp 0 11
+                                    in
+                                    ( "zoomRect" ++ String.fromInt i
+                                    , zoomRect clamped
+                                    )
+                                )
+
+                updatedInterface : Interface Msg
+                updatedInterface =
+                    zoomRects
+                        |> List.map (\( key, rect ) -> ( key, UIObject.setRect rect ))
+                        |> (\updaters -> Interface.updateList updaters model.interface)
+
+                updatedCurrentInstruction =
+                    if animationComplete then
+                        Nothing
+
+                    else
+                        model.currentInstruction
+            in
+            ( { model
+                | currentInstruction = updatedCurrentInstruction
+                , interface = updatedInterface
+              }
+            , Cmd.none
+            )
+
+        Instruction.RemoveWindow { withId } ->
+            let
+                updatedInterface =
+                    model.interface
+                        |> Interface.remove "window1"
+            in
+            ( { model
+                | currentInstruction = Nothing
+                , interface = updatedInterface
+              }
+            , Cmd.none
+            )
+
+        Instruction.CreateWindow { withId, at } ->
+            let
+                updatedInterface =
+                    model.interface
+                        |> Interface.addToLayer "windows"
+                            [ ( withId
+                              , UIObject.new
+                                    { rect = at
+                                    }
+                                    |> UIObject.visible
+                                        (Visible.rect MacOS.Visible.Rect.StyleSolidFilled)
+                                    |> UIObject.draggable
+                                        { traveling = Visible.rect MacOS.Visible.Rect.StyleDotted
+                                        }
+                                    |> UIObject.onMouseDown ClickedWindow
+                              )
+                            ]
+            in
+            ( { model
+                | currentInstruction = Nothing
+                , interface = updatedInterface
+              }
+            , Cmd.none
+            )
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Tick time ->
-            ( { model
-                | currentTime = time
-              }
-            , Cmd.none
-            )
+            case model.currentInstruction of
+                Nothing ->
+                    case model.instructions of
+                        [] ->
+                            ( { model
+                                | currentTime = time
+                                , cursor = Just CursorPointer
+                              }
+                            , Cmd.none
+                            )
+
+                        first :: rest ->
+                            ( { model
+                                | currentTime = time
+                                , cursor = Just CursorWatch
+                                , instructions = rest
+                                , currentInstruction =
+                                    Just
+                                        { timeStarted = time
+                                        , instruction = first
+                                        }
+                              }
+                            , Cmd.none
+                            )
+
+                Just { timeStarted, instruction } ->
+                    { model
+                        | currentTime = time
+                    }
+                        |> handleInstruction
+                            { timeStarted = timeStarted
+                            , instruction = instruction
+                            }
 
         BrowserResized newWidth newHeight ->
             ( { model
@@ -198,11 +397,16 @@ update msg model =
 
                 eventCmds : Cmd Msg
                 eventCmds =
-                    newMouseEvents
-                        |> Mouse.filterEventsByObjId pickedId
-                        |> List.map MouseEvent
-                        |> List.map sendMsg
-                        |> Cmd.batch
+                    case model.cursor of
+                        Just CursorPointer ->
+                            newMouseEvents
+                                |> Mouse.filterEventsByObjId pickedId
+                                |> List.map MouseEvent
+                                |> List.map sendMsg
+                                |> Cmd.batch
+
+                        _ ->
+                            Cmd.none
 
                 updatedDragging : Maybe Dragging
                 updatedDragging =
@@ -228,30 +432,35 @@ update msg model =
 
         ClickedDisk ->
             ( { model
-                | interface =
-                    model.interface
-                        |> Interface.addToLayer "windows"
-                            [ ( "window1"
-                              , UIObject.new
-                                    { rect = Rect.new ( 32, 32 ) ( 350, 250 )
-                                    }
-                                    |> UIObject.visible
-                                        (Visible.rect MacOS.Visible.Rect.StyleSolidFilled)
-                                    |> UIObject.draggable
-                                        { traveling = Visible.rect MacOS.Visible.Rect.StyleDotted
-                                        }
-                                    |> UIObject.onMouseDown ClickedWindow
-                              )
-                            ]
+                | dragging = Nothing
+                , instructions =
+                    model.instructions
+                        ++ [ Instruction.AnimateZoom
+                                { from = Rect.new ( 450, 40 ) ( 32, 32 )
+                                , to = Rect.new ( 64, 64 ) ( 200, 200 )
+                                , zoomingIn = True
+                                }
+                           , Instruction.CreateWindow
+                                { withId = "window1"
+                                , at = Rect.new ( 64, 64 ) ( 200, 200 )
+                                }
+                           ]
               }
             , Cmd.none
             )
 
         ClickedWindow ->
             ( { model
-                | interface =
-                    model.interface
-                        |> Interface.remove "window1"
+                | dragging = Nothing
+                , instructions =
+                    model.instructions
+                        ++ [ Instruction.RemoveWindow { withId = "window1" }
+                           , Instruction.AnimateZoom
+                                { from = Rect.new ( 64, 64 ) ( 200, 200 )
+                                , to = Rect.new ( 450, 40 ) ( 32, 32 )
+                                , zoomingIn = False
+                                }
+                           ]
               }
             , Cmd.none
             )
@@ -328,8 +537,6 @@ update msg model =
                         updatedModel =
                             case ( maybeDraggedObject, maybeDragVis ) of
                                 ( Just obj, Just dragVis ) ->
-                                    -- Note:
-                                    -- Test whether object is draggable
                                     let
                                         mouseOffset : Coordinate
                                         mouseOffset =
@@ -385,6 +592,7 @@ view model =
          , style "background-image" FillPattern.dither50
          , style "position" "relative"
          , style "overflow" "hidden"
+         , style "cursor" "none"
          ]
             ++ Mouse.listeners MouseUpdated
             ++ Screen.scaleAttrs model.screen
@@ -439,7 +647,37 @@ viewDialogs model =
 
 viewCursor : Model -> Html msg
 viewCursor model =
-    ViewHelpers.none
+    let
+        cursorData =
+            case model.cursor of
+                Just CursorPointer ->
+                    { image = "MacOS/cursor-pointer.gif"
+                    , offsetX = -4
+                    , offsetY = -1
+                    }
+
+                Just CursorWatch ->
+                    { image = "MacOS/cursor-watch.gif"
+                    , offsetX = -9
+                    , offsetY = -9
+                    }
+
+                Nothing ->
+                    { image = ""
+                    , offsetX = 3
+                    , offsetY = 3
+                    }
+    in
+    div
+        [ style "position" "relative"
+        , style "left" (px (Mouse.x model.mouse + cursorData.offsetX))
+        , style "top" (px (Mouse.y model.mouse + cursorData.offsetY))
+        , style "width" (px 16)
+        , style "height" (px 16)
+        , style "background-image" (imgURL cursorData.image)
+        , style "pointer-events" "none"
+        ]
+        []
 
 
 viewVolume : Context Msg -> Maybe String -> FileSystem.Volume -> Html Msg
@@ -570,7 +808,7 @@ subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
         [ Browser.Events.onResize BrowserResized
-        , Time.every 50 Tick
+        , Time.every 10 Tick
         ]
 
 
