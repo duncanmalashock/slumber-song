@@ -1,5 +1,6 @@
 module MacOS exposing (main)
 
+import Apps.WindSleepers as WindSleepers
 import Browser
 import Browser.Events
 import Dict exposing (Dict)
@@ -56,8 +57,8 @@ type alias Model =
     , cursor : Maybe Cursor
     , interface : Interface Msg
     , dragging : Maybe Dragging
-    , instructions : List Instruction
-    , currentInstruction : Maybe { timeStarted : Time.Posix, instruction : Instruction }
+    , instructions : List (Instruction Msg)
+    , currentInstruction : Maybe { timeStarted : Time.Posix, instruction : Instruction Msg }
     }
 
 
@@ -97,17 +98,8 @@ init flags =
                 , browser = flags.browserDimensions
                 , devicePixelRatio = flags.devicePixelRatio
                 }
-      , menuBar =
-            MenuBar.new
-                [ MenuBar.menu "File" False
-                , MenuBar.menu "Edit" False
-                , MenuBar.menu "View" False
-                , MenuBar.menu "Special" False
-                ]
-      , fileSystem =
-            FileSystem.new
-                [ FileSystem.volume "disk" []
-                ]
+      , menuBar = MenuBar.new []
+      , fileSystem = FileSystem.new []
       , mouse = Mouse.new
       , cursor = Just CursorPointer
       , interface =
@@ -154,25 +146,8 @@ init flags =
                     { id = "windows"
                     , orderConstraint = Nothing
                     }
-                |> Interface.addToLayer "desktop"
-                    [ ( "Disk"
-                      , UIObject.new
-                            { rect = Rect.new ( 450, 40 ) ( 32, 32 )
-                            }
-                            |> UIObject.visible
-                                (Visible.rect MacOS.Visible.Rect.StyleSolidFilled)
-                            |> UIObject.selectable
-                                { selected = False
-                                , view = Visible.rect MacOS.Visible.Rect.StyleFillBlack
-                                }
-                            |> UIObject.draggable
-                                { traveling = Visible.rect MacOS.Visible.Rect.StyleDotted
-                                }
-                            |> UIObject.onMouseDown ClickedDisk
-                      )
-                    ]
       , dragging = Nothing
-      , instructions = []
+      , instructions = WindSleepers.program
       , currentInstruction = Nothing
       }
     , Cmd.none
@@ -184,46 +159,45 @@ type Msg
     | BrowserResized Int Int
     | MouseUpdated { clientPos : ( Int, Int ), buttonPressed : Bool }
     | MouseEvent Mouse.Event
-    | ClickedDisk
     | ClickedCloseBoxForWindow String
 
 
-setupGameWindows : List Instruction
+setupGameWindows : List (Instruction Msg)
 setupGameWindows =
-    [ Instruction.CreateWindow
-        { withId = "inventory"
-        , at = Rect.new ( 8, 28 ) ( 118, 225 )
-        , title = "inventory"
-        }
-    , Instruction.CreateWindow
-        { withId = "commands"
-        , at = Rect.new ( 128, 21 ) ( 256, 64 )
-        , title = "commands"
-        }
-    , Instruction.CreateWindow
-        { withId = "scene"
-        , at = Rect.new ( 128, 64 ) ( 256, 189 )
-        , title = "Entrance"
-        }
-    , Instruction.CreateWindow
-        { withId = "narration"
-        , at = Rect.new ( 8, 255 ) ( 496, 85 )
-        , title = "Untitled"
-        }
-    , Instruction.CreateWindow
-        { withId = "self-rune"
-        , at = Rect.new ( 400, 32 ) ( 77, 41 )
-        , title = "self"
-        }
-    , Instruction.CreateWindow
-        { withId = "exits"
-        , at = Rect.new ( 400, 90 ) ( 77, 96 )
-        , title = "Exits"
-        }
+    [--   Instruction.CreateWindow
+     --     { withId = "inventory"
+     --     , at = Rect.new ( 8, 28 ) ( 118, 225 )
+     --     , title = "inventory"
+     --     }
+     -- , Instruction.CreateWindow
+     --     { withId = "commands"
+     --     , at = Rect.new ( 128, 21 ) ( 256, 64 )
+     --     , title = "commands"
+     --     }
+     -- , Instruction.CreateWindow
+     --     { withId = "scene"
+     --     , at = Rect.new ( 128, 64 ) ( 256, 189 )
+     --     , title = "Entrance"
+     --     }
+     -- , Instruction.CreateWindow
+     --     { withId = "narration"
+     --     , at = Rect.new ( 8, 255 ) ( 496, 85 )
+     --     , title = "Untitled"
+     --     }
+     -- , Instruction.CreateWindow
+     --     { withId = "self-rune"
+     --     , at = Rect.new ( 400, 32 ) ( 77, 41 )
+     --     , title = "self"
+     --     }
+     -- , Instruction.CreateWindow
+     --     { withId = "exits"
+     --     , at = Rect.new ( 400, 90 ) ( 77, 96 )
+     --     , title = "Exits"
+     --     }
     ]
 
 
-handleInstruction : { timeStarted : Time.Posix, instruction : Instruction } -> Model -> ( Model, Cmd Msg )
+handleInstruction : { timeStarted : Time.Posix, instruction : Instruction Msg } -> Model -> ( Model, Cmd Msg )
 handleInstruction { timeStarted, instruction } model =
     case instruction of
         Instruction.AnimateZoom { from, to, zoomingIn } ->
@@ -315,27 +289,48 @@ handleInstruction { timeStarted, instruction } model =
             , Cmd.none
             )
 
-        Instruction.CreateWindow { withId, at, title } ->
+        Instruction.CreateWindow { withId, window } ->
             let
                 updatedInterface =
                     model.interface
                         |> Interface.addToLayer "windows"
                             [ ( withId
                               , UIObject.new
-                                    { rect = at
+                                    { rect = window.rect
                                     }
                                     |> UIObject.visible
-                                        (Visible.window
-                                            { title = title
-                                            , isActive = True
-                                            , closeMsg = ClickedCloseBoxForWindow withId
-                                            }
-                                        )
+                                        (Visible.window window)
                                     |> UIObject.draggable
                                         { traveling = Visible.rect MacOS.Visible.Rect.StyleDotted
                                         }
                               )
                             ]
+            in
+            ( { model
+                | currentInstruction = Nothing
+                , interface = updatedInterface
+              }
+            , Cmd.none
+            )
+
+        Instruction.CreateObject { withId, object } ->
+            let
+                updatedInterface =
+                    model.interface
+                        |> Interface.createObject withId object
+            in
+            ( { model
+                | currentInstruction = Nothing
+                , interface = updatedInterface
+              }
+            , Cmd.none
+            )
+
+        Instruction.AttachObject params ->
+            let
+                updatedInterface =
+                    model.interface
+                        |> Interface.attachObject params
             in
             ( { model
                 | currentInstruction = Nothing
@@ -469,26 +464,25 @@ update msg model =
             , eventCmds
             )
 
-        ClickedDisk ->
-            ( { model
-                | dragging = Nothing
-                , instructions =
-                    model.instructions
-                        ++ [ Instruction.AnimateZoom
-                                { from = Rect.new ( 450, 40 ) ( 32, 32 )
-                                , to = Rect.new ( 64, 64 ) ( 200, 200 )
-                                , zoomingIn = True
-                                }
-                           , Instruction.CreateWindow
-                                { withId = "window1"
-                                , at = Rect.new ( 64, 64 ) ( 200, 200 )
-                                , title = "window"
-                                }
-                           ]
-              }
-            , Cmd.none
-            )
-
+        -- ClickedDisk ->
+        --     ( { model
+        --         | dragging = Nothing
+        --         , instructions =
+        --             model.instructions
+        --                 ++ [ Instruction.AnimateZoom
+        --                         { from = Rect.new ( 450, 40 ) ( 32, 32 )
+        --                         , to = Rect.new ( 64, 64 ) ( 200, 200 )
+        --                         , zoomingIn = True
+        --                         }
+        --                    , Instruction.CreateWindow
+        --                         { withId = "window1"
+        --                         , rect = Rect.new ( 64, 64 ) ( 200, 200 )
+        --                         , title = "window"
+        --                         }
+        --                    ]
+        --       }
+        --     , Cmd.none
+        --     )
         ClickedCloseBoxForWindow windowId ->
             ( { model
                 | dragging = Nothing

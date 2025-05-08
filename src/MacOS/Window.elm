@@ -1,4 +1,4 @@
-module MacOS.Window exposing (Config, view)
+module MacOS.Window exposing (Window, view)
 
 import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
@@ -12,33 +12,33 @@ import MacOS.Rect as Rect exposing (Rect)
 import MacOS.ViewHelpers as ViewHelpers exposing (..)
 
 
-type alias Config msg =
+type alias Window msg =
     { title : String
-    , isActive : Bool
-    , closeMsg : msg
+    , closeMsg : Maybe msg
+    , rect : Rect
     }
 
 
-view : Config msg -> Rect -> Html msg
-view config rect =
+view : Window msg -> Bool -> Html msg
+view config isActive =
     div
         [ style "position" "absolute"
-        , style "top" (px (Rect.posY rect))
-        , style "left" (px (Rect.posX rect))
-        , style "width" (px (Rect.width rect))
-        , style "height" (px (Rect.height rect))
+        , style "top" (px (Rect.posY config.rect))
+        , style "left" (px (Rect.posX config.rect))
+        , style "width" (px (Rect.width config.rect))
+        , style "height" (px (Rect.height config.rect))
         , style "background" "white"
         , style "border" "solid 1px"
         , style "box-shadow" "1px 1px 0px"
         ]
-        [ viewWindowTitle config rect
+        [ viewWindowTitle config isActive
 
         --, div [] content
         ]
 
 
-viewWindowTitle : Config msg -> Rect -> Html msg
-viewWindowTitle config rect =
+viewWindowTitle : Window msg -> Bool -> Html msg
+viewWindowTitle config isActive =
     div
         [ style "position" "absolute"
         , style "top" "0"
@@ -49,13 +49,18 @@ viewWindowTitle config rect =
         , style "text-align" "center"
         , style "height" "18px"
         ]
-        [ if config.isActive then
+        [ if isActive then
             viewWindowTitleLines
 
           else
             ViewHelpers.none
-        , if config.isActive then
-            viewWindowCloseBox config.closeMsg
+        , if isActive then
+            case config.closeMsg of
+                Just msg ->
+                    viewWindowCloseBox msg
+
+                Nothing ->
+                    ViewHelpers.none
 
           else
             ViewHelpers.none

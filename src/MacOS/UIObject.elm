@@ -4,6 +4,7 @@ module MacOS.UIObject exposing
     , draggable
     , getDraggable
     , getMouseEventHandler
+    , image
     , new
     , onClick
     , onDoubleClick
@@ -60,6 +61,20 @@ new params =
     UIObject
         { rect = params.rect
         , visible = Nothing
+        , selectable = Nothing
+        , draggable = Nothing
+        , onMouseDown = Nothing
+        , onClick = Nothing
+        , onDoubleClick = Nothing
+        , onDragStart = Nothing
+        }
+
+
+image : { url : String, size : ( Int, Int ) } -> UIObject msg
+image params =
+    UIObject
+        { rect = Rect.new ( 0, 0 ) params.size
+        , visible = Just (Visible.image params)
         , selectable = Nothing
         , draggable = Nothing
         , onMouseDown = Nothing

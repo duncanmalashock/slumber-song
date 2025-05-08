@@ -1,4 +1,21 @@
-module MacOS.Interface exposing (Interface, OrderConstraint(..), addLayer, addToLayer, bringObjectToFront, containingCoordinate, get, msgForMouseEvent, new, remove, topmostFromList, update, updateList, view)
+module MacOS.Interface exposing
+    ( Interface
+    , OrderConstraint(..)
+    , addLayer
+    , addToLayer
+    , attachObject
+    , bringObjectToFront
+    , containingCoordinate
+    , createObject
+    , get
+    , msgForMouseEvent
+    , new
+    , remove
+    , topmostFromList
+    , update
+    , updateList
+    , view
+    )
 
 import Dict exposing (Dict)
 import Html exposing (..)
@@ -151,6 +168,28 @@ addSingle layerId ( objectId, obj ) (Interface internals) =
                     internals.drawOrder
             , objectToLayer = Dict.insert objectId layerId internals.objectToLayer
         }
+
+
+createObject : ObjectId -> UIObject msg -> Interface msg -> Interface msg
+createObject objectId object (Interface internals) =
+    Interface
+        { internals
+            | uiObjects = Dict.insert objectId object internals.uiObjects
+        }
+
+
+attachObject : { objectId : ObjectId, layerId : LayerId } -> Interface msg -> Interface msg
+attachObject { objectId, layerId } (Interface internals) =
+    -- User could attach an object that hasn't been created yet. What to do??
+    Interface
+        { internals
+            | drawOrder =
+                Dict.update layerId
+                    (\maybeList -> Maybe.map (\l -> l ++ [ objectId ]) maybeList)
+                    internals.drawOrder
+            , objectToLayer = Dict.insert objectId layerId internals.objectToLayer
+        }
+        |> Debug.log "TODO"
 
 
 containingCoordinate : Coordinate -> Interface msg -> List String
