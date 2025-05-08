@@ -84,13 +84,6 @@ type alias Flags =
 
 init : Flags -> ( Model, Cmd Msg )
 init flags =
-    let
-        from =
-            Rect.new ( 32, 64 ) ( 350, 250 )
-
-        to =
-            Rect.new ( 450, 40 ) ( 32, 32 )
-    in
     ( { currentTime = Time.millisToPosix flags.currentTimeInMS
       , screen =
             Screen.new
@@ -160,41 +153,6 @@ type Msg
     | MouseUpdated { clientPos : ( Int, Int ), buttonPressed : Bool }
     | MouseEvent Mouse.Event
     | ClickedCloseBoxForWindow String
-
-
-setupGameWindows : List (Instruction Msg)
-setupGameWindows =
-    [--   Instruction.CreateWindow
-     --     { withId = "inventory"
-     --     , at = Rect.new ( 8, 28 ) ( 118, 225 )
-     --     , title = "inventory"
-     --     }
-     -- , Instruction.CreateWindow
-     --     { withId = "commands"
-     --     , at = Rect.new ( 128, 21 ) ( 256, 64 )
-     --     , title = "commands"
-     --     }
-     -- , Instruction.CreateWindow
-     --     { withId = "scene"
-     --     , at = Rect.new ( 128, 64 ) ( 256, 189 )
-     --     , title = "Entrance"
-     --     }
-     -- , Instruction.CreateWindow
-     --     { withId = "narration"
-     --     , at = Rect.new ( 8, 255 ) ( 496, 85 )
-     --     , title = "Untitled"
-     --     }
-     -- , Instruction.CreateWindow
-     --     { withId = "self-rune"
-     --     , at = Rect.new ( 400, 32 ) ( 77, 41 )
-     --     , title = "self"
-     --     }
-     -- , Instruction.CreateWindow
-     --     { withId = "exits"
-     --     , at = Rect.new ( 400, 90 ) ( 77, 96 )
-     --     , title = "Exits"
-     --     }
-    ]
 
 
 handleInstruction : { timeStarted : Time.Posix, instruction : Instruction Msg } -> Model -> ( Model, Cmd Msg )
@@ -464,25 +422,6 @@ update msg model =
             , eventCmds
             )
 
-        -- ClickedDisk ->
-        --     ( { model
-        --         | dragging = Nothing
-        --         , instructions =
-        --             model.instructions
-        --                 ++ [ Instruction.AnimateZoom
-        --                         { from = Rect.new ( 450, 40 ) ( 32, 32 )
-        --                         , to = Rect.new ( 64, 64 ) ( 200, 200 )
-        --                         , zoomingIn = True
-        --                         }
-        --                    , Instruction.CreateWindow
-        --                         { withId = "window1"
-        --                         , rect = Rect.new ( 64, 64 ) ( 200, 200 )
-        --                         , title = "window"
-        --                         }
-        --                    ]
-        --       }
-        --     , Cmd.none
-        --     )
         ClickedCloseBoxForWindow windowId ->
             ( { model
                 | dragging = Nothing
@@ -631,37 +570,13 @@ view model =
             ++ Mouse.listeners MouseUpdated
             ++ Screen.scaleAttrs model.screen
         )
-        [ viewDesktopObjects model
-        , viewDesktopRectangles model
-        , viewWindows model
-        , viewWindowRectangles model
+        [ Interface.view model.interface
         , viewDraggedObject model
         , MenuBar.view (Screen.width model.screen) model.menuBar
-        , viewDialogs model
         , viewScreenCorners (Screen.logical model.screen)
         , viewDebugger model
         , viewCursor model
         ]
-
-
-viewDesktopObjects : Model -> Html Msg
-viewDesktopObjects model =
-    Interface.view model.interface
-
-
-viewDesktopRectangles : Model -> Html msg
-viewDesktopRectangles model =
-    ViewHelpers.none
-
-
-viewWindows : Model -> Html msg
-viewWindows model =
-    ViewHelpers.none
-
-
-viewWindowRectangles : Model -> Html msg
-viewWindowRectangles model =
-    ViewHelpers.none
 
 
 viewDraggedObject : Model -> Html Msg
@@ -672,11 +587,6 @@ viewDraggedObject model =
 
         Nothing ->
             ViewHelpers.none
-
-
-viewDialogs : Model -> Html msg
-viewDialogs model =
-    ViewHelpers.none
 
 
 viewCursor : Model -> Html msg
@@ -712,62 +622,6 @@ viewCursor model =
         , style "pointer-events" "none"
         ]
         []
-
-
-viewVolume : Context Msg -> Maybe String -> FileSystem.Volume -> Html Msg
-viewVolume context activeFile volume =
-    let
-        coordinate : Coordinate
-        coordinate =
-            Coordinate.new ( 442, 32 )
-    in
-    div
-        ([ style "position" "absolute"
-         , style "display" "flex"
-         , style "flex-direction" "column"
-         , style "align-items" "center"
-         , style "top" (px 32)
-         , style "left" (px 442)
-         ]
-            ++ context.listenersForObject
-                { id = "disk"
-                , coordinate = coordinate
-                }
-        )
-        [ div
-            ([ style "width" (px 32)
-             , style "height" (px 32)
-             , style "background-image" (imgURL "MacOS/disk.gif")
-             ]
-                ++ (case activeFile of
-                        Just "disk" ->
-                            [ style "filter" "invert(1)" ]
-
-                        _ ->
-                            []
-                   )
-            )
-            []
-        , div
-            ([ style "height" (px 12)
-             , style "text-align" "center"
-             , style "top" (px 32)
-             , style "left" (px -23)
-             , style "background-color" "white"
-             , style "font-family" "Geneva"
-             , style "line-height" (px 11)
-             , style "padding" "0 2px"
-             ]
-                ++ (case activeFile of
-                        Just "disk" ->
-                            [ style "filter" "invert(1)" ]
-
-                        _ ->
-                            []
-                   )
-            )
-            [ text (FileSystem.name volume) ]
-        ]
 
 
 type Corner
