@@ -1,7 +1,6 @@
-module MacOS.ViewHelpers exposing (imgURL, none, px, roundFloat)
+module MacOS.UI.Helpers exposing (imgURL, none, px)
 
 import Html exposing (Html)
-import Json.Decode as Decode exposing (Decoder)
 
 
 px : Int -> String
@@ -12,11 +11,6 @@ px int =
 none : Html msg
 none =
     Html.text ""
-
-
-roundFloat : Decoder Int
-roundFloat =
-    Decode.float |> Decode.map round
 
 
 imgURL : String -> String

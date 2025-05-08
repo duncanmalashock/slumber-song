@@ -1,15 +1,15 @@
-module Game exposing (Game, Msg(..), currentRoom, encode, narration, new, objects, objectsInCurrentRoom, objectsInInventory, player, update)
+module Vent.Game exposing (Game, Msg(..), currentRoom, encode, narration, new, objects, objectsInCurrentRoom, objectsInInventory, player, update)
 
-import Command exposing (Command(..))
-import Effect exposing (Effect(..))
-import Expression
-import Interaction exposing (Interaction(..))
 import Json.Encode as Encode
-import Object exposing (Object)
-import ObjectStore exposing (ObjectStore)
-import Script exposing (Script)
-import Trigger exposing (Trigger)
-import Update exposing (Update(..))
+import Vent.Command exposing (Command(..))
+import Vent.Effect exposing (Effect(..))
+import Vent.Expression as Expression
+import Vent.Interaction as Interaction exposing (Interaction(..))
+import Vent.Object as Object exposing (Object)
+import Vent.ObjectStore as ObjectStore exposing (ObjectStore)
+import Vent.Script exposing (Script)
+import Vent.Trigger as Trigger exposing (Trigger)
+import Vent.Update exposing (Update(..))
 
 
 type Game

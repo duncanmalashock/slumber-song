@@ -1,11 +1,11 @@
-module Object exposing (Object, attribute, decoder, description, encode, id, name, new, null, parent, scripts, setBoolAttribute, setIntAttribute, setStringAttribute)
+module Vent.Object exposing (Object, attribute, decoder, description, encode, id, name, new, null, parent, scripts, setBoolAttribute, setIntAttribute, setStringAttribute)
 
-import Attribute exposing (Attribute)
-import AttributeStore exposing (AttributeStore)
 import Dict exposing (Dict)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
-import Script exposing (Script)
+import Vent.Attribute as Attribute exposing (Attribute)
+import Vent.AttributeStore as AttributeStore exposing (AttributeStore)
+import Vent.Script as Script exposing (Script)
 
 
 type Object

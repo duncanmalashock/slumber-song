@@ -1,4 +1,4 @@
-module Attribute exposing (Attribute(..), bool, decoder, encode, int, string)
+module Vent.Attribute exposing (Attribute(..), bool, decoder, encode, int, string)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode

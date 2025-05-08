@@ -1,9 +1,9 @@
-module AttributeStore exposing (AttributeStore, encode, getById, new, setBool, setInt, setString)
+module Vent.AttributeStore exposing (AttributeStore, encode, getById, new, setBool, setInt, setString)
 
-import Attribute exposing (Attribute)
 import Dict exposing (Dict)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
+import Vent.Attribute as Attribute exposing (Attribute)
 
 
 type AttributeStore

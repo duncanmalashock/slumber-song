@@ -1,4 +1,4 @@
-module Vent.Parse exposing
+module Vent.VentScript.Parse exposing
     ( Effect(..)
     , Error(..)
     , Expr(..)

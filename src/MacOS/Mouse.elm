@@ -1,19 +1,37 @@
 module MacOS.Mouse exposing
-    ( Event(..)
-    , Mouse
-    , Msg
-    , MsgData
-    , buttonPressed
-    , debug
+    ( Mouse, new
+    , position, x, y, buttonPressed
+    , update, Msg
+    , MsgData, toMsg
+    , Event(..), listeners
     , filterEventsByObjId
-    , listeners
-    , new
-    , position
-    , toMsg
-    , update
-    , x
-    , y
     )
+
+{-| The mouse's position and button state. Can produce mouse events for user interaction.
+
+
+# Mouse
+
+@docs Mouse, new
+
+
+# Query
+
+@docs position, x, y, buttonPressed
+
+
+# Update
+
+@docs update, Msg
+@docs MsgData, toMsg
+
+
+# Mouse Events
+
+@docs Event, listeners
+@docs filterEventsByObjId
+
+-}
 
 import Html exposing (Attribute)
 import Html.Events as Events
@@ -22,7 +40,6 @@ import List.Extra
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.Rect exposing (Rect)
 import MacOS.Screen as Screen exposing (Screen)
-import MacOS.ViewHelpers as ViewHelpers
 import Time
 
 
@@ -215,6 +232,11 @@ mouseEventDecoder toMsg_ =
                 , buttonPressed = b == 1
                 }
         )
-        (Decode.field "clientX" ViewHelpers.roundFloat)
-        (Decode.field "clientY" ViewHelpers.roundFloat)
+        (Decode.field "clientX" positionDecoder)
+        (Decode.field "clientY" positionDecoder)
         (Decode.field "buttons" Decode.int)
+
+
+positionDecoder : Decoder Int
+positionDecoder =
+    Decode.float |> Decode.map floor

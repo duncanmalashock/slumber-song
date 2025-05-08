@@ -1,9 +1,9 @@
-module Trigger exposing (Trigger(..), decoder, encode, fromString, shouldRun)
+module Vent.Trigger exposing (Trigger(..), decoder, encode, fromString, shouldRun)
 
-import Command exposing (Command)
-import Interaction exposing (Interaction(..))
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
+import Vent.Command as Command exposing (Command)
+import Vent.Interaction as Interaction exposing (Interaction(..))
 
 
 type Trigger

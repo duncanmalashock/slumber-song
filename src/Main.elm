@@ -1,322 +1,704 @@
 module Main exposing (main)
 
+import Apps.WindSleepers as WindSleepers
 import Browser
-import Command exposing (Command)
+import Browser.Events
 import Dict exposing (Dict)
-import Effect exposing (Effect(..))
-import Game exposing (Game)
-import Html exposing (Html)
-import Html.Attributes as Html
-import Html.Events exposing (onClick)
-import Json.Decode as Decode
-import MacOS
-import Object exposing (Object)
-import ObjectStore exposing (ObjectStore)
-import Ports
-import Vent
+import Html exposing (..)
+import Html.Attributes as Attr exposing (..)
+import Html.Events as Events exposing (..)
+import Json.Decode as Decode exposing (Decoder)
+import MacOS.Coordinate as Coordinate exposing (Coordinate)
+import MacOS.Instruction as Instruction exposing (Instruction)
+import MacOS.MenuBar as MenuBar exposing (MenuBar)
+import MacOS.Mouse as Mouse exposing (Mouse)
+import MacOS.Rect as Rect exposing (Rect)
+import MacOS.Screen as Screen exposing (Screen)
+import MacOS.UI as UI exposing (UI)
+import MacOS.UI.FillPattern as FillPattern
+import MacOS.UI.Helpers as UIHelpers exposing (imgURL, px)
+import MacOS.UI.Object as UIObject exposing (Object)
+import MacOS.UI.View as View exposing (View)
+import MacOS.UI.View.Rect
+import MacOS.UI.View.Window as Window
+import Set
+import Task
+import Time
 
 
-type alias Flags =
-    { useVDomInterface : Bool
-    , gameFile : String
-    }
-
-
-flagsDecoder : Decode.Decoder Flags
-flagsDecoder =
-    Decode.map2 Flags
-        (Decode.field "useVDomInterface" Decode.bool)
-        (Decode.field "gameFile" Decode.string)
+viewDebugger : Model -> Html Msg
+viewDebugger model =
+    div
+        [ style "position" "absolute"
+        , style "bottom" (px 16)
+        , style "left" (px 16)
+        , style "width" (px (Screen.width model.screen - 32))
+        ]
+        [ div
+            [ style "background-color" "black"
+            , style "color" "white"
+            , style "font-family" "Geneva"
+            , style "padding" "0 6px"
+            ]
+            [-- div [] [ text <| Debug.toString model.currentInstruction ]
+            ]
+        ]
 
 
 type alias Model =
-    { game : RemoteData Game.Game String
-    , interfaceMode : InterfaceMode
-    , parserInput : String
+    { currentTime : Time.Posix
+    , screen : Screen
+    , menuBar : MenuBar
+    , mouse : Mouse
+    , cursor : Maybe Cursor
+    , ui : UI Msg
+    , dragging : Maybe Dragging
+    , instructions : List (Instruction Msg)
+    , currentInstruction : Maybe { timeStarted : Time.Posix, instruction : Instruction Msg }
     }
 
 
-type RemoteData data err
-    = NotLoaded
-    | Loading
-    | LoadSuccessful data
-    | LoadFailed err
+type Cursor
+    = CursorPointer
+    | CursorWatch
 
 
-type InterfaceMode
-    = InterfaceJS
-    | InterfaceElmVDom
+type alias Dragging =
+    { objId : String
+    , rect : Rect
+    , offset : Coordinate
+    , visible : View Msg
+    }
 
 
-type Msg
-    = GameDataLoaded (List Object)
-    | ReceivedGameMsg Game.Msg
-    | GameMsgDecodeError Decode.Error
-    | UserClickedSaveButton
-    | UserTypedIntoParserInput String
-
-
-msgDecoder : Decode.Decoder Msg
-msgDecoder =
-    Decode.field "tag" Decode.string
-        |> Decode.andThen
-            (\tag ->
-                case tag of
-                    "GameDataLoaded" ->
-                        Decode.field "payload"
-                            (Decode.map GameDataLoaded
-                                (Decode.list Object.decoder)
-                            )
-
-                    "UserClickedCommandButton" ->
-                        Decode.field "payload"
-                            (Decode.map
-                                (Game.UserClickedCommandButton
-                                    >> ReceivedGameMsg
-                                )
-                                (Decode.field "command" Command.decoder)
-                            )
-
-                    _ ->
-                        Decode.fail "Unknown tag"
-            )
+type alias Flags =
+    { browserDimensions : { x : Int, y : Int }
+    , devicePixelRatio : Float
+    , currentTimeInMS : Int
+    }
 
 
 init : Flags -> ( Model, Cmd Msg )
 init flags =
-    let
-        initialModel : Model
-        initialModel =
-            { game = Loading
-            , interfaceMode =
-                if flags.useVDomInterface then
-                    InterfaceElmVDom
-
-                else
-                    InterfaceJS
-            , parserInput = String.trimLeft """
-%open
-if true then
-@skull.isOpen = true
-$printText "As if by magic, the skull rises."
-end
-"""
-            }
-    in
-    ( initialModel
-    , Ports.send
-        [ Effect.LoadGameData flags.gameFile
-        ]
+    ( { currentTime = Time.millisToPosix flags.currentTimeInMS
+      , screen =
+            Screen.new
+                { screenInPixels = ( 512, 342 )
+                , browser = flags.browserDimensions
+                , devicePixelRatio = flags.devicePixelRatio
+                }
+      , menuBar = MenuBar.new []
+      , mouse = Mouse.new
+      , cursor = Just CursorPointer
+      , ui =
+            UI.new
+                |> UI.addLayer
+                    { id = "desktop"
+                    , orderConstraint = Just UI.AlwaysFirst
+                    }
+                |> UI.addLayer
+                    { id = "desktopRects"
+                    , orderConstraint = Nothing
+                    }
+                |> UI.addToLayer "desktopRects"
+                    [ ( "zoomRect0"
+                      , UIObject.new
+                            { rect = Rect.new ( 0, 0 ) ( 0, 0 )
+                            }
+                            |> UIObject.visible
+                                (View.rect MacOS.UI.View.Rect.StyleDotted)
+                      )
+                    , ( "zoomRect1"
+                      , UIObject.new
+                            { rect = Rect.new ( 0, 0 ) ( 0, 0 )
+                            }
+                            |> UIObject.visible
+                                (View.rect MacOS.UI.View.Rect.StyleDotted)
+                      )
+                    , ( "zoomRect2"
+                      , UIObject.new
+                            { rect = Rect.new ( 0, 0 ) ( 0, 0 )
+                            }
+                            |> UIObject.visible
+                                (View.rect MacOS.UI.View.Rect.StyleDotted)
+                      )
+                    , ( "zoomRect3"
+                      , UIObject.new
+                            { rect = Rect.new ( 0, 0 ) ( 0, 0 )
+                            }
+                            |> UIObject.visible
+                                (View.rect MacOS.UI.View.Rect.StyleDotted)
+                      )
+                    ]
+                |> UI.addLayer
+                    { id = "windows"
+                    , orderConstraint = Nothing
+                    }
+      , dragging = Nothing
+      , instructions = WindSleepers.program
+      , currentInstruction = Nothing
+      }
+    , Cmd.none
     )
 
 
-updateLoadedGame :
-    Game.Msg
-    -> RemoteData Game.Game String
-    -> ( RemoteData Game.Game String, List Effect.Effect )
-updateLoadedGame gameMsg gameData =
-    case gameData of
-        NotLoaded ->
-            ( gameData, [] )
+type Msg
+    = Tick Time.Posix
+    | BrowserResized Int Int
+    | MouseUpdated { clientPos : ( Int, Int ), buttonPressed : Bool }
+    | MouseEvent Mouse.Event
+    | ClickedCloseBoxForWindow String
 
-        Loading ->
-            ( gameData, [] )
 
-        LoadSuccessful loadedGame ->
+handleInstruction : { timeStarted : Time.Posix, instruction : Instruction Msg } -> Model -> ( Model, Cmd Msg )
+handleInstruction { timeStarted, instruction } model =
+    case instruction of
+        Instruction.AnimateZoom { from, to, zoomingIn } ->
             let
-                ( updatedGame, effects ) =
-                    Game.update gameMsg loadedGame
-            in
-            ( LoadSuccessful updatedGame, effects )
+                animationDuration : number
+                animationDuration =
+                    250
 
-        LoadFailed err ->
-            ( gameData
-            , [ Effect.ReportError "Couldn't load game" ]
+                animationPhase : Int
+                animationPhase =
+                    (toFloat (Time.posixToMillis model.currentTime - Time.posixToMillis timeStarted)
+                        / animationDuration
+                    )
+                        * 16
+                        |> ceiling
+
+                animationComplete : Bool
+                animationComplete =
+                    Time.posixToMillis model.currentTime - Time.posixToMillis timeStarted >= animationDuration
+
+                zoomRect : Int -> Rect
+                zoomRect x =
+                    -- x ranges from 0 to 11
+                    if zoomingIn then
+                        let
+                            flopped =
+                                0.69 ^ toFloat ((x * -1 + 11) + 1)
+                        in
+                        Rect.interpolate from to flopped
+
+                    else
+                        Rect.interpolate to from (0.69 ^ toFloat (x + 1))
+
+                zoomRects : List ( String, Rect )
+                zoomRects =
+                    if animationComplete then
+                        List.range 0 3
+                            |> List.map
+                                (\i ->
+                                    ( "zoomRect" ++ String.fromInt i
+                                    , Rect.new ( 0, 0 ) ( 0, 0 )
+                                    )
+                                )
+
+                    else
+                        List.range 0 3
+                            |> List.map
+                                (\i ->
+                                    let
+                                        clamped =
+                                            (i + (animationPhase - 4))
+                                                |> Basics.clamp 0 11
+                                    in
+                                    ( "zoomRect" ++ String.fromInt i
+                                    , zoomRect clamped
+                                    )
+                                )
+
+                updatedUI : UI Msg
+                updatedUI =
+                    zoomRects
+                        |> List.map (\( key, rect ) -> ( key, UIObject.setRect rect ))
+                        |> (\updaters -> UI.updateList updaters model.ui)
+
+                updatedCurrentInstruction =
+                    if animationComplete then
+                        Nothing
+
+                    else
+                        model.currentInstruction
+            in
+            ( { model
+                | currentInstruction = updatedCurrentInstruction
+                , ui = updatedUI
+              }
+            , Cmd.none
+            )
+
+        Instruction.RemoveWindow { withId } ->
+            let
+                updatedUI =
+                    model.ui
+                        |> UI.remove withId
+            in
+            ( { model
+                | currentInstruction = Nothing
+                , ui = updatedUI
+              }
+            , Cmd.none
+            )
+
+        Instruction.CreateWindow { withId, window } ->
+            let
+                updatedUI =
+                    model.ui
+                        |> UI.addToLayer "windows"
+                            [ ( withId
+                              , UIObject.new
+                                    { rect = window.rect
+                                    }
+                                    |> UIObject.visible
+                                        (View.window window)
+                                    |> UIObject.draggable
+                                        { traveling = View.rect MacOS.UI.View.Rect.StyleDotted
+                                        }
+                              )
+                            ]
+            in
+            ( { model
+                | currentInstruction = Nothing
+                , ui = updatedUI
+              }
+            , Cmd.none
+            )
+
+        Instruction.CreateObject { withId, object } ->
+            let
+                updatedUI =
+                    model.ui
+                        |> UI.createObject withId object
+            in
+            ( { model
+                | currentInstruction = Nothing
+                , ui = updatedUI
+              }
+            , Cmd.none
+            )
+
+        Instruction.AttachObject params ->
+            let
+                updatedUI =
+                    model.ui
+                        |> UI.attachObject params
+            in
+            ( { model
+                | currentInstruction = Nothing
+                , ui = updatedUI
+              }
+            , Cmd.none
             )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        GameDataLoaded objects ->
+        Tick time ->
+            case model.currentInstruction of
+                Nothing ->
+                    case model.instructions of
+                        [] ->
+                            ( { model
+                                | currentTime = time
+                                , cursor = Just CursorPointer
+                              }
+                            , Cmd.none
+                            )
+
+                        first :: rest ->
+                            ( { model
+                                | currentTime = time
+                                , cursor = Just CursorWatch
+                                , instructions = rest
+                                , currentInstruction =
+                                    Just
+                                        { timeStarted = time
+                                        , instruction = first
+                                        }
+                              }
+                            , Cmd.none
+                            )
+
+                Just { timeStarted, instruction } ->
+                    { model
+                        | currentTime = time
+                    }
+                        |> handleInstruction
+                            { timeStarted = timeStarted
+                            , instruction = instruction
+                            }
+
+        BrowserResized newWidth newHeight ->
+            ( { model
+                | screen =
+                    model.screen
+                        |> Screen.update { x = newWidth, y = newHeight }
+              }
+            , Cmd.none
+            )
+
+        MouseUpdated args ->
             let
-                ( newGame, effects ) =
-                    Game.new objects
+                newMousePos : Coordinate
+                newMousePos =
+                    Coordinate.new args.clientPos
+                        |> Screen.toScreenCoordinates model.screen
+
+                newMouseButtonState : Bool
+                newMouseButtonState =
+                    args.buttonPressed
+
+                hitTestResults : List String
+                hitTestResults =
+                    UI.containingCoordinate newMousePos model.ui
+
+                mouseMsgData : Mouse.MsgData
+                mouseMsgData =
+                    { atTime = model.currentTime
+                    , buttonPressed = args.buttonPressed
+                    , position = newMousePos
+                    , overObjIds = hitTestResults
+                    }
+
+                mouseStateChanged : Bool
+                mouseStateChanged =
+                    (newMousePos /= Mouse.position model.mouse)
+                        || (newMouseButtonState /= Mouse.buttonPressed model.mouse)
+
+                ( updatedMouse, newMouseEvents ) =
+                    if mouseStateChanged then
+                        Mouse.update
+                            (Mouse.toMsg mouseMsgData)
+                            model.mouse
+
+                    else
+                        ( model.mouse, [] )
+
+                pickedId : Maybe String
+                pickedId =
+                    UI.topmostFromList hitTestResults model.ui
+
+                eventCmds : Cmd Msg
+                eventCmds =
+                    case model.cursor of
+                        Just CursorPointer ->
+                            newMouseEvents
+                                |> Mouse.filterEventsByObjId pickedId
+                                |> List.map MouseEvent
+                                |> List.map sendMsg
+                                |> Cmd.batch
+
+                        _ ->
+                            Cmd.none
+
+                updatedDragging : Maybe Dragging
+                updatedDragging =
+                    case model.dragging of
+                        Just dragging ->
+                            Just
+                                { dragging
+                                    | rect =
+                                        Rect.setPosition
+                                            (Coordinate.plus newMousePos dragging.offset)
+                                            dragging.rect
+                                }
+
+                        Nothing ->
+                            Nothing
             in
             ( { model
-                | game = LoadSuccessful newGame
+                | mouse = updatedMouse
+                , dragging = updatedDragging
               }
-            , Ports.send effects
+            , eventCmds
             )
 
-        ReceivedGameMsg gameMsg ->
-            let
-                ( updatedGame, effects ) =
-                    updateLoadedGame gameMsg model.game
-            in
+        ClickedCloseBoxForWindow windowId ->
             ( { model
-                | game = updatedGame
+                | dragging = Nothing
+                , instructions =
+                    model.instructions
+                        ++ [ Instruction.RemoveWindow { withId = windowId }
+                           , Instruction.AnimateZoom
+                                { from = Rect.new ( 64, 64 ) ( 200, 200 )
+                                , to = Rect.new ( 450, 40 ) ( 32, 32 )
+                                , zoomingIn = False
+                                }
+                           ]
               }
-            , Ports.send effects
+            , Cmd.none
             )
 
-        GameMsgDecodeError decodeError ->
-            ( model
-            , Ports.send
-                [ Effect.ReportError <|
-                    "Couldn't decode msg: "
-                        ++ Decode.errorToString decodeError
-                ]
-            )
+        MouseEvent event ->
+            let
+                maybeMsgFromEventHandler : Maybe Msg
+                maybeMsgFromEventHandler =
+                    UI.msgForMouseEvent event model.ui
 
-        UserClickedSaveButton ->
-            case model.game of
-                NotLoaded ->
-                    ( model, Cmd.none )
-
-                Loading ->
-                    ( model, Cmd.none )
-
-                LoadSuccessful loadedGame ->
-                    ( model
-                    , Ports.send [ SaveGameData (Game.encode loadedGame) ]
+                cmd : Cmd Msg
+                cmd =
+                    Maybe.map sendMsg maybeMsgFromEventHandler
+                        |> Maybe.withDefault Cmd.none
+            in
+            case event of
+                Mouse.MouseDown objId ->
+                    let
+                        updatedModel =
+                            { model
+                                | ui =
+                                    UI.update objId
+                                        (UIObject.setSelected True)
+                                        model.ui
+                            }
+                    in
+                    ( updatedModel
+                    , cmd
                     )
 
-                LoadFailed err ->
-                    ( model, Cmd.none )
+                Mouse.MouseUp ->
+                    let
+                        updatedUI =
+                            case model.dragging of
+                                Just dragging ->
+                                    UI.update dragging.objId
+                                        (UIObject.setPosition (Rect.position dragging.rect))
+                                        model.ui
 
-        UserTypedIntoParserInput input ->
-            ( { model | parserInput = input }, Cmd.none )
+                                Nothing ->
+                                    model.ui
+                    in
+                    ( { model
+                        | dragging = Nothing
+                        , ui = updatedUI
+                      }
+                    , cmd
+                    )
+
+                Mouse.Click objId ->
+                    ( model
+                    , cmd
+                    )
+
+                Mouse.DoubleClick objId ->
+                    ( model
+                    , cmd
+                    )
+
+                Mouse.DragStart objId ->
+                    let
+                        maybeDraggedObject : Maybe (Object Msg)
+                        maybeDraggedObject =
+                            UI.get objId model.ui
+
+                        maybeDragVis : Maybe (View Msg)
+                        maybeDragVis =
+                            Maybe.andThen
+                                UIObject.getDraggable
+                                maybeDraggedObject
+                                |> Maybe.map .traveling
+
+                        updatedModel : Model
+                        updatedModel =
+                            case ( maybeDraggedObject, maybeDragVis ) of
+                                ( Just obj, Just dragVis ) ->
+                                    let
+                                        mouseOffset : Coordinate
+                                        mouseOffset =
+                                            Coordinate.minus
+                                                (Mouse.position model.mouse)
+                                                (UIObject.position obj)
+                                    in
+                                    { model
+                                        | dragging =
+                                            Just
+                                                { objId = objId
+                                                , rect = UIObject.rect obj
+                                                , offset = mouseOffset
+                                                , visible = dragVis
+                                                }
+                                        , ui = UI.bringObjectToFront objId model.ui
+                                    }
+
+                                _ ->
+                                    model
+                    in
+                    ( updatedModel
+                    , cmd
+                    )
 
 
-subscriptions : Model -> Sub Msg
-subscriptions _ =
-    Ports.receive jsonToMsg
-
-
-jsonToMsg : Decode.Value -> Msg
-jsonToMsg json =
-    case Decode.decodeValue msgDecoder json of
-        Ok msg ->
-            msg
-
-        Err err ->
-            GameMsgDecodeError err
+sendMsg : Msg -> Cmd Msg
+sendMsg msg =
+    Task.perform identity (Task.succeed msg)
 
 
 view : Model -> Html Msg
 view model =
-    case model.interfaceMode of
-        InterfaceJS ->
-            Html.text ""
+    {-
+       UI Layers
+       (From bottom to top)
 
-        InterfaceElmVDom ->
-            elmView model
-
-
-elmView : Model -> Html Msg
-elmView model =
-    case model.game of
-        LoadSuccessful game ->
-            Html.div []
-                [ viewCommands game
-                , viewObjects game
-                , viewNarration game
-                , viewSaveButton game
-                , viewParserInput (Game.objects game) model.parserInput
-                ]
-
-        NotLoaded ->
-            Html.text "No game loaded"
-
-        Loading ->
-            Html.text "Loading game..."
-
-        LoadFailed err ->
-            Html.text "Error: Couldn't load game"
-
-
-viewCommands : Game -> Html Msg
-viewCommands game =
-    let
-        viewCommand : Command -> Html Msg
-        viewCommand c =
-            Html.button
-                [ onClick
-                    (ReceivedGameMsg
-                        (Game.UserClickedCommandButton c)
-                    )
-                ]
-                [ Html.text (Command.toName c) ]
-    in
-    Html.div
-        [ Html.id "commands" ]
-        (List.map viewCommand Command.listForMenu)
-
-
-viewObjects : Game -> Html Msg
-viewObjects game =
-    let
-        viewObject : Object -> Html Msg
-        viewObject obj =
-            Html.button
-                [ onClick
-                    (ReceivedGameMsg
-                        (Game.UserClickedObject (Object.id obj))
-                    )
-                ]
-                [ Html.text (Object.name obj) ]
-    in
-    Html.div
-        [ Html.id "objects" ]
-        [ Html.div [] [ viewObject (Game.player game) ]
-        , Html.div [] (List.map viewObject (Game.objectsInInventory game))
-        , Html.div [] [ viewObject (Game.currentRoom game) ]
-        , Html.div [] (List.map viewObject (Game.objectsInCurrentRoom game))
+       - Desktop
+       - Desktop Objects
+       - Desktop-related Rectangles
+       - Windows
+       - Window-related Rectangles
+       - Menu Bar & Menus
+       - Dialogs
+       - Rounded Screen Corners
+       - Debugger
+       - Cursor
+    -}
+    div
+        ([ style "width" (px (Screen.width model.screen))
+         , style "height" (px (Screen.height model.screen))
+         , style "background-color" "black"
+         , style "background-image" FillPattern.dither50
+         , style "position" "relative"
+         , style "overflow" "hidden"
+         , style "cursor" "none"
+         ]
+            ++ Mouse.listeners MouseUpdated
+            ++ Screen.scaleAttrs model.screen
+        )
+        [ UI.view model.ui
+        , viewDraggedObject model
+        , MenuBar.view (Screen.width model.screen) model.menuBar
+        , viewScreenCorners (Screen.logical model.screen)
+        , viewDebugger model
+        , viewCursor model
         ]
 
 
-viewNarration : Game -> Html Msg
-viewNarration game =
-    Html.div
-        [ Html.id "narration" ]
-        [ Html.text (Game.narration game)
+viewDraggedObject : Model -> Html Msg
+viewDraggedObject model =
+    case model.dragging of
+        Just dragging ->
+            View.view dragging.rect dragging.visible
+
+        Nothing ->
+            UIHelpers.none
+
+
+viewCursor : Model -> Html msg
+viewCursor model =
+    let
+        cursorData =
+            case model.cursor of
+                Just CursorPointer ->
+                    { image = "MacOS/cursor-pointer.gif"
+                    , offsetX = -4
+                    , offsetY = -1
+                    }
+
+                Just CursorWatch ->
+                    { image = "MacOS/cursor-watch.gif"
+                    , offsetX = -9
+                    , offsetY = -9
+                    }
+
+                Nothing ->
+                    { image = ""
+                    , offsetX = 3
+                    , offsetY = 3
+                    }
+    in
+    div
+        [ style "position" "relative"
+        , style "left" (px (Mouse.x model.mouse + cursorData.offsetX))
+        , style "top" (px (Mouse.y model.mouse + cursorData.offsetY))
+        , style "width" (px 16)
+        , style "height" (px 16)
+        , style "background-image" (imgURL cursorData.image)
+        , style "pointer-events" "none"
         ]
+        []
 
 
-viewParserInput : ObjectStore -> String -> Html Msg
-viewParserInput objectStore input =
-    Html.div []
-        [ Html.textarea
-            [ Html.Events.onInput UserTypedIntoParserInput
-            , Html.value input
-            , Html.rows 20
-            , Html.style "width" "60ch"
+type Corner
+    = TopLeftCorner
+    | TopRightCorner
+    | BottomLeftCorner
+    | BottomRightCorner
+
+
+viewScreenCorners : Rect -> Html msg
+viewScreenCorners screen =
+    let
+        cornerSize =
+            5
+
+        attrs : Corner -> List (Html.Attribute msg)
+        attrs corner =
+            case corner of
+                TopLeftCorner ->
+                    [ style "background-image" (imgURL "MacOS/corner-tl.gif")
+                    , style "top" (px 0)
+                    , style "left" (px 0)
+                    ]
+
+                TopRightCorner ->
+                    [ style "background-image" (imgURL "MacOS/corner-tr.gif")
+                    , style "top" (px 0)
+                    , style "right" (px 0)
+                    ]
+
+                BottomLeftCorner ->
+                    [ style "background-image" (imgURL "MacOS/corner-bl.gif")
+                    , style "bottom" (px 0)
+                    , style "left" (px 0)
+                    ]
+
+                BottomRightCorner ->
+                    [ style "background-image" (imgURL "MacOS/corner-br.gif")
+                    , style "bottom" (px 0)
+                    , style "right" (px 0)
+                    ]
+
+        viewCorner : Corner -> Html msg
+        viewCorner c =
+            div
+                ([ style "width" (px cornerSize)
+                 , style "height" (px cornerSize)
+                 , style "position" "absolute"
+                 ]
+                    ++ attrs c
+                )
+                []
+
+        corners : List Corner
+        corners =
+            [ TopLeftCorner
+            , TopRightCorner
+            , BottomLeftCorner
+            , BottomRightCorner
             ]
-            []
-        , Html.pre [ Html.style "width" "60ch", Html.style "text-wrap" "auto" ]
-            []
+    in
+    div
+        [ style "width" (px (Rect.width screen))
+        , style "height" (px (Rect.height screen))
+        , style "position" "absolute"
+        , style "pointer-events" "none"
+        ]
+        (List.map viewCorner corners)
 
-        -- [ Html.text (Debug.toString <| Vent.compile "skull" objectStore input) ]
+
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    Sub.batch
+        [ Browser.Events.onResize BrowserResized
+        , Time.every 10 Tick
         ]
 
 
-viewSaveButton : Game -> Html Msg
-viewSaveButton game =
-    Html.button
-        [ onClick UserClickedSaveButton
-        ]
-        [ Html.text "Save Game Data" ]
-
-
+main : Program Flags Model Msg
 main =
-    MacOS.main
-
-
-
--- Browser.element
---     { init = init
---     , update = update
---     , view = view
---     , subscriptions = subscriptions
---     }
+    Browser.element
+        { init = init
+        , update = update
+        , view = view
+        , subscriptions = subscriptions
+        }

@@ -2,8 +2,8 @@ module Apps.WindSleepers exposing (program)
 
 import MacOS.Instruction as Instruction exposing (Instruction)
 import MacOS.Rect as Rect
-import MacOS.UIObject as UIObject
-import MacOS.Window as Window
+import MacOS.UI.Object as UIObject
+import MacOS.UI.View.Window as Window
 
 
 type Msg

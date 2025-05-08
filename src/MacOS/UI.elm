@@ -1,21 +1,47 @@
-module MacOS.Interface exposing
-    ( Interface
-    , OrderConstraint(..)
-    , addLayer
-    , addToLayer
-    , attachObject
-    , bringObjectToFront
-    , containingCoordinate
+module MacOS.UI exposing
+    ( UI, new
     , createObject
-    , get
-    , msgForMouseEvent
-    , new
+    , addLayer, OrderConstraint(..)
+    , attachObject, addToLayer
+    , bringObjectToFront
     , remove
-    , topmostFromList
-    , update
-    , updateList
+    , update, updateList
+    , get, topmostFromList, containingCoordinate, msgForMouseEvent
     , view
     )
+
+{-| A program's UI structure.
+
+
+# UI
+
+@docs UI, new
+
+
+# Build/manipulate UI structure
+
+@docs createObject
+@docs addLayer, OrderConstraint
+@docs attachObject, addToLayer
+@docs bringObjectToFront
+@docs remove
+
+
+# Update
+
+@docs update, updateList
+
+
+# Query
+
+@docs get, topmostFromList, containingCoordinate, msgForMouseEvent
+
+
+# View
+
+@docs view
+
+-}
 
 import Dict exposing (Dict)
 import Html exposing (..)
@@ -23,12 +49,12 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.Mouse as Mouse
-import MacOS.UIObject as UIObject exposing (UIObject)
+import MacOS.UI.Object as Object exposing (Object)
 import Set
 
 
-type Interface msg
-    = Interface (Internals msg)
+type UI msg
+    = UI (Internals msg)
 
 
 type alias ObjectId =
@@ -40,16 +66,16 @@ type alias LayerId =
 
 
 type alias Internals msg =
-    { uiObjects : Dict ObjectId (UIObject msg)
+    { uiObjects : Dict ObjectId (Object msg)
     , drawOrder : Dict LayerId (List ObjectId)
     , layerOrder : List ( LayerId, Maybe OrderConstraint )
     , objectToLayer : Dict ObjectId LayerId
     }
 
 
-new : Interface msg
+new : UI msg
 new =
-    Interface
+    UI
         { uiObjects = Dict.empty
         , drawOrder = Dict.empty
         , layerOrder = []
@@ -62,8 +88,8 @@ type OrderConstraint
     | AlwaysLast
 
 
-remove : ObjectId -> Interface msg -> Interface msg
-remove objId (Interface internals) =
+remove : ObjectId -> UI msg -> UI msg
+remove objId (UI internals) =
     let
         removeFromUiObjects : Internals msg -> Internals msg
         removeFromUiObjects i =
@@ -96,11 +122,11 @@ remove objId (Interface internals) =
         |> removeFromUiObjects
         |> removeFromDrawOrder
         |> removeFromObjectToLayer
-        |> Interface
+        |> UI
 
 
-addLayer : { id : LayerId, orderConstraint : Maybe OrderConstraint } -> Interface msg -> Interface msg
-addLayer { id, orderConstraint } (Interface internals) =
+addLayer : { id : LayerId, orderConstraint : Maybe OrderConstraint } -> UI msg -> UI msg
+addLayer { id, orderConstraint } (UI internals) =
     let
         newLayerOrder : List ( LayerId, Maybe OrderConstraint )
         newLayerOrder =
@@ -108,15 +134,15 @@ addLayer { id, orderConstraint } (Interface internals) =
                 ++ [ ( id, orderConstraint ) ]
                 |> List.sortWith orderLayers
     in
-    Interface
+    UI
         { internals
             | layerOrder = newLayerOrder
             , drawOrder = Dict.insert id [] internals.drawOrder
         }
 
 
-topmostFromList : List ObjectId -> Interface msg -> Maybe ObjectId
-topmostFromList candidates (Interface internals) =
+topmostFromList : List ObjectId -> UI msg -> Maybe ObjectId
+topmostFromList candidates (UI internals) =
     let
         candidateSet =
             Set.fromList candidates
@@ -152,14 +178,14 @@ orderLayers ( l1, oc1 ) ( l2, oc2 ) =
             EQ
 
 
-addToLayer : LayerId -> List ( ObjectId, UIObject msg ) -> Interface msg -> Interface msg
+addToLayer : LayerId -> List ( ObjectId, Object msg ) -> UI msg -> UI msg
 addToLayer layerId newPairs interface =
     List.foldl (addSingle layerId) interface newPairs
 
 
-addSingle : LayerId -> ( ObjectId, UIObject msg ) -> Interface msg -> Interface msg
-addSingle layerId ( objectId, obj ) (Interface internals) =
-    Interface
+addSingle : LayerId -> ( ObjectId, Object msg ) -> UI msg -> UI msg
+addSingle layerId ( objectId, obj ) (UI internals) =
+    UI
         { internals
             | uiObjects = Dict.insert objectId obj internals.uiObjects
             , drawOrder =
@@ -170,18 +196,18 @@ addSingle layerId ( objectId, obj ) (Interface internals) =
         }
 
 
-createObject : ObjectId -> UIObject msg -> Interface msg -> Interface msg
-createObject objectId object (Interface internals) =
-    Interface
+createObject : ObjectId -> Object msg -> UI msg -> UI msg
+createObject objectId object (UI internals) =
+    UI
         { internals
             | uiObjects = Dict.insert objectId object internals.uiObjects
         }
 
 
-attachObject : { objectId : ObjectId, layerId : LayerId } -> Interface msg -> Interface msg
-attachObject { objectId, layerId } (Interface internals) =
+attachObject : { objectId : ObjectId, layerId : LayerId } -> UI msg -> UI msg
+attachObject { objectId, layerId } (UI internals) =
     -- User could attach an object that hasn't been created yet. What to do??
-    Interface
+    UI
         { internals
             | drawOrder =
                 Dict.update layerId
@@ -192,12 +218,12 @@ attachObject { objectId, layerId } (Interface internals) =
         |> Debug.log "TODO"
 
 
-containingCoordinate : Coordinate -> Interface msg -> List String
-containingCoordinate coordinate (Interface internals) =
+containingCoordinate : Coordinate -> UI msg -> List String
+containingCoordinate coordinate (UI internals) =
     Dict.toList internals.uiObjects
         |> List.filterMap
             (\( key, uiObject ) ->
-                if UIObject.containsCoordinate coordinate uiObject then
+                if Object.containsCoordinate coordinate uiObject then
                     Just key
 
                 else
@@ -205,13 +231,13 @@ containingCoordinate coordinate (Interface internals) =
             )
 
 
-msgForMouseEvent : Mouse.Event -> Interface msg -> Maybe msg
-msgForMouseEvent mouseEvent ((Interface internals) as interface) =
+msgForMouseEvent : Mouse.Event -> UI msg -> Maybe msg
+msgForMouseEvent mouseEvent ((UI internals) as interface) =
     case mouseEvent of
         Mouse.MouseDown objId ->
             case get objId interface of
                 Just obj ->
-                    UIObject.getMouseEventHandler mouseEvent obj
+                    Object.getMouseEventHandler mouseEvent obj
 
                 Nothing ->
                     Nothing
@@ -222,7 +248,7 @@ msgForMouseEvent mouseEvent ((Interface internals) as interface) =
         Mouse.Click objId ->
             case get objId interface of
                 Just obj ->
-                    UIObject.getMouseEventHandler mouseEvent obj
+                    Object.getMouseEventHandler mouseEvent obj
 
                 Nothing ->
                     Nothing
@@ -230,7 +256,7 @@ msgForMouseEvent mouseEvent ((Interface internals) as interface) =
         Mouse.DoubleClick objId ->
             case get objId interface of
                 Just obj ->
-                    UIObject.getMouseEventHandler mouseEvent obj
+                    Object.getMouseEventHandler mouseEvent obj
 
                 Nothing ->
                     Nothing
@@ -238,19 +264,19 @@ msgForMouseEvent mouseEvent ((Interface internals) as interface) =
         Mouse.DragStart objId ->
             case get objId interface of
                 Just obj ->
-                    UIObject.getMouseEventHandler mouseEvent obj
+                    Object.getMouseEventHandler mouseEvent obj
 
                 Nothing ->
                     Nothing
 
 
-get : ObjectId -> Interface msg -> Maybe (UIObject msg)
-get objId (Interface internals) =
+get : ObjectId -> UI msg -> Maybe (Object msg)
+get objId (UI internals) =
     Dict.get objId internals.uiObjects
 
 
-bringObjectToFront : ObjectId -> Interface msg -> Interface msg
-bringObjectToFront objectId (Interface internals) =
+bringObjectToFront : ObjectId -> UI msg -> UI msg
+bringObjectToFront objectId (UI internals) =
     case Dict.get objectId internals.objectToLayer of
         Just layerId ->
             let
@@ -263,20 +289,20 @@ bringObjectToFront objectId (Interface internals) =
                         )
                         internals.drawOrder
             in
-            Interface { internals | drawOrder = updatedDrawOrder }
+            UI { internals | drawOrder = updatedDrawOrder }
 
         Nothing ->
-            Interface internals
+            UI internals
 
 
-updateList : List ( ObjectId, UIObject msg -> UIObject msg ) -> Interface msg -> Interface msg
+updateList : List ( ObjectId, Object msg -> Object msg ) -> UI msg -> UI msg
 updateList newPairs interface =
     List.foldl (\( key, updater ) -> update key updater) interface newPairs
 
 
-update : ObjectId -> (UIObject msg -> UIObject msg) -> Interface msg -> Interface msg
-update objId updateObj (Interface internals) =
-    Interface
+update : ObjectId -> (Object msg -> Object msg) -> UI msg -> UI msg
+update objId updateObj (UI internals) =
+    UI
         { internals
             | uiObjects =
                 Dict.update objId
@@ -285,11 +311,11 @@ update objId updateObj (Interface internals) =
         }
 
 
-view : Interface msg -> Html msg
-view (Interface internals) =
+view : UI msg -> Html msg
+view (UI internals) =
     internals.layerOrder
         |> List.filterMap (\( layerId, _ ) -> Dict.get layerId internals.drawOrder)
         |> List.concat
         |> List.filterMap (\objectId -> Dict.get objectId internals.uiObjects)
-        |> List.map UIObject.view
+        |> List.map Object.view
         |> Html.div []

@@ -1,4 +1,27 @@
-module MacOS.Coordinate exposing (Coordinate, minus, new, plus, x, y)
+module MacOS.Coordinate exposing
+    ( Coordinate, new
+    , x, y
+    , plus, minus
+    )
+
+{-| A point in screen space.
+
+
+# Coordinate
+
+@docs Coordinate, new
+
+
+# Query
+
+@docs x, y
+
+
+# Coordinate math
+
+@docs plus, minus
+
+-}
 
 
 type Coordinate

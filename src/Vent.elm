@@ -1,44 +1,322 @@
-module Vent exposing (Error(..), compile)
+module Vent exposing (main)
 
-import ObjectStore exposing (ObjectStore)
-import Parser.Advanced as Parser
-import Result exposing (Result(..))
-import Script exposing (Script)
-import Vent.Canonicalize
-import Vent.Parse
+import Browser
+import Dict exposing (Dict)
+import Html exposing (Html)
+import Html.Attributes as Html
+import Html.Events exposing (onClick)
+import Json.Decode as Decode
+import Ports
+import Vent.Command as Command exposing (Command)
+import Vent.Effect as Effect exposing (Effect(..))
+import Vent.Game as Game exposing (Game)
+import Vent.Object as Object exposing (Object)
+import Vent.ObjectStore as ObjectStore exposing (ObjectStore)
+import Vent.VentScript as VentScript
 
 
 
 -- VENT: the Vintage Exploratory-Narrative Toolkit
 
 
-compile : String -> ObjectStore -> String -> Result Error Script
-compile localObject objectStore input =
-    input
-        |> parse
-        |> Result.andThen (canonicalize localObject objectStore)
+type alias Flags =
+    { useVDomInterface : Bool
+    , gameFile : String
+    }
 
 
-type Error
-    = ParseError Vent.Parse.Error
-    | CanonicalizeError Vent.Canonicalize.Error
+flagsDecoder : Decode.Decoder Flags
+flagsDecoder =
+    Decode.map2 Flags
+        (Decode.field "useVDomInterface" Decode.bool)
+        (Decode.field "gameFile" Decode.string)
 
 
-parse : String -> Result Error Vent.Parse.Script
-parse input =
-    case Vent.Parse.execute input of
-        Ok script ->
-            Ok script
-
-        Err error ->
-            Err (ParseError error)
+type alias Model =
+    { game : RemoteData Game.Game String
+    , interfaceMode : InterfaceMode
+    , parserInput : String
+    }
 
 
-canonicalize : String -> ObjectStore -> Vent.Parse.Script -> Result Error Script
-canonicalize localObject objectStore input =
-    case Vent.Canonicalize.execute localObject objectStore input of
-        Ok script ->
-            Ok script
+type RemoteData data err
+    = NotLoaded
+    | Loading
+    | LoadSuccessful data
+    | LoadFailed err
 
-        Err error ->
-            Err (CanonicalizeError error)
+
+type InterfaceMode
+    = InterfaceJS
+    | InterfaceElmVDom
+
+
+type Msg
+    = GameDataLoaded (List Object)
+    | ReceivedGameMsg Game.Msg
+    | GameMsgDecodeError Decode.Error
+    | UserClickedSaveButton
+    | UserTypedIntoParserInput String
+
+
+msgDecoder : Decode.Decoder Msg
+msgDecoder =
+    Decode.field "tag" Decode.string
+        |> Decode.andThen
+            (\tag ->
+                case tag of
+                    "GameDataLoaded" ->
+                        Decode.field "payload"
+                            (Decode.map GameDataLoaded
+                                (Decode.list Object.decoder)
+                            )
+
+                    "UserClickedCommandButton" ->
+                        Decode.field "payload"
+                            (Decode.map
+                                (Game.UserClickedCommandButton
+                                    >> ReceivedGameMsg
+                                )
+                                (Decode.field "command" Command.decoder)
+                            )
+
+                    _ ->
+                        Decode.fail "Unknown tag"
+            )
+
+
+init : Flags -> ( Model, Cmd Msg )
+init flags =
+    let
+        initialModel : Model
+        initialModel =
+            { game = Loading
+            , interfaceMode =
+                if flags.useVDomInterface then
+                    InterfaceElmVDom
+
+                else
+                    InterfaceJS
+            , parserInput = String.trimLeft """
+%open
+if true then
+@skull.isOpen = true
+$printText "As if by magic, the skull rises."
+end
+"""
+            }
+    in
+    ( initialModel
+    , Ports.send
+        [ Effect.LoadGameData flags.gameFile
+        ]
+    )
+
+
+updateLoadedGame :
+    Game.Msg
+    -> RemoteData Game.Game String
+    -> ( RemoteData Game.Game String, List Effect.Effect )
+updateLoadedGame gameMsg gameData =
+    case gameData of
+        NotLoaded ->
+            ( gameData, [] )
+
+        Loading ->
+            ( gameData, [] )
+
+        LoadSuccessful loadedGame ->
+            let
+                ( updatedGame, effects ) =
+                    Game.update gameMsg loadedGame
+            in
+            ( LoadSuccessful updatedGame, effects )
+
+        LoadFailed err ->
+            ( gameData
+            , [ Effect.ReportError "Couldn't load game" ]
+            )
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
+        GameDataLoaded objects ->
+            let
+                ( newGame, effects ) =
+                    Game.new objects
+            in
+            ( { model
+                | game = LoadSuccessful newGame
+              }
+            , Ports.send effects
+            )
+
+        ReceivedGameMsg gameMsg ->
+            let
+                ( updatedGame, effects ) =
+                    updateLoadedGame gameMsg model.game
+            in
+            ( { model
+                | game = updatedGame
+              }
+            , Ports.send effects
+            )
+
+        GameMsgDecodeError decodeError ->
+            ( model
+            , Ports.send
+                [ Effect.ReportError <|
+                    "Couldn't decode msg: "
+                        ++ Decode.errorToString decodeError
+                ]
+            )
+
+        UserClickedSaveButton ->
+            case model.game of
+                NotLoaded ->
+                    ( model, Cmd.none )
+
+                Loading ->
+                    ( model, Cmd.none )
+
+                LoadSuccessful loadedGame ->
+                    ( model
+                    , Ports.send [ SaveGameData (Game.encode loadedGame) ]
+                    )
+
+                LoadFailed err ->
+                    ( model, Cmd.none )
+
+        UserTypedIntoParserInput input ->
+            ( { model | parserInput = input }, Cmd.none )
+
+
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    Ports.receive jsonToMsg
+
+
+jsonToMsg : Decode.Value -> Msg
+jsonToMsg json =
+    case Decode.decodeValue msgDecoder json of
+        Ok msg ->
+            msg
+
+        Err err ->
+            GameMsgDecodeError err
+
+
+view : Model -> Html Msg
+view model =
+    case model.interfaceMode of
+        InterfaceJS ->
+            Html.text ""
+
+        InterfaceElmVDom ->
+            elmView model
+
+
+elmView : Model -> Html Msg
+elmView model =
+    case model.game of
+        LoadSuccessful game ->
+            Html.div []
+                [ viewCommands game
+                , viewObjects game
+                , viewNarration game
+                , viewSaveButton game
+                , viewParserInput (Game.objects game) model.parserInput
+                ]
+
+        NotLoaded ->
+            Html.text "No game loaded"
+
+        Loading ->
+            Html.text "Loading game..."
+
+        LoadFailed err ->
+            Html.text "Error: Couldn't load game"
+
+
+viewCommands : Game -> Html Msg
+viewCommands game =
+    let
+        viewCommand : Command -> Html Msg
+        viewCommand c =
+            Html.button
+                [ onClick
+                    (ReceivedGameMsg
+                        (Game.UserClickedCommandButton c)
+                    )
+                ]
+                [ Html.text (Command.toName c) ]
+    in
+    Html.div
+        [ Html.id "commands" ]
+        (List.map viewCommand Command.listForMenu)
+
+
+viewObjects : Game -> Html Msg
+viewObjects game =
+    let
+        viewObject : Object -> Html Msg
+        viewObject obj =
+            Html.button
+                [ onClick
+                    (ReceivedGameMsg
+                        (Game.UserClickedObject (Object.id obj))
+                    )
+                ]
+                [ Html.text (Object.name obj) ]
+    in
+    Html.div
+        [ Html.id "objects" ]
+        [ Html.div [] [ viewObject (Game.player game) ]
+        , Html.div [] (List.map viewObject (Game.objectsInInventory game))
+        , Html.div [] [ viewObject (Game.currentRoom game) ]
+        , Html.div [] (List.map viewObject (Game.objectsInCurrentRoom game))
+        ]
+
+
+viewNarration : Game -> Html Msg
+viewNarration game =
+    Html.div
+        [ Html.id "narration" ]
+        [ Html.text (Game.narration game)
+        ]
+
+
+viewParserInput : ObjectStore -> String -> Html Msg
+viewParserInput objectStore input =
+    Html.div []
+        [ Html.textarea
+            [ Html.Events.onInput UserTypedIntoParserInput
+            , Html.value input
+            , Html.rows 20
+            , Html.style "width" "60ch"
+            ]
+            []
+        , Html.pre [ Html.style "width" "60ch", Html.style "text-wrap" "auto" ]
+            []
+
+        -- [ Html.text (Debug.toString <| Vent.compile "skull" objectStore input) ]
+        ]
+
+
+viewSaveButton : Game -> Html Msg
+viewSaveButton game =
+    Html.button
+        [ onClick UserClickedSaveButton
+        ]
+        [ Html.text "Save Game Data" ]
+
+
+main : Program Flags Model Msg
+main =
+    Browser.element
+        { init = init
+        , update = update
+        , view = view
+        , subscriptions = subscriptions
+        }

@@ -1,15 +1,22 @@
-module MacOS.Window exposing (Window, view)
+module MacOS.UI.View.Window exposing (Window, view)
+
+{-| A window containing other `View`s, configurable with different visual settings.
+
+
+# View
+
+@docs Window, view
+
+-}
 
 import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
 import Html.Events as Events exposing (..)
 import Json.Decode as Decode exposing (Decoder)
-import MacOS.Context as Context exposing (Context)
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
-import MacOS.FillPattern as FillPattern
 import MacOS.Mouse as Mouse exposing (Mouse)
 import MacOS.Rect as Rect exposing (Rect)
-import MacOS.ViewHelpers as ViewHelpers exposing (..)
+import MacOS.UI.Helpers as UIHelpers exposing (px)
 
 
 type alias Window msg =
@@ -53,17 +60,17 @@ viewWindowTitle config isActive =
             viewWindowTitleLines
 
           else
-            ViewHelpers.none
+            UIHelpers.none
         , if isActive then
             case config.closeMsg of
                 Just msg ->
                     viewWindowCloseBox msg
 
                 Nothing ->
-                    ViewHelpers.none
+                    UIHelpers.none
 
           else
-            ViewHelpers.none
+            UIHelpers.none
         , span
             [ style "position" "relative"
             , style "background" "white"

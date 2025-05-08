@@ -1,10 +1,19 @@
-module MacOS.Visible.Rect exposing (Config(..), draw)
+module MacOS.UI.View.Rect exposing (Config(..), draw)
+
+{-| A rectangular shape onscreen.
+
+
+# View
+
+@docs view
+
+-}
 
 import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
-import MacOS.FillPattern as FillPattern
 import MacOS.Rect as Rect exposing (Rect)
-import MacOS.ViewHelpers as ViewHelpers exposing (imgURL, px)
+import MacOS.UI.FillPattern as FillPattern
+import MacOS.UI.Helpers exposing (imgURL, px)
 
 
 type Config

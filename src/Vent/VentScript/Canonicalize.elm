@@ -1,16 +1,16 @@
-module Vent.Canonicalize exposing (Error(..), execute)
+module Vent.VentScript.Canonicalize exposing (Error(..), execute)
 
-import Attribute exposing (Attribute(..))
-import Command exposing (Command)
-import Effect exposing (Effect)
-import Expression exposing (ExpressionBool(..))
-import Interaction exposing (Interaction(..))
-import ObjectStore exposing (ObjectStore)
 import Result.Extra as Result
-import Script exposing (Script)
-import Trigger exposing (Trigger)
-import Update exposing (Update)
-import Vent.Parse
+import Vent.Attribute as Attribute exposing (Attribute(..))
+import Vent.Command as Command exposing (Command)
+import Vent.Effect as Effect exposing (Effect)
+import Vent.Expression as Expression exposing (ExpressionBool(..))
+import Vent.Interaction exposing (Interaction(..))
+import Vent.ObjectStore as ObjectStore exposing (ObjectStore)
+import Vent.Script exposing (Script)
+import Vent.Trigger as Trigger exposing (Trigger)
+import Vent.Update as Update exposing (Update)
+import Vent.VentScript.Parse as Parse
 
 
 type Error
@@ -19,7 +19,7 @@ type Error
     | StatementError StatementError
 
 
-execute : String -> ObjectStore -> Vent.Parse.Script -> Result Error Script
+execute : String -> ObjectStore -> Parse.Script -> Result Error Script
 execute localObject objectStore script =
     script
         |> convertTrigger
@@ -28,42 +28,42 @@ execute localObject objectStore script =
 
 
 convertTrigger :
-    Vent.Parse.Script
+    Parse.Script
     ->
         Result
             Error
             { trigger : Trigger
-            , statements : List Vent.Parse.Statement
+            , statements : List Parse.Statement
             }
-convertTrigger (Vent.Parse.Script trigger statements) =
+convertTrigger (Parse.Script trigger statements) =
     let
         convertedTrigger =
             case trigger of
-                Vent.Parse.OnAny ->
+                Parse.OnAny ->
                     Trigger.OnAny
 
-                Vent.Parse.OnExamine ->
+                Parse.OnExamine ->
                     Trigger.OnCommand Command.Examine
 
-                Vent.Parse.OnOpen ->
+                Parse.OnOpen ->
                     Trigger.OnCommand Command.Open
 
-                Vent.Parse.OnClose ->
+                Parse.OnClose ->
                     Trigger.OnCommand Command.Close
 
-                Vent.Parse.OnSpeak ->
+                Parse.OnSpeak ->
                     Trigger.OnCommand Command.Speak
 
-                Vent.Parse.OnOperate ->
+                Parse.OnOperate ->
                     Trigger.OnCommand Command.Operate
 
-                Vent.Parse.OnGo ->
+                Parse.OnGo ->
                     Trigger.OnCommand Command.Go
 
-                Vent.Parse.OnHit ->
+                Parse.OnHit ->
                     Trigger.OnCommand Command.Hit
 
-                Vent.Parse.OnConsume ->
+                Parse.OnConsume ->
                     Trigger.OnCommand Command.Consume
     in
     Ok
@@ -72,10 +72,10 @@ convertTrigger (Vent.Parse.Script trigger statements) =
         }
 
 
-convertCondition : String -> ObjectStore -> { trigger : Trigger, statements : List Vent.Parse.Statement } -> Result Error { trigger : Trigger, condition : ExpressionBool, statements : List Vent.Parse.Statement }
+convertCondition : String -> ObjectStore -> { trigger : Trigger, statements : List Parse.Statement } -> Result Error { trigger : Trigger, condition : ExpressionBool, statements : List Parse.Statement }
 convertCondition localObject objectStore { trigger, statements } =
     case statements of
-        (Vent.Parse.IfThen expr thenStatements) :: rest ->
+        (Parse.IfThen expr thenStatements) :: rest ->
             case validateBoolExpr localObject objectStore expr of
                 Ok validCondition ->
                     Ok
@@ -95,7 +95,7 @@ type ExpressionError
     = ReferenceToAttributeNotFound String String
     | ReferenceToObjectNotFound String
     | TypeError TypeError
-    | ComparisonTypeMismatch (Result ExpressionError ExprType) Vent.Parse.Expr
+    | ComparisonTypeMismatch (Result ExpressionError ExprType) Parse.Expr
 
 
 type TypeError
@@ -106,7 +106,7 @@ type TypeError
     | LiteralIsOfTypeString String
     | LiteralIsOfTypeBool Bool
     | ComparisonIsOfTypeBool
-    | InvalidOperatorForType ExprType Vent.Parse.Operator
+    | InvalidOperatorForType ExprType Parse.Operator
 
 
 type RefType
@@ -121,20 +121,20 @@ type ExprType
     | ExprString
 
 
-checkExprType : String -> ObjectStore -> Vent.Parse.Expr -> Result ExpressionError ExprType
+checkExprType : String -> ObjectStore -> Parse.Expr -> Result ExpressionError ExprType
 checkExprType localObject objectStore expr =
     case expr of
-        Vent.Parse.Comparison leftSide _ rightSide ->
+        Parse.Comparison leftSide _ rightSide ->
             Ok ExprBool
 
-        Vent.Parse.Ref var ->
+        Parse.Ref var ->
             let
                 ( objKey, attrKey ) =
                     case var of
-                        Vent.Parse.Local a ->
+                        Parse.Local a ->
                             ( localObject, a )
 
-                        Vent.Parse.Field o a ->
+                        Parse.Field o a ->
                             ( o, a )
             in
             case resolveReference objectStore objKey attrKey of
@@ -150,33 +150,33 @@ checkExprType localObject objectStore expr =
                 Err err ->
                     Err err
 
-        Vent.Parse.LiteralBool _ ->
+        Parse.LiteralBool _ ->
             Ok ExprBool
 
-        Vent.Parse.LiteralString _ ->
+        Parse.LiteralString _ ->
             Ok ExprString
 
-        Vent.Parse.LiteralInt _ ->
+        Parse.LiteralInt _ ->
             Ok ExprInt
 
 
-validateIntExpr : String -> ObjectStore -> Vent.Parse.Expr -> Result ExpressionError Expression.ExpressionInt
+validateIntExpr : String -> ObjectStore -> Parse.Expr -> Result ExpressionError Expression.ExpressionInt
 validateIntExpr localObject objectStore expr =
     case expr of
-        Vent.Parse.LiteralInt int ->
+        Parse.LiteralInt int ->
             Expression.LiteralInt int
                 |> Ok
 
-        Vent.Parse.LiteralString string ->
+        Parse.LiteralString string ->
             Err (TypeError (LiteralIsOfTypeString string))
 
-        Vent.Parse.LiteralBool bool ->
+        Parse.LiteralBool bool ->
             Err (TypeError (LiteralIsOfTypeBool bool))
 
-        Vent.Parse.Comparison _ _ _ ->
+        Parse.Comparison _ _ _ ->
             Err (TypeError ComparisonIsOfTypeBool)
 
-        Vent.Parse.Ref (Vent.Parse.Local attrKey) ->
+        Parse.Ref (Parse.Local attrKey) ->
             case resolveReference objectStore localObject attrKey of
                 Ok RefInt ->
                     Ok (Expression.ExpAttributeInt { objId = localObject, key = attrKey })
@@ -190,7 +190,7 @@ validateIntExpr localObject objectStore expr =
                 Err err ->
                     Err err
 
-        Vent.Parse.Ref (Vent.Parse.Field objKey attrKey) ->
+        Parse.Ref (Parse.Field objKey attrKey) ->
             case resolveReference objectStore objKey attrKey of
                 Ok RefInt ->
                     Ok (Expression.ExpAttributeInt { objId = objKey, key = attrKey })
@@ -205,23 +205,23 @@ validateIntExpr localObject objectStore expr =
                     Err err
 
 
-validateStringExpr : String -> ObjectStore -> Vent.Parse.Expr -> Result ExpressionError Expression.ExpressionString
+validateStringExpr : String -> ObjectStore -> Parse.Expr -> Result ExpressionError Expression.ExpressionString
 validateStringExpr localObject objectStore expr =
     case expr of
-        Vent.Parse.LiteralString int ->
+        Parse.LiteralString int ->
             Expression.LiteralString int
                 |> Ok
 
-        Vent.Parse.LiteralInt int ->
+        Parse.LiteralInt int ->
             Err (TypeError (LiteralIsOfTypeInt int))
 
-        Vent.Parse.LiteralBool bool ->
+        Parse.LiteralBool bool ->
             Err (TypeError (LiteralIsOfTypeBool bool))
 
-        Vent.Parse.Comparison _ _ _ ->
+        Parse.Comparison _ _ _ ->
             Err (TypeError ComparisonIsOfTypeBool)
 
-        Vent.Parse.Ref (Vent.Parse.Local attrKey) ->
+        Parse.Ref (Parse.Local attrKey) ->
             case resolveReference objectStore localObject attrKey of
                 Ok RefString ->
                     Ok (Expression.ExpAttributeString { objId = localObject, key = attrKey })
@@ -235,7 +235,7 @@ validateStringExpr localObject objectStore expr =
                 Err err ->
                     Err err
 
-        Vent.Parse.Ref (Vent.Parse.Field objKey attrKey) ->
+        Parse.Ref (Parse.Field objKey attrKey) ->
             case resolveReference objectStore objKey attrKey of
                 Ok RefString ->
                     Ok (Expression.ExpAttributeString { objId = objKey, key = attrKey })
@@ -250,20 +250,20 @@ validateStringExpr localObject objectStore expr =
                     Err err
 
 
-validateBoolExpr : String -> ObjectStore -> Vent.Parse.Expr -> Result ExpressionError ExpressionBool
+validateBoolExpr : String -> ObjectStore -> Parse.Expr -> Result ExpressionError ExpressionBool
 validateBoolExpr localObject objectStore expr =
     case expr of
-        Vent.Parse.LiteralBool bool ->
+        Parse.LiteralBool bool ->
             Expression.LiteralBool bool
                 |> Ok
 
-        Vent.Parse.LiteralString string ->
+        Parse.LiteralString string ->
             Err (TypeError (LiteralIsOfTypeString string))
 
-        Vent.Parse.LiteralInt int ->
+        Parse.LiteralInt int ->
             Err (TypeError (LiteralIsOfTypeInt int))
 
-        Vent.Parse.Ref (Vent.Parse.Local attrKey) ->
+        Parse.Ref (Parse.Local attrKey) ->
             case resolveReference objectStore localObject attrKey of
                 Ok RefBool ->
                     Ok (ExpAttributeBool { objId = localObject, key = attrKey })
@@ -277,7 +277,7 @@ validateBoolExpr localObject objectStore expr =
                 Err err ->
                     Err err
 
-        Vent.Parse.Ref (Vent.Parse.Field objKey attrKey) ->
+        Parse.Ref (Parse.Field objKey attrKey) ->
             case resolveReference objectStore objKey attrKey of
                 Ok RefBool ->
                     Ok (ExpAttributeBool { objId = objKey, key = attrKey })
@@ -291,7 +291,7 @@ validateBoolExpr localObject objectStore expr =
                 Err err ->
                     Err err
 
-        Vent.Parse.Comparison leftSide operator rightSide ->
+        Parse.Comparison leftSide operator rightSide ->
             let
                 ( leftType, rightType ) =
                     ( checkExprType localObject objectStore leftSide
@@ -307,17 +307,17 @@ validateBoolExpr localObject objectStore expr =
                     of
                         ( Ok validatedLeft, Ok validatedRight ) ->
                             case operator of
-                                Vent.Parse.EqualTo ->
+                                Parse.EqualTo ->
                                     Ok (Expression.BoolEquals validatedLeft validatedRight)
 
-                                Vent.Parse.LessThan ->
-                                    Err (TypeError (InvalidOperatorForType ExprBool Vent.Parse.LessThan))
+                                Parse.LessThan ->
+                                    Err (TypeError (InvalidOperatorForType ExprBool Parse.LessThan))
 
-                                Vent.Parse.GreaterThan ->
-                                    Err (TypeError (InvalidOperatorForType ExprBool Vent.Parse.GreaterThan))
+                                Parse.GreaterThan ->
+                                    Err (TypeError (InvalidOperatorForType ExprBool Parse.GreaterThan))
 
-                                Vent.Parse.Contains ->
-                                    Err (TypeError (InvalidOperatorForType ExprBool Vent.Parse.Contains))
+                                Parse.Contains ->
+                                    Err (TypeError (InvalidOperatorForType ExprBool Parse.Contains))
 
                         _ ->
                             Err (ComparisonTypeMismatch leftType rightSide)
@@ -330,17 +330,17 @@ validateBoolExpr localObject objectStore expr =
                     of
                         ( Ok validatedLeft, Ok validatedRight ) ->
                             case operator of
-                                Vent.Parse.EqualTo ->
+                                Parse.EqualTo ->
                                     Ok (Expression.IntEquals validatedLeft validatedRight)
 
-                                Vent.Parse.LessThan ->
+                                Parse.LessThan ->
                                     Ok (Expression.IntLessThan validatedLeft validatedRight)
 
-                                Vent.Parse.GreaterThan ->
+                                Parse.GreaterThan ->
                                     Ok (Expression.IntGreaterThan validatedLeft validatedRight)
 
-                                Vent.Parse.Contains ->
-                                    Err (TypeError (InvalidOperatorForType ExprInt Vent.Parse.Contains))
+                                Parse.Contains ->
+                                    Err (TypeError (InvalidOperatorForType ExprInt Parse.Contains))
 
                         _ ->
                             Err (ComparisonTypeMismatch leftType rightSide)
@@ -353,16 +353,16 @@ validateBoolExpr localObject objectStore expr =
                     of
                         ( Ok validatedLeft, Ok validatedRight ) ->
                             case operator of
-                                Vent.Parse.EqualTo ->
+                                Parse.EqualTo ->
                                     Ok (Expression.StringEquals validatedLeft validatedRight)
 
-                                Vent.Parse.LessThan ->
-                                    Err (TypeError (InvalidOperatorForType ExprString Vent.Parse.LessThan))
+                                Parse.LessThan ->
+                                    Err (TypeError (InvalidOperatorForType ExprString Parse.LessThan))
 
-                                Vent.Parse.GreaterThan ->
-                                    Err (TypeError (InvalidOperatorForType ExprString Vent.Parse.GreaterThan))
+                                Parse.GreaterThan ->
+                                    Err (TypeError (InvalidOperatorForType ExprString Parse.GreaterThan))
 
-                                Vent.Parse.Contains ->
+                                Parse.Contains ->
                                     Ok (Expression.StringContains validatedLeft validatedRight)
 
                         _ ->
@@ -400,7 +400,7 @@ resolveReference objectStore obj attr =
         Err (ReferenceToObjectNotFound obj)
 
 
-convertResults : String -> ObjectStore -> Result Error { trigger : Trigger, condition : ExpressionBool, statements : List Vent.Parse.Statement } -> Result Error Script
+convertResults : String -> ObjectStore -> Result Error { trigger : Trigger, condition : ExpressionBool, statements : List Parse.Statement } -> Result Error Script
 convertResults localObject objectStore result =
     case result of
         Ok { trigger, condition, statements } ->
@@ -414,38 +414,38 @@ convertResults localObject objectStore result =
             Err err
 
 
-unwrapStatements : Vent.Parse.Statement -> List Vent.Parse.Statement
+unwrapStatements : Parse.Statement -> List Parse.Statement
 unwrapStatements statement =
     case statement of
-        Vent.Parse.IfThen expr statements ->
+        Parse.IfThen expr statements ->
             statements
 
-        Vent.Parse.Assignment variable expr ->
-            [ Vent.Parse.Assignment variable expr ]
+        Parse.Assignment variable expr ->
+            [ Parse.Assignment variable expr ]
 
-        Vent.Parse.Efct effect ->
-            [ Vent.Parse.Efct effect ]
+        Parse.Efct effect ->
+            [ Parse.Efct effect ]
 
 
-convertResultStatement : String -> ObjectStore -> Vent.Parse.Statement -> Result Error Script -> Result Error Script
+convertResultStatement : String -> ObjectStore -> Parse.Statement -> Result Error Script -> Result Error Script
 convertResultStatement localObject objectStore statement current =
     case current of
         Ok script ->
             case statement of
-                Vent.Parse.IfThen expr statements ->
-                    Err (StatementError (UnexpectedIfThenStatement (Vent.Parse.IfThen expr statements)))
+                Parse.IfThen expr statements ->
+                    Err (StatementError (UnexpectedIfThenStatement (Parse.IfThen expr statements)))
 
-                Vent.Parse.Assignment variable expr ->
+                Parse.Assignment variable expr ->
                     case variable of
-                        Vent.Parse.Local attrKey ->
+                        Parse.Local attrKey ->
                             updateFromReference script expr objectStore localObject attrKey
 
-                        Vent.Parse.Field objKey attrKey ->
+                        Parse.Field objKey attrKey ->
                             updateFromReference script expr objectStore objKey attrKey
 
-                Vent.Parse.Efct effect ->
+                Parse.Efct effect ->
                     case effect of
-                        Vent.Parse.PrintText string ->
+                        Parse.PrintText string ->
                             Ok
                                 { script
                                     | effects =
@@ -459,10 +459,10 @@ convertResultStatement localObject objectStore statement current =
 
 
 type StatementError
-    = UnexpectedIfThenStatement Vent.Parse.Statement
+    = UnexpectedIfThenStatement Parse.Statement
 
 
-updateFromReference : Script -> Vent.Parse.Expr -> ObjectStore -> String -> String -> Result Error Script
+updateFromReference : Script -> Parse.Expr -> ObjectStore -> String -> String -> Result Error Script
 updateFromReference script expr objectStore localObject attrKey =
     case resolveReference objectStore localObject attrKey of
         Ok RefBool ->

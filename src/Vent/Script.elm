@@ -1,14 +1,14 @@
-module Script exposing (Script, decoder, encode)
+module Vent.Script exposing (Script, decoder, encode)
 
-import Command exposing (Command)
-import Effect exposing (Effect)
-import Expression exposing (ExpressionBool)
-import Interaction exposing (Interaction(..))
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (required)
 import Json.Encode as Encode
-import Trigger exposing (Trigger)
-import Update exposing (Update)
+import Vent.Command exposing (Command)
+import Vent.Effect as Effect exposing (Effect)
+import Vent.Expression as Expression exposing (ExpressionBool)
+import Vent.Interaction exposing (Interaction(..))
+import Vent.Trigger as Trigger exposing (Trigger)
+import Vent.Update as Update exposing (Update)
 
 
 type alias Script =

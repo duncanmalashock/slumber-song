@@ -1,8 +1,8 @@
-module ObjectStore exposing (ObjectStore, get, getAttribute, getNoFail, idExists, incrementAttributeBy, new, setBoolAttribute, setIntAttribute, setStringAttribute, toList, withParentId)
+module Vent.ObjectStore exposing (ObjectStore, get, getAttribute, getNoFail, idExists, incrementAttributeBy, new, setBoolAttribute, setIntAttribute, setStringAttribute, toList, withParentId)
 
-import Attribute exposing (Attribute(..))
 import Dict exposing (Dict)
-import Object exposing (Object)
+import Vent.Attribute exposing (Attribute(..))
+import Vent.Object as Object exposing (Object)
 
 
 type ObjectStore

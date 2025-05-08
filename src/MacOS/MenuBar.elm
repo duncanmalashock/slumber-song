@@ -1,11 +1,34 @@
-module MacOS.MenuBar exposing (MenuBar, menu, new, view)
+module MacOS.MenuBar exposing
+    ( MenuBar, new
+    , menu
+    , view
+    )
+
+{-| The menu bar, shown at the top of the screen
+
+
+# MenuBar
+
+@docs MenuBar, new
+
+
+# Menu items
+
+@docs menu
+
+
+# View
+
+@docs view
+
+-}
 
 import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
 import Html.Events as Events
-import MacOS.FillPattern as FillPattern
 import MacOS.Rect as Rect exposing (Rect)
-import MacOS.ViewHelpers as ViewHelpers exposing (px)
+import MacOS.UI.FillPattern as FillPattern
+import MacOS.UI.Helpers exposing (px)
 
 
 type MenuBar
@@ -13,23 +36,14 @@ type MenuBar
 
 
 type alias Internals =
-    { mode : Mode
-    , menus : List Menu
+    { menus : List Menu
     }
-
-
-type Mode
-    = Hidden
-    | Blank
-    | AppTitle
-    | Ready
 
 
 new : List Menu -> MenuBar
 new menus =
     MenuBar
-        { mode = Ready
-        , menus = menus
+        { menus = menus
         }
 
 

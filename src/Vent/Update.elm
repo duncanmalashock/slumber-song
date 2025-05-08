@@ -1,8 +1,8 @@
-module Update exposing (Update(..), decoder, encode)
+module Vent.Update exposing (Update(..), decoder, encode)
 
-import Expression
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
+import Vent.Expression as Expression
 
 
 type Update

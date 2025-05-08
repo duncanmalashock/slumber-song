@@ -1,4 +1,43 @@
-module MacOS.Rect exposing (Rect, bottom, containsCoordinate, height, interpolate, left, new, plus, posX, posY, position, right, setPosition, size, top, width)
+module MacOS.Rect exposing
+    ( Rect, new
+    , position, posX, posY
+    , size, width, height
+    , top, bottom, left, right
+    , containsCoordinate
+    , plus, interpolate
+    , setPosition
+    )
+
+{-| An area of the screen with a position, width, and height.
+
+
+# Rect
+
+@docs Rect, new
+
+
+# Query
+
+@docs position, posX, posY
+@docs size, width, height
+@docs top, bottom, left, right
+
+
+# Hit testing
+
+@docs containsCoordinate
+
+
+# Math
+
+@docs plus, interpolate
+
+
+# Update
+
+@docs setPosition
+
+-}
 
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 

@@ -1,4 +1,4 @@
-module Command exposing (Command(..), decoder, fromString, listForMenu, toName, toString)
+module Vent.Command exposing (Command(..), decoder, fromString, listForMenu, toName, toString)
 
 import Json.Decode as Decode exposing (Decoder)
 

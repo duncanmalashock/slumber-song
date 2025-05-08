@@ -3,9 +3,9 @@ port module Ports exposing
     , send
     )
 
-import Effect exposing (Effect)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
+import Vent.Effect as Effect exposing (Effect)
 
 
 send : List Effect -> Cmd msg

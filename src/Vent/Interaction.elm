@@ -1,6 +1,6 @@
-module Interaction exposing (Interaction(..), detect, handlesCommand, handlesObject)
+module Vent.Interaction exposing (Interaction(..), detect, handlesCommand, handlesObject)
 
-import Command exposing (Command(..))
+import Vent.Command exposing (Command(..))
 
 
 type Interaction

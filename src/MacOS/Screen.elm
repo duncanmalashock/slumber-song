@@ -1,4 +1,39 @@
-module MacOS.Screen exposing (Screen, firstPaintDone, height, logical, new, scaleAttrs, toScreenCoordinates, update, width)
+module MacOS.Screen exposing
+    ( Screen, new
+    , logical, width, height
+    , update
+    , toScreenCoordinates
+    , scaleAttrs
+    )
+
+{-| A simulated computer screen, scaled to fit in the browser window.
+
+
+# Screen
+
+@docs Screen, new
+
+
+# Query
+
+@docs logical, width, height
+
+
+# Update
+
+@docs update
+
+
+# Convert
+
+@docs toScreenCoordinates
+
+
+# View
+
+@docs scaleAttrs
+
+-}
 
 import Html
 import Html.Attributes
@@ -92,14 +127,7 @@ update browser (Screen internals) =
         { internals
             | scale = newScale
             , positionInBrowser = newPosition
-        }
-
-
-firstPaintDone : Screen -> Screen
-firstPaintDone (Screen internals) =
-    Screen
-        { internals
-            | hasDoneFirstPaint = True
+            , hasDoneFirstPaint = True
         }
 
 

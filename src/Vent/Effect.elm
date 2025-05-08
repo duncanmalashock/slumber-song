@@ -1,8 +1,8 @@
-module Effect exposing (Effect(..), decoder, encode, encodeList)
+module Vent.Effect exposing (Effect(..), decoder, encode, encodeList)
 
-import Command exposing (Command)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
+import Vent.Command exposing (Command)
 
 
 type Effect
@@ -38,7 +38,7 @@ encode effect =
         HighlightCommand command ->
             Encode.object
                 [ ( "tag", Encode.string "HighlightCommand" )
-                , ( "command", Encode.string (Command.toString command) )
+                , ( "command", Encode.string (Vent.Command.toString command) )
                 ]
 
         HighlightObject objId ->
@@ -81,7 +81,7 @@ decoder =
                             |> Decode.map PlaySound
 
                     "HighlightCommand" ->
-                        Decode.field "command" Command.decoder
+                        Decode.field "command" Vent.Command.decoder
                             |> Decode.map HighlightCommand
 
                     "HighlightObject" ->
