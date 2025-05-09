@@ -26,7 +26,7 @@
 
 | Concept | Lexicon Term | Notes |
 | - | - | - |
-| The viewable ared | `Screen` | Represents the simulated Macintosh monitor. |
+| The viewable area | `Screen` | Represents the simulated Macintosh monitor. |
 | Pixel space | `logical` | The proportions of the screen image in pixels. |
 | A visible element | `Object` | Represents something interactable or displayable. |
 | The whole UI | `UI` | The structure or tree of all active `Object`s. |
