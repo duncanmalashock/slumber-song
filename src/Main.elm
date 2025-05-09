@@ -111,7 +111,7 @@ init flags =
                         { id = "zoomRect0"
                         , rect = Rect.new ( 0, 0 ) ( 0, 0 )
                         }
-                        |> UIObject.visible
+                        |> UIObject.setView
                             (View.rect MacOS.UI.View.Rect.StyleDotted)
                     )
                 |> UI.attachObject
@@ -123,7 +123,7 @@ init flags =
                         { id = "zoomRect1"
                         , rect = Rect.new ( 0, 0 ) ( 0, 0 )
                         }
-                        |> UIObject.visible
+                        |> UIObject.setView
                             (View.rect MacOS.UI.View.Rect.StyleDotted)
                     )
                 |> UI.attachObject
@@ -135,7 +135,7 @@ init flags =
                         { id = "zoomRect2"
                         , rect = Rect.new ( 0, 0 ) ( 0, 0 )
                         }
-                        |> UIObject.visible
+                        |> UIObject.setView
                             (View.rect MacOS.UI.View.Rect.StyleDotted)
                     )
                 |> UI.attachObject
@@ -147,7 +147,7 @@ init flags =
                         { id = "zoomRect3"
                         , rect = Rect.new ( 0, 0 ) ( 0, 0 )
                         }
-                        |> UIObject.visible
+                        |> UIObject.setView
                             (View.rect MacOS.UI.View.Rect.StyleDotted)
                     )
                 |> UI.attachObject
@@ -285,9 +285,9 @@ handleInstruction { timeStarted, instruction } model =
                                 { id = withId
                                 , rect = window.rect
                                 }
-                                |> UIObject.visible
+                                |> UIObject.setView
                                     (View.window window)
-                                |> UIObject.draggable
+                                |> UIObject.setDragOptions
                                     { traveling = View.rect MacOS.UI.View.Rect.StyleDotted
                                     }
                             )
@@ -402,10 +402,10 @@ update msg model =
 
                 hitTestResults : List String
                 hitTestResults =
-                    UI.containingCoordinate newMousePos model.ui
+                    UI.hitTest newMousePos model.ui
 
-                mouseMsgData : Mouse.MsgData
-                mouseMsgData =
+                domUpdate : Mouse.DomUpdate
+                domUpdate =
                     { atTime = model.currentTime
                     , buttonPressed = args.buttonPressed
                     , position = newMousePos
@@ -420,7 +420,7 @@ update msg model =
                 ( updatedMouse, newMouseEvents ) =
                     if mouseStateChanged then
                         Mouse.update
-                            (Mouse.toMsg mouseMsgData)
+                            (Mouse.toMsg domUpdate)
                             model.mouse
 
                     else
@@ -428,13 +428,13 @@ update msg model =
 
                 pickedId : Maybe String
                 pickedId =
-                    UI.topmostFromList hitTestResults model.ui
+                    UI.topmostObjectInList hitTestResults model.ui
 
                 eventCmds : Cmd Msg
                 eventCmds =
                     if Mouse.interactionsAllowed model.mouse then
                         newMouseEvents
-                            |> Mouse.filterEventsByObjId pickedId
+                            |> Mouse.filterMouseEventsByObjectId pickedId
                             |> List.map MouseEvent
                             |> List.map sendMsg
                             |> Cmd.batch
@@ -484,7 +484,7 @@ update msg model =
             let
                 maybeMsgFromEventHandler : Maybe Msg
                 maybeMsgFromEventHandler =
-                    UI.msgForMouseEvent event model.ui
+                    UI.mouseEventToHandlerMsg event model.ui
 
                 cmd : Cmd Msg
                 cmd =
@@ -545,9 +545,7 @@ update msg model =
 
                         maybeDragView : Maybe (View Msg)
                         maybeDragView =
-                            Maybe.andThen
-                                UIObject.getDraggable
-                                maybeDraggedObject
+                            Maybe.andThen UIObject.getDragOptions maybeDraggedObject
                                 |> Maybe.map .traveling
 
                         updatedModel : Model

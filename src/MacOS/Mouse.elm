@@ -2,11 +2,11 @@ module MacOS.Mouse exposing
     ( Mouse, new
     , position, x, y, buttonPressed, interactionsAllowed
     , update, Msg
-    , MsgData, toMsg
+    , DomUpdate, toMsg
     , lock, unlock
     , setCursorPointer, setCursorWatch
     , Event(..), listeners
-    , filterEventsByObjId
+    , filterMouseEventsByObjectId
     , view
     )
 
@@ -26,7 +26,7 @@ module MacOS.Mouse exposing
 # Update
 
 @docs update, Msg
-@docs MsgData, toMsg
+@docs DomUpdate, toMsg
 @docs lock, unlock
 @docs setCursorPointer, setCursorWatch
 
@@ -34,7 +34,7 @@ module MacOS.Mouse exposing
 # Mouse Events
 
 @docs Event, listeners
-@docs filterEventsByObjId
+@docs filterMouseEventsByObjectId
 
 
 # View
@@ -129,10 +129,10 @@ new =
 
 
 type Msg
-    = NewMouseData MsgData
+    = NewMouseData DomUpdate
 
 
-type alias MsgData =
+type alias DomUpdate =
     { atTime : Time.Posix
     , buttonPressed : Bool
     , position : Coordinate
@@ -140,7 +140,7 @@ type alias MsgData =
     }
 
 
-toMsg : MsgData -> Msg
+toMsg : DomUpdate -> Msg
 toMsg data =
     NewMouseData data
 
@@ -232,8 +232,8 @@ type Event
     | DragStart String
 
 
-filterEventsByObjId : Maybe String -> List Event -> List Event
-filterEventsByObjId maybeObjId events =
+filterMouseEventsByObjectId : Maybe String -> List Event -> List Event
+filterMouseEventsByObjectId maybeObjId events =
     case maybeObjId of
         Just objId ->
             events

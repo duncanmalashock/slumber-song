@@ -3,7 +3,7 @@ module MacOS.Rect exposing
     , position, posX, posY
     , size, width, height
     , top, bottom, left, right
-    , containsCoordinate
+    , hitTest
     , plus, interpolate
     , setPosition
     )
@@ -25,7 +25,7 @@ module MacOS.Rect exposing
 
 # Hit testing
 
-@docs containsCoordinate
+@docs hitTest
 
 
 # Math
@@ -104,8 +104,8 @@ interpolate (Rect r1) (Rect r2) percent =
         }
 
 
-containsCoordinate : Coordinate -> Rect -> Bool
-containsCoordinate coordinate rect =
+hitTest : Coordinate -> Rect -> Bool
+hitTest coordinate rect =
     let
         px : Int
         px =

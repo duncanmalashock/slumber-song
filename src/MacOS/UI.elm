@@ -5,7 +5,9 @@ module MacOS.UI exposing
     , bringObjectToFront
     , remove
     , update, updateList
-    , get, topmostFromList, containingCoordinate, msgForMouseEvent
+    , get
+    , topmostObjectInList, hitTest
+    , mouseEventToHandlerMsg
     , view
     )
 
@@ -32,7 +34,17 @@ module MacOS.UI exposing
 
 # Query
 
-@docs get, topmostFromList, containingCoordinate, msgForMouseEvent
+@docs get
+
+
+# Picking Objects
+
+@docs topmostObjectInList, hitTest
+
+
+# Events
+
+@docs mouseEventToHandlerMsg
 
 
 # View
@@ -115,8 +127,8 @@ remove objId (UI internals) =
         |> UI
 
 
-topmostFromList : List ObjectId -> UI msg -> Maybe ObjectId
-topmostFromList candidates (UI internals) =
+topmostObjectInList : List ObjectId -> UI msg -> Maybe ObjectId
+topmostObjectInList candidates (UI internals) =
     let
         candidateSet =
             Set.fromList candidates
@@ -167,12 +179,12 @@ attachObject { objectId, parentId } (UI internals) =
         }
 
 
-containingCoordinate : Coordinate -> UI msg -> List String
-containingCoordinate coordinate (UI internals) =
+hitTest : Coordinate -> UI msg -> List String
+hitTest coordinate (UI internals) =
     Dict.toList internals.uiObjects
         |> List.filterMap
             (\( key, uiObject ) ->
-                if UIObject.containsCoordinate coordinate uiObject then
+                if UIObject.hitTest coordinate uiObject then
                     Just key
 
                 else
@@ -180,8 +192,8 @@ containingCoordinate coordinate (UI internals) =
             )
 
 
-msgForMouseEvent : Mouse.Event -> UI msg -> Maybe msg
-msgForMouseEvent mouseEvent ((UI internals) as interface) =
+mouseEventToHandlerMsg : Mouse.Event -> UI msg -> Maybe msg
+mouseEventToHandlerMsg mouseEvent ((UI internals) as interface) =
     case mouseEvent of
         Mouse.MouseDown objId ->
             case get objId interface of

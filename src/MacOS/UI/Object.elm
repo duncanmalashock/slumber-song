@@ -1,11 +1,11 @@
 module MacOS.UI.Object exposing
     ( Object, new
     , image
-    , visible, selectable, draggable
+    , setView, setSelectOptions, setDragOptions
     , onClick, onDoubleClick, onDragStart, onMouseDown
     , id, position, rect
-    , getDraggable, getMouseEventHandler
-    , containsCoordinate
+    , getDragOptions, getMouseEventHandler
+    , hitTest
     , setPosition, setRect, setSelected
     , view
     )
@@ -25,19 +25,19 @@ module MacOS.UI.Object exposing
 
 # Define interactions
 
-@docs visible, selectable, draggable
+@docs setView, setSelectOptions, setDragOptions
 @docs onClick, onDoubleClick, onDragStart, onMouseDown
 
 
 # Query
 
 @docs id, position, rect
-@docs getDraggable, getMouseEventHandler
+@docs getDragOptions, getMouseEventHandler
 
 
 # Hit testing
 
-@docs containsCoordinate
+@docs hitTest
 
 
 # Update
@@ -68,9 +68,9 @@ type Object msg
 type alias Internals msg =
     { id : String
     , rect : Rect
-    , visible : Maybe (View msg)
-    , selectable : Maybe (Selectable msg)
-    , draggable : Maybe (Draggable msg)
+    , view : Maybe (View msg)
+    , selectOptions : Maybe (SelectOptions msg)
+    , dragOptions : Maybe (DragOptions msg)
     , onMouseDown : Maybe msg
     , onClick : Maybe msg
     , onDoubleClick : Maybe msg
@@ -78,11 +78,11 @@ type alias Internals msg =
     }
 
 
-type alias Draggable msg =
+type alias DragOptions msg =
     { traveling : View msg }
 
 
-type alias Selectable msg =
+type alias SelectOptions msg =
     { view : View msg
     , selected : Bool
     }
@@ -93,9 +93,9 @@ new params =
     Object
         { id = params.id
         , rect = params.rect
-        , visible = Nothing
-        , selectable = Nothing
-        , draggable = Nothing
+        , view = Nothing
+        , selectOptions = Nothing
+        , dragOptions = Nothing
         , onMouseDown = Nothing
         , onClick = Nothing
         , onDoubleClick = Nothing
@@ -108,9 +108,9 @@ image params =
     Object
         { id = params.id
         , rect = Rect.new ( 0, 0 ) params.size
-        , visible = Just (View.image { url = params.url, size = params.size })
-        , selectable = Nothing
-        , draggable = Nothing
+        , view = Just (View.image { url = params.url, size = params.size })
+        , selectOptions = Nothing
+        , dragOptions = Nothing
         , onMouseDown = Nothing
         , onClick = Nothing
         , onDoubleClick = Nothing
@@ -174,36 +174,36 @@ getMouseEventHandler mouseEvent (Object internals) =
             internals.onDragStart
 
 
-visible : View msg -> Object msg -> Object msg
-visible vis (Object internals) =
+setView : View msg -> Object msg -> Object msg
+setView objectView (Object internals) =
     Object
         { internals
-            | visible = Just vis
+            | view = Just objectView
         }
 
 
-selectable : Selectable msg -> Object msg -> Object msg
-selectable vis (Object internals) =
+setSelectOptions : SelectOptions msg -> Object msg -> Object msg
+setSelectOptions objectView (Object internals) =
     Object
         { internals
-            | selectable = Just vis
+            | selectOptions = Just objectView
         }
 
 
-draggable : Draggable msg -> Object msg -> Object msg
-draggable params (Object internals) =
+setDragOptions : DragOptions msg -> Object msg -> Object msg
+setDragOptions params (Object internals) =
     Object
         { internals
-            | draggable =
+            | dragOptions =
                 Just
                     { traveling = params.traveling
                     }
         }
 
 
-getDraggable : Object msg -> Maybe (Draggable msg)
-getDraggable (Object internals) =
-    internals.draggable
+getDragOptions : Object msg -> Maybe (DragOptions msg)
+getDragOptions (Object internals) =
+    internals.dragOptions
 
 
 rect : Object msg -> Rect
@@ -236,8 +236,8 @@ setSelected : Bool -> Object msg -> Object msg
 setSelected newValue (Object internals) =
     Object
         { internals
-            | selectable =
-                case internals.selectable of
+            | selectOptions =
+                case internals.selectOptions of
                     Just s ->
                         Just
                             { s
@@ -252,24 +252,24 @@ setSelected newValue (Object internals) =
 view : Object msg -> Html msg
 view (Object internals) =
     div [ Html.Attributes.id internals.id ]
-        [ case internals.visible of
-            Just vis ->
-                case internals.selectable of
+        [ case internals.view of
+            Just objectView ->
+                case internals.selectOptions of
                     Just s ->
                         if s.selected then
                             View.view internals.rect s.view
 
                         else
-                            View.view internals.rect vis
+                            View.view internals.rect objectView
 
                     Nothing ->
-                        View.view internals.rect vis
+                        View.view internals.rect objectView
 
             Nothing ->
                 div [ Html.Attributes.class "NO_VIEW" ] []
         ]
 
 
-containsCoordinate : Coordinate -> Object msg -> Bool
-containsCoordinate coordinate (Object internals) =
-    Rect.containsCoordinate coordinate internals.rect
+hitTest : Coordinate -> Object msg -> Bool
+hitTest coordinate (Object internals) =
+    Rect.hitTest coordinate internals.rect
