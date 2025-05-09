@@ -40,7 +40,7 @@ viewDebugger model =
             , style "font-family" "Geneva"
             , style "padding" "0 6px"
             ]
-            [-- div [] [ text <| Debug.toString model.currentInstruction ]
+            [ div [] [ text "" ]
             ]
         ]
 
@@ -91,12 +91,20 @@ init flags =
                         , rect = Rect.new ( 0, 0 ) ( 512, 342 )
                         }
                     )
+                |> UI.attachObject
+                    { objectId = "desktop"
+                    , parentId = "__ROOT__"
+                    }
                 |> UI.createObject
                     (UIObject.new
                         { id = "desktopRects"
                         , rect = Rect.new ( 0, 0 ) ( 512, 342 )
                         }
                     )
+                |> UI.attachObject
+                    { objectId = "desktopRects"
+                    , parentId = "desktop"
+                    }
                 |> UI.createObject
                     (UIObject.new
                         { id = "zoomRect0"
@@ -105,6 +113,10 @@ init flags =
                         |> UIObject.visible
                             (View.rect MacOS.UI.View.Rect.StyleDotted)
                     )
+                |> UI.attachObject
+                    { objectId = "zoomRect0"
+                    , parentId = "desktopRects"
+                    }
                 |> UI.createObject
                     (UIObject.new
                         { id = "zoomRect1"
@@ -113,6 +125,10 @@ init flags =
                         |> UIObject.visible
                             (View.rect MacOS.UI.View.Rect.StyleDotted)
                     )
+                |> UI.attachObject
+                    { objectId = "zoomRect1"
+                    , parentId = "desktopRects"
+                    }
                 |> UI.createObject
                     (UIObject.new
                         { id = "zoomRect2"
@@ -121,6 +137,10 @@ init flags =
                         |> UIObject.visible
                             (View.rect MacOS.UI.View.Rect.StyleDotted)
                     )
+                |> UI.attachObject
+                    { objectId = "zoomRect2"
+                    , parentId = "desktopRects"
+                    }
                 |> UI.createObject
                     (UIObject.new
                         { id = "zoomRect3"
@@ -129,12 +149,20 @@ init flags =
                         |> UIObject.visible
                             (View.rect MacOS.UI.View.Rect.StyleDotted)
                     )
+                |> UI.attachObject
+                    { objectId = "zoomRect3"
+                    , parentId = "desktopRects"
+                    }
                 |> UI.createObject
                     (UIObject.new
                         { id = "windows"
                         , rect = Rect.new ( 0, 0 ) ( 512, 342 )
                         }
                     )
+                |> UI.attachObject
+                    { objectId = "windows"
+                    , parentId = "desktop"
+                    }
       , dragging = Nothing
       , instructions = WindSleepers.program
       , currentInstruction = Nothing
@@ -263,8 +291,8 @@ handleInstruction { timeStarted, instruction } model =
                                     }
                             )
                         |> UI.attachObject
-                            { objectId = "windows"
-                            , parentId = "withId"
+                            { objectId = withId
+                            , parentId = "windows"
                             }
             in
             ( { model

@@ -70,7 +70,9 @@ new : UI msg
 new =
     UI
         { uiObjects = Dict.empty
-        , drawOrder = Dict.empty
+        , drawOrder =
+            Dict.fromList
+                [ ( "__ROOT__", [] ) ]
         , objectToParent = Dict.empty
         }
 
@@ -149,12 +151,19 @@ attachObject { objectId, parentId } (UI internals) =
     UI
         { internals
             | drawOrder =
-                Dict.update parentId
-                    (\maybeList -> Maybe.map (\l -> l ++ [ objectId ]) maybeList)
-                    internals.drawOrder
-            , objectToParent = Dict.insert objectId parentId internals.objectToParent
+                case Dict.get parentId internals.drawOrder of
+                    Just _ ->
+                        Dict.update parentId
+                            (\maybeList ->
+                                Maybe.map (\l -> l ++ [ objectId ]) maybeList
+                            )
+                            internals.drawOrder
+
+                    Nothing ->
+                        Dict.insert parentId [ objectId ] internals.drawOrder
+            , objectToParent =
+                Dict.insert objectId parentId internals.objectToParent
         }
-        |> Debug.log "TODO"
 
 
 containingCoordinate : Coordinate -> UI msg -> List String
@@ -252,10 +261,13 @@ update objId updateObj (UI internals) =
 
 view : UI msg -> Html msg
 view (UI internals) =
-    []
-        -- internals.layerOrder
-        |> List.filterMap (\( layerId, _ ) -> Dict.get layerId internals.drawOrder)
-        |> List.concat
+    getChildrenIds "windows" (UI internals)
         |> List.filterMap (\objectId -> Dict.get objectId internals.uiObjects)
         |> List.map UIObject.view
-        |> Html.div []
+        |> Html.div [ id "__ROOT__" ]
+
+
+getChildrenIds : ObjectId -> UI msg -> List ObjectId
+getChildrenIds parentId (UI internals) =
+    Dict.get parentId internals.drawOrder
+        |> Maybe.withDefault []
