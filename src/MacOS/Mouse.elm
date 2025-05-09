@@ -44,14 +44,14 @@ module MacOS.Mouse exposing
 -}
 
 import Html exposing (Attribute, Html, div)
-import Html.Attributes exposing (style)
+import Html.Attributes exposing (id, style)
 import Html.Events as Events
 import Json.Decode as Decode exposing (Decoder)
 import List.Extra
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.Rect exposing (Rect)
 import MacOS.Screen as Screen exposing (Screen)
-import MacOS.UI.Helpers exposing (imgURL, px)
+import MacOS.UI.Helpers exposing (domIds, imgURL, px)
 import Time
 
 
@@ -324,7 +324,8 @@ view (Mouse internals) =
                     }
     in
     div
-        [ style "position" "relative"
+        [ id domIds.mouse
+        , style "position" "relative"
         , style "left" (px (x (Mouse internals) + cursorData.offsetX))
         , style "top" (px (y (Mouse internals) + cursorData.offsetY))
         , style "width" (px 16)

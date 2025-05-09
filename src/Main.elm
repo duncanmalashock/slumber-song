@@ -16,7 +16,7 @@ import MacOS.Rect as Rect exposing (Rect)
 import MacOS.Screen as Screen exposing (Screen)
 import MacOS.UI as UI exposing (UI)
 import MacOS.UI.FillPattern as FillPattern
-import MacOS.UI.Helpers as UIHelpers exposing (imgURL, px)
+import MacOS.UI.Helpers as UIHelpers exposing (domIds, imgURL, px)
 import MacOS.UI.Object as UIObject exposing (Object)
 import MacOS.UI.View as View exposing (View)
 import MacOS.UI.View.Rect
@@ -29,7 +29,8 @@ import Time
 viewDebugger : Model -> Html Msg
 viewDebugger model =
     div
-        [ style "position" "absolute"
+        [ id domIds.debugger
+        , style "position" "absolute"
         , style "bottom" (px 16)
         , style "left" (px 16)
         , style "width" (px (Screen.width model.screen - 32))
@@ -87,23 +88,23 @@ init flags =
             UI.new
                 |> UI.createObject
                     (UIObject.new
-                        { id = "desktop"
+                        { id = domIds.desktop
                         , rect = Rect.new ( 0, 0 ) ( 512, 342 )
                         }
                     )
                 |> UI.attachObject
-                    { objectId = "desktop"
-                    , parentId = "__ROOT__"
+                    { objectId = domIds.desktop
+                    , parentId = domIds.root
                     }
                 |> UI.createObject
                     (UIObject.new
-                        { id = "desktopRects"
+                        { id = domIds.desktopRectangles
                         , rect = Rect.new ( 0, 0 ) ( 512, 342 )
                         }
                     )
                 |> UI.attachObject
-                    { objectId = "desktopRects"
-                    , parentId = "desktop"
+                    { objectId = domIds.desktopRectangles
+                    , parentId = domIds.desktop
                     }
                 |> UI.createObject
                     (UIObject.new
@@ -115,7 +116,7 @@ init flags =
                     )
                 |> UI.attachObject
                     { objectId = "zoomRect0"
-                    , parentId = "desktopRects"
+                    , parentId = domIds.desktopRectangles
                     }
                 |> UI.createObject
                     (UIObject.new
@@ -127,7 +128,7 @@ init flags =
                     )
                 |> UI.attachObject
                     { objectId = "zoomRect1"
-                    , parentId = "desktopRects"
+                    , parentId = domIds.desktopRectangles
                     }
                 |> UI.createObject
                     (UIObject.new
@@ -139,7 +140,7 @@ init flags =
                     )
                 |> UI.attachObject
                     { objectId = "zoomRect2"
-                    , parentId = "desktopRects"
+                    , parentId = domIds.desktopRectangles
                     }
                 |> UI.createObject
                     (UIObject.new
@@ -151,7 +152,7 @@ init flags =
                     )
                 |> UI.attachObject
                     { objectId = "zoomRect3"
-                    , parentId = "desktopRects"
+                    , parentId = domIds.desktopRectangles
                     }
                 |> UI.createObject
                     (UIObject.new
@@ -161,7 +162,7 @@ init flags =
                     )
                 |> UI.attachObject
                     { objectId = "windows"
-                    , parentId = "desktop"
+                    , parentId = domIds.desktop
                     }
       , dragging = Nothing
       , instructions = WindSleepers.program
@@ -602,7 +603,8 @@ view model =
        - Cursor
     -}
     div
-        ([ style "width" (px (Screen.width model.screen))
+        ([ id domIds.os
+         , style "width" (px (Screen.width model.screen))
          , style "height" (px (Screen.height model.screen))
          , style "background-color" "black"
          , style "background-image" FillPattern.dither50
@@ -693,7 +695,8 @@ viewScreenCorners screen =
             ]
     in
     div
-        [ style "width" (px (Rect.width screen))
+        [ id domIds.screenCorners
+        , style "width" (px (Rect.width screen))
         , style "height" (px (Rect.height screen))
         , style "position" "absolute"
         , style "pointer-events" "none"

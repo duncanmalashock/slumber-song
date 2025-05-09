@@ -55,10 +55,10 @@ view : Rect -> View msg -> Html msg
 view objRect screenObject =
     case screenObject of
         Rect params ->
-            MacOS.UI.View.Rect.draw params objRect
+            MacOS.UI.View.Rect.view params objRect
 
         Window params ->
-            MacOS.UI.View.Window.view params (True |> Debug.log "TODO")
+            MacOS.UI.View.Window.view params True
 
         Image params ->
             MacOS.UI.View.Image.view params objRect

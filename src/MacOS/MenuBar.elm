@@ -28,7 +28,7 @@ import Html.Attributes as Attr exposing (..)
 import Html.Events as Events
 import MacOS.Rect as Rect exposing (Rect)
 import MacOS.UI.FillPattern as FillPattern
-import MacOS.UI.Helpers exposing (px)
+import MacOS.UI.Helpers exposing (domIds, px)
 
 
 type MenuBar
@@ -69,7 +69,8 @@ view width (MenuBar { menus }) =
                     menus
     in
     div
-        [ style "position" "absolute"
+        [ id domIds.menuBar
+        , style "position" "absolute"
         , style "top" "0"
         , style "left" "0"
         , style "background" "black"

@@ -47,6 +47,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.Mouse as Mouse
+import MacOS.UI.Helpers exposing (domIds)
 import MacOS.UI.Object as UIObject exposing (Object)
 import Set
 
@@ -72,7 +73,7 @@ new =
         { uiObjects = Dict.empty
         , drawOrder =
             Dict.fromList
-                [ ( "__ROOT__", [] ) ]
+                [ ( domIds.root, [] ) ]
         , objectToParent = Dict.empty
         }
 
@@ -261,10 +262,11 @@ update objId updateObj (UI internals) =
 
 view : UI msg -> Html msg
 view (UI internals) =
-    getChildrenIds "windows" (UI internals)
+    getChildrenIds domIds.root (UI internals)
         |> List.filterMap (\objectId -> Dict.get objectId internals.uiObjects)
         |> List.map UIObject.view
-        |> Html.div [ id "__ROOT__" ]
+        |> Html.div
+            [ id domIds.root ]
 
 
 getChildrenIds : ObjectId -> UI msg -> List ObjectId

@@ -52,7 +52,7 @@ module MacOS.UI.Object exposing
 -}
 
 import Html exposing (..)
-import Html.Attributes as Attr exposing (..)
+import Html.Attributes exposing (..)
 import Html.Events as Events exposing (..)
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.Mouse as Mouse
@@ -251,21 +251,23 @@ setSelected newValue (Object internals) =
 
 view : Object msg -> Html msg
 view (Object internals) =
-    case internals.visible of
-        Just vis ->
-            case internals.selectable of
-                Just s ->
-                    if s.selected then
-                        View.view internals.rect s.view
+    div [ Html.Attributes.id internals.id ]
+        [ case internals.visible of
+            Just vis ->
+                case internals.selectable of
+                    Just s ->
+                        if s.selected then
+                            View.view internals.rect s.view
 
-                    else
+                        else
+                            View.view internals.rect vis
+
+                    Nothing ->
                         View.view internals.rect vis
 
-                Nothing ->
-                    View.view internals.rect vis
-
-        Nothing ->
-            UIHelpers.none
+            Nothing ->
+                div [ Html.Attributes.class "NO_VIEW" ] []
+        ]
 
 
 containsCoordinate : Coordinate -> Object msg -> Bool

@@ -1,4 +1,4 @@
-module MacOS.UI.Helpers exposing (imgURL, none, px)
+module MacOS.UI.Helpers exposing (domIds, imgURL, none, px)
 
 import Html exposing (Html)
 
@@ -16,3 +16,15 @@ none =
 imgURL : String -> String
 imgURL filename =
     "url(\"" ++ filename ++ "\")"
+
+
+domIds =
+    { os = "MacOS"
+    , root = "MacOS__UI_ROOT"
+    , debugger = "MacOS__DEBUG"
+    , desktop = "MacOS__DESKTOP"
+    , desktopRectangles = "MacOS__DESKTOP_RECTANGLES"
+    , menuBar = "MacOS__MENUBAR"
+    , screenCorners = "MacOS__SCREEN_CORNERS"
+    , mouse = "MacOS__MOUSE"
+    }

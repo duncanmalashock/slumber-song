@@ -1,6 +1,14 @@
-module MacOS.UI.View.Rect exposing (Config(..), draw)
+module MacOS.UI.View.Rect exposing
+    ( Config(..)
+    , view
+    )
 
 {-| A rectangular shape onscreen.
+
+
+# Config
+
+@docs Config
 
 
 # View
@@ -23,8 +31,8 @@ type Config
     | StyleFillBlack
 
 
-draw : Config -> Rect -> Html msg
-draw config rect =
+view : Config -> Rect -> Html msg
+view config rect =
     let
         lineStyleAttrs : List (Html.Attribute msg)
         lineStyleAttrs =
