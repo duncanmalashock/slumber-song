@@ -1,8 +1,7 @@
 module MacOS.UI exposing
     ( UI, new
     , createObject
-    , addLayer, OrderConstraint(..)
-    , attachObject, addToLayer
+    , attachObject
     , bringObjectToFront
     , remove
     , update, updateList
@@ -21,8 +20,7 @@ module MacOS.UI exposing
 # Build/manipulate UI structure
 
 @docs createObject
-@docs addLayer, OrderConstraint
-@docs attachObject, addToLayer
+@docs attachObject
 @docs bringObjectToFront
 @docs remove
 
@@ -49,7 +47,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.Mouse as Mouse
-import MacOS.UI.Object as Object exposing (Object)
+import MacOS.UI.Object as UIObject exposing (Object)
 import Set
 
 
@@ -61,15 +59,10 @@ type alias ObjectId =
     String
 
 
-type alias LayerId =
-    String
-
-
 type alias Internals msg =
     { uiObjects : Dict ObjectId (Object msg)
-    , drawOrder : Dict LayerId (List ObjectId)
-    , layerOrder : List ( LayerId, Maybe OrderConstraint )
-    , objectToLayer : Dict ObjectId LayerId
+    , drawOrder : Dict ObjectId (List ObjectId)
+    , objectToParent : Dict ObjectId ObjectId
     }
 
 
@@ -78,14 +71,8 @@ new =
     UI
         { uiObjects = Dict.empty
         , drawOrder = Dict.empty
-        , layerOrder = []
-        , objectToLayer = Dict.empty
+        , objectToParent = Dict.empty
         }
-
-
-type OrderConstraint
-    = AlwaysFirst
-    | AlwaysLast
 
 
 remove : ObjectId -> UI msg -> UI msg
@@ -111,34 +98,18 @@ remove objId (UI internals) =
                         |> Dict.fromList
             }
 
-        removeFromObjectToLayer : Internals msg -> Internals msg
-        removeFromObjectToLayer i =
+        removeFromObjectToParent : Internals msg -> Internals msg
+        removeFromObjectToParent i =
             { i
-                | objectToLayer =
-                    Dict.remove objId i.objectToLayer
+                | objectToParent =
+                    Dict.remove objId i.objectToParent
             }
     in
     internals
         |> removeFromUiObjects
         |> removeFromDrawOrder
-        |> removeFromObjectToLayer
+        |> removeFromObjectToParent
         |> UI
-
-
-addLayer : { id : LayerId, orderConstraint : Maybe OrderConstraint } -> UI msg -> UI msg
-addLayer { id, orderConstraint } (UI internals) =
-    let
-        newLayerOrder : List ( LayerId, Maybe OrderConstraint )
-        newLayerOrder =
-            internals.layerOrder
-                ++ [ ( id, orderConstraint ) ]
-                |> List.sortWith orderLayers
-    in
-    UI
-        { internals
-            | layerOrder = newLayerOrder
-            , drawOrder = Dict.insert id [] internals.drawOrder
-        }
 
 
 topmostFromList : List ObjectId -> UI msg -> Maybe ObjectId
@@ -147,7 +118,8 @@ topmostFromList candidates (UI internals) =
         candidateSet =
             Set.fromList candidates
     in
-    internals.layerOrder
+    []
+        -- internals.layerOrder
         |> List.reverse
         |> List.filterMap
             (\( layerId, _ ) ->
@@ -159,61 +131,28 @@ topmostFromList candidates (UI internals) =
         |> List.head
 
 
-orderLayers : ( LayerId, Maybe OrderConstraint ) -> ( LayerId, Maybe OrderConstraint ) -> Order
-orderLayers ( l1, oc1 ) ( l2, oc2 ) =
-    case ( oc1, oc2 ) of
-        ( Just AlwaysFirst, _ ) ->
-            LT
-
-        ( Just AlwaysLast, _ ) ->
-            GT
-
-        ( _, Just AlwaysFirst ) ->
-            GT
-
-        ( _, Just AlwaysLast ) ->
-            LT
-
-        _ ->
-            EQ
-
-
-addToLayer : LayerId -> List ( ObjectId, Object msg ) -> UI msg -> UI msg
-addToLayer layerId newPairs interface =
-    List.foldl (addSingle layerId) interface newPairs
-
-
-addSingle : LayerId -> ( ObjectId, Object msg ) -> UI msg -> UI msg
-addSingle layerId ( objectId, obj ) (UI internals) =
-    UI
-        { internals
-            | uiObjects = Dict.insert objectId obj internals.uiObjects
-            , drawOrder =
-                Dict.update layerId
-                    (\maybeList -> Maybe.map (\l -> l ++ [ objectId ]) maybeList)
-                    internals.drawOrder
-            , objectToLayer = Dict.insert objectId layerId internals.objectToLayer
-        }
-
-
-createObject : ObjectId -> Object msg -> UI msg -> UI msg
-createObject objectId object (UI internals) =
+createObject : Object msg -> UI msg -> UI msg
+createObject object (UI internals) =
+    let
+        objectId =
+            UIObject.id object
+    in
     UI
         { internals
             | uiObjects = Dict.insert objectId object internals.uiObjects
         }
 
 
-attachObject : { objectId : ObjectId, layerId : LayerId } -> UI msg -> UI msg
-attachObject { objectId, layerId } (UI internals) =
+attachObject : { objectId : ObjectId, parentId : ObjectId } -> UI msg -> UI msg
+attachObject { objectId, parentId } (UI internals) =
     -- User could attach an object that hasn't been created yet. What to do??
     UI
         { internals
             | drawOrder =
-                Dict.update layerId
+                Dict.update parentId
                     (\maybeList -> Maybe.map (\l -> l ++ [ objectId ]) maybeList)
                     internals.drawOrder
-            , objectToLayer = Dict.insert objectId layerId internals.objectToLayer
+            , objectToParent = Dict.insert objectId parentId internals.objectToParent
         }
         |> Debug.log "TODO"
 
@@ -223,7 +162,7 @@ containingCoordinate coordinate (UI internals) =
     Dict.toList internals.uiObjects
         |> List.filterMap
             (\( key, uiObject ) ->
-                if Object.containsCoordinate coordinate uiObject then
+                if UIObject.containsCoordinate coordinate uiObject then
                     Just key
 
                 else
@@ -237,7 +176,7 @@ msgForMouseEvent mouseEvent ((UI internals) as interface) =
         Mouse.MouseDown objId ->
             case get objId interface of
                 Just obj ->
-                    Object.getMouseEventHandler mouseEvent obj
+                    UIObject.getMouseEventHandler mouseEvent obj
 
                 Nothing ->
                     Nothing
@@ -248,7 +187,7 @@ msgForMouseEvent mouseEvent ((UI internals) as interface) =
         Mouse.Click objId ->
             case get objId interface of
                 Just obj ->
-                    Object.getMouseEventHandler mouseEvent obj
+                    UIObject.getMouseEventHandler mouseEvent obj
 
                 Nothing ->
                     Nothing
@@ -256,7 +195,7 @@ msgForMouseEvent mouseEvent ((UI internals) as interface) =
         Mouse.DoubleClick objId ->
             case get objId interface of
                 Just obj ->
-                    Object.getMouseEventHandler mouseEvent obj
+                    UIObject.getMouseEventHandler mouseEvent obj
 
                 Nothing ->
                     Nothing
@@ -264,7 +203,7 @@ msgForMouseEvent mouseEvent ((UI internals) as interface) =
         Mouse.DragStart objId ->
             case get objId interface of
                 Just obj ->
-                    Object.getMouseEventHandler mouseEvent obj
+                    UIObject.getMouseEventHandler mouseEvent obj
 
                 Nothing ->
                     Nothing
@@ -277,11 +216,11 @@ get objId (UI internals) =
 
 bringObjectToFront : ObjectId -> UI msg -> UI msg
 bringObjectToFront objectId (UI internals) =
-    case Dict.get objectId internals.objectToLayer of
-        Just layerId ->
+    case Dict.get objectId internals.objectToParent of
+        Just parentId ->
             let
                 updatedDrawOrder =
-                    Dict.update layerId
+                    Dict.update parentId
                         (Maybe.map
                             (\ids ->
                                 List.filter ((/=) objectId) ids ++ [ objectId ]
@@ -313,9 +252,10 @@ update objId updateObj (UI internals) =
 
 view : UI msg -> Html msg
 view (UI internals) =
-    internals.layerOrder
+    []
+        -- internals.layerOrder
         |> List.filterMap (\( layerId, _ ) -> Dict.get layerId internals.drawOrder)
         |> List.concat
         |> List.filterMap (\objectId -> Dict.get objectId internals.uiObjects)
-        |> List.map Object.view
+        |> List.map UIObject.view
         |> Html.div []

@@ -50,7 +50,6 @@ type alias Model =
     , screen : Screen
     , menuBar : MenuBar
     , mouse : Mouse
-    , cursor : Maybe Cursor
     , ui : UI Msg
     , dragging : Maybe Dragging
     , instructions : List (Instruction Msg)
@@ -58,16 +57,11 @@ type alias Model =
     }
 
 
-type Cursor
-    = CursorPointer
-    | CursorWatch
-
-
 type alias Dragging =
     { objId : String
     , rect : Rect
     , offset : Coordinate
-    , visible : View Msg
+    , view : View Msg
     }
 
 
@@ -89,51 +83,58 @@ init flags =
                 }
       , menuBar = MenuBar.new []
       , mouse = Mouse.new
-      , cursor = Just CursorPointer
       , ui =
             UI.new
-                |> UI.addLayer
-                    { id = "desktop"
-                    , orderConstraint = Just UI.AlwaysFirst
-                    }
-                |> UI.addLayer
-                    { id = "desktopRects"
-                    , orderConstraint = Nothing
-                    }
-                |> UI.addToLayer "desktopRects"
-                    [ ( "zoomRect0"
-                      , UIObject.new
-                            { rect = Rect.new ( 0, 0 ) ( 0, 0 )
-                            }
-                            |> UIObject.visible
-                                (View.rect MacOS.UI.View.Rect.StyleDotted)
-                      )
-                    , ( "zoomRect1"
-                      , UIObject.new
-                            { rect = Rect.new ( 0, 0 ) ( 0, 0 )
-                            }
-                            |> UIObject.visible
-                                (View.rect MacOS.UI.View.Rect.StyleDotted)
-                      )
-                    , ( "zoomRect2"
-                      , UIObject.new
-                            { rect = Rect.new ( 0, 0 ) ( 0, 0 )
-                            }
-                            |> UIObject.visible
-                                (View.rect MacOS.UI.View.Rect.StyleDotted)
-                      )
-                    , ( "zoomRect3"
-                      , UIObject.new
-                            { rect = Rect.new ( 0, 0 ) ( 0, 0 )
-                            }
-                            |> UIObject.visible
-                                (View.rect MacOS.UI.View.Rect.StyleDotted)
-                      )
-                    ]
-                |> UI.addLayer
-                    { id = "windows"
-                    , orderConstraint = Nothing
-                    }
+                |> UI.createObject
+                    (UIObject.new
+                        { id = "desktop"
+                        , rect = Rect.new ( 0, 0 ) ( 512, 342 )
+                        }
+                    )
+                |> UI.createObject
+                    (UIObject.new
+                        { id = "desktopRects"
+                        , rect = Rect.new ( 0, 0 ) ( 512, 342 )
+                        }
+                    )
+                |> UI.createObject
+                    (UIObject.new
+                        { id = "zoomRect0"
+                        , rect = Rect.new ( 0, 0 ) ( 0, 0 )
+                        }
+                        |> UIObject.visible
+                            (View.rect MacOS.UI.View.Rect.StyleDotted)
+                    )
+                |> UI.createObject
+                    (UIObject.new
+                        { id = "zoomRect1"
+                        , rect = Rect.new ( 0, 0 ) ( 0, 0 )
+                        }
+                        |> UIObject.visible
+                            (View.rect MacOS.UI.View.Rect.StyleDotted)
+                    )
+                |> UI.createObject
+                    (UIObject.new
+                        { id = "zoomRect2"
+                        , rect = Rect.new ( 0, 0 ) ( 0, 0 )
+                        }
+                        |> UIObject.visible
+                            (View.rect MacOS.UI.View.Rect.StyleDotted)
+                    )
+                |> UI.createObject
+                    (UIObject.new
+                        { id = "zoomRect3"
+                        , rect = Rect.new ( 0, 0 ) ( 0, 0 )
+                        }
+                        |> UIObject.visible
+                            (View.rect MacOS.UI.View.Rect.StyleDotted)
+                    )
+                |> UI.createObject
+                    (UIObject.new
+                        { id = "windows"
+                        , rect = Rect.new ( 0, 0 ) ( 512, 342 )
+                        }
+                    )
       , dragging = Nothing
       , instructions = WindSleepers.program
       , currentInstruction = Nothing
@@ -200,6 +201,7 @@ handleInstruction { timeStarted, instruction } model =
                             |> List.map
                                 (\i ->
                                     let
+                                        clamped : Int
                                         clamped =
                                             (i + (animationPhase - 4))
                                                 |> Basics.clamp 0 11
@@ -215,6 +217,7 @@ handleInstruction { timeStarted, instruction } model =
                         |> List.map (\( key, rect ) -> ( key, UIObject.setRect rect ))
                         |> (\updaters -> UI.updateList updaters model.ui)
 
+                updatedCurrentInstruction : Maybe { timeStarted : Time.Posix, instruction : Instruction Msg }
                 updatedCurrentInstruction =
                     if animationComplete then
                         Nothing
@@ -231,6 +234,7 @@ handleInstruction { timeStarted, instruction } model =
 
         Instruction.RemoveWindow { withId } ->
             let
+                updatedUI : UI.UI Msg
                 updatedUI =
                     model.ui
                         |> UI.remove withId
@@ -244,20 +248,24 @@ handleInstruction { timeStarted, instruction } model =
 
         Instruction.CreateWindow { withId, window } ->
             let
+                updatedUI : UI.UI Msg
                 updatedUI =
                     model.ui
-                        |> UI.addToLayer "windows"
-                            [ ( withId
-                              , UIObject.new
-                                    { rect = window.rect
+                        |> UI.createObject
+                            (UIObject.new
+                                { id = withId
+                                , rect = window.rect
+                                }
+                                |> UIObject.visible
+                                    (View.window window)
+                                |> UIObject.draggable
+                                    { traveling = View.rect MacOS.UI.View.Rect.StyleDotted
                                     }
-                                    |> UIObject.visible
-                                        (View.window window)
-                                    |> UIObject.draggable
-                                        { traveling = View.rect MacOS.UI.View.Rect.StyleDotted
-                                        }
-                              )
-                            ]
+                            )
+                        |> UI.attachObject
+                            { objectId = "windows"
+                            , parentId = "withId"
+                            }
             in
             ( { model
                 | currentInstruction = Nothing
@@ -266,11 +274,12 @@ handleInstruction { timeStarted, instruction } model =
             , Cmd.none
             )
 
-        Instruction.CreateObject { withId, object } ->
+        Instruction.CreateObject { object } ->
             let
+                updatedUI : UI.UI Msg
                 updatedUI =
                     model.ui
-                        |> UI.createObject withId object
+                        |> UI.createObject object
             in
             ( { model
                 | currentInstruction = Nothing
@@ -279,11 +288,15 @@ handleInstruction { timeStarted, instruction } model =
             , Cmd.none
             )
 
-        Instruction.AttachObject params ->
+        Instruction.AttachObject { objectId, parentId } ->
             let
+                updatedUI : UI.UI Msg
                 updatedUI =
                     model.ui
-                        |> UI.attachObject params
+                        |> UI.attachObject
+                            { objectId = objectId
+                            , parentId = parentId
+                            }
             in
             ( { model
                 | currentInstruction = Nothing
@@ -303,7 +316,10 @@ update msg model =
                         [] ->
                             ( { model
                                 | currentTime = time
-                                , cursor = Just CursorPointer
+                                , mouse =
+                                    model.mouse
+                                        |> Mouse.unlock
+                                        |> Mouse.setCursorPointer
                               }
                             , Cmd.none
                             )
@@ -311,7 +327,10 @@ update msg model =
                         first :: rest ->
                             ( { model
                                 | currentTime = time
-                                , cursor = Just CursorWatch
+                                , mouse =
+                                    model.mouse
+                                        |> Mouse.lock
+                                        |> Mouse.setCursorWatch
                                 , instructions = rest
                                 , currentInstruction =
                                     Just
@@ -323,9 +342,7 @@ update msg model =
                             )
 
                 Just { timeStarted, instruction } ->
-                    { model
-                        | currentTime = time
-                    }
+                    { model | currentTime = time }
                         |> handleInstruction
                             { timeStarted = timeStarted
                             , instruction = instruction
@@ -335,7 +352,10 @@ update msg model =
             ( { model
                 | screen =
                     model.screen
-                        |> Screen.update { x = newWidth, y = newHeight }
+                        |> Screen.update
+                            { x = newWidth
+                            , y = newHeight
+                            }
               }
             , Cmd.none
             )
@@ -383,16 +403,15 @@ update msg model =
 
                 eventCmds : Cmd Msg
                 eventCmds =
-                    case model.cursor of
-                        Just CursorPointer ->
-                            newMouseEvents
-                                |> Mouse.filterEventsByObjId pickedId
-                                |> List.map MouseEvent
-                                |> List.map sendMsg
-                                |> Cmd.batch
+                    if Mouse.interactionsAllowed model.mouse then
+                        newMouseEvents
+                            |> Mouse.filterEventsByObjId pickedId
+                            |> List.map MouseEvent
+                            |> List.map sendMsg
+                            |> Cmd.batch
 
-                        _ ->
-                            Cmd.none
+                    else
+                        Cmd.none
 
                 updatedDragging : Maybe Dragging
                 updatedDragging =
@@ -446,6 +465,7 @@ update msg model =
             case event of
                 Mouse.MouseDown objId ->
                     let
+                        updatedModel : Model
                         updatedModel =
                             { model
                                 | ui =
@@ -460,6 +480,7 @@ update msg model =
 
                 Mouse.MouseUp ->
                     let
+                        updatedUI : UI.UI Msg
                         updatedUI =
                             case model.dragging of
                                 Just dragging ->
@@ -493,8 +514,8 @@ update msg model =
                         maybeDraggedObject =
                             UI.get objId model.ui
 
-                        maybeDragVis : Maybe (View Msg)
-                        maybeDragVis =
+                        maybeDragView : Maybe (View Msg)
+                        maybeDragView =
                             Maybe.andThen
                                 UIObject.getDraggable
                                 maybeDraggedObject
@@ -502,8 +523,8 @@ update msg model =
 
                         updatedModel : Model
                         updatedModel =
-                            case ( maybeDraggedObject, maybeDragVis ) of
-                                ( Just obj, Just dragVis ) ->
+                            case ( maybeDraggedObject, maybeDragView ) of
+                                ( Just obj, Just dragView ) ->
                                     let
                                         mouseOffset : Coordinate
                                         mouseOffset =
@@ -517,7 +538,7 @@ update msg model =
                                                 { objId = objId
                                                 , rect = UIObject.rect obj
                                                 , offset = mouseOffset
-                                                , visible = dragVis
+                                                , view = dragView
                                                 }
                                         , ui = UI.bringObjectToFront objId model.ui
                                     }
@@ -569,7 +590,7 @@ view model =
         , MenuBar.view (Screen.width model.screen) model.menuBar
         , viewScreenCorners (Screen.logical model.screen)
         , viewDebugger model
-        , viewCursor model
+        , Mouse.view model.mouse
         ]
 
 
@@ -577,45 +598,10 @@ viewDraggedObject : Model -> Html Msg
 viewDraggedObject model =
     case model.dragging of
         Just dragging ->
-            View.view dragging.rect dragging.visible
+            View.view dragging.rect dragging.view
 
         Nothing ->
             UIHelpers.none
-
-
-viewCursor : Model -> Html msg
-viewCursor model =
-    let
-        cursorData =
-            case model.cursor of
-                Just CursorPointer ->
-                    { image = "MacOS/cursor-pointer.gif"
-                    , offsetX = -4
-                    , offsetY = -1
-                    }
-
-                Just CursorWatch ->
-                    { image = "MacOS/cursor-watch.gif"
-                    , offsetX = -9
-                    , offsetY = -9
-                    }
-
-                Nothing ->
-                    { image = ""
-                    , offsetX = 3
-                    , offsetY = 3
-                    }
-    in
-    div
-        [ style "position" "relative"
-        , style "left" (px (Mouse.x model.mouse + cursorData.offsetX))
-        , style "top" (px (Mouse.y model.mouse + cursorData.offsetY))
-        , style "width" (px 16)
-        , style "height" (px 16)
-        , style "background-image" (imgURL cursorData.image)
-        , style "pointer-events" "none"
-        ]
-        []
 
 
 type Corner
@@ -628,6 +614,7 @@ type Corner
 viewScreenCorners : Rect -> Html msg
 viewScreenCorners screen =
     let
+        cornerSize : Int
         cornerSize =
             5
 

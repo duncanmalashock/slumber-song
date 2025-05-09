@@ -21,15 +21,15 @@ program =
             }
         }
     , Instruction.CreateObject
-        { withId = "scene:ruins"
-        , object =
+        { object =
             UIObject.image
-                { url = "WindSleepers/ruins.gif"
+                { id = "scene:ruins"
+                , url = "WindSleepers/ruins.gif"
                 , size = ( 256, 172 )
                 }
         }
     , Instruction.AttachObject
         { objectId = "scene:ruins"
-        , layerId = "windows"
+        , parentId = "windows"
         }
     ]

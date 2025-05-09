@@ -18,5 +18,5 @@ type Instruction msg
     = AnimateZoom { from : Rect, to : Rect, zoomingIn : Bool }
     | CreateWindow { withId : String, window : Window msg }
     | RemoveWindow { withId : String }
-    | CreateObject { withId : String, object : Object msg }
-    | AttachObject { layerId : String, objectId : String }
+    | CreateObject { object : Object msg }
+    | AttachObject { objectId : String, parentId : String }

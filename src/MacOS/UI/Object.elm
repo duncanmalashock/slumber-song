@@ -3,7 +3,7 @@ module MacOS.UI.Object exposing
     , image
     , visible, selectable, draggable
     , onClick, onDoubleClick, onDragStart, onMouseDown
-    , position, rect
+    , id, position, rect
     , getDraggable, getMouseEventHandler
     , containsCoordinate
     , setPosition, setRect, setSelected
@@ -31,7 +31,7 @@ module MacOS.UI.Object exposing
 
 # Query
 
-@docs position, rect
+@docs id, position, rect
 @docs getDraggable, getMouseEventHandler
 
 
@@ -66,7 +66,8 @@ type Object msg
 
 
 type alias Internals msg =
-    { rect : Rect
+    { id : String
+    , rect : Rect
     , visible : Maybe (View msg)
     , selectable : Maybe (Selectable msg)
     , draggable : Maybe (Draggable msg)
@@ -87,10 +88,11 @@ type alias Selectable msg =
     }
 
 
-new : { rect : Rect } -> Object msg
+new : { id : String, rect : Rect } -> Object msg
 new params =
     Object
-        { rect = params.rect
+        { id = params.id
+        , rect = params.rect
         , visible = Nothing
         , selectable = Nothing
         , draggable = Nothing
@@ -101,11 +103,12 @@ new params =
         }
 
 
-image : { url : String, size : ( Int, Int ) } -> Object msg
+image : { id : String, url : String, size : ( Int, Int ) } -> Object msg
 image params =
     Object
-        { rect = Rect.new ( 0, 0 ) params.size
-        , visible = Just (View.image params)
+        { id = params.id
+        , rect = Rect.new ( 0, 0 ) params.size
+        , visible = Just (View.image { url = params.url, size = params.size })
         , selectable = Nothing
         , draggable = Nothing
         , onMouseDown = Nothing
@@ -113,6 +116,11 @@ image params =
         , onDoubleClick = Nothing
         , onDragStart = Nothing
         }
+
+
+id : Object msg -> String
+id (Object internals) =
+    internals.id
 
 
 onMouseDown : msg -> Object msg -> Object msg

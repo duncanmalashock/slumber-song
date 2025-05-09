@@ -1,10 +1,13 @@
 module MacOS.Mouse exposing
     ( Mouse, new
-    , position, x, y, buttonPressed
+    , position, x, y, buttonPressed, interactionsAllowed
     , update, Msg
     , MsgData, toMsg
+    , lock, unlock
+    , setCursorPointer, setCursorWatch
     , Event(..), listeners
     , filterEventsByObjId
+    , view
     )
 
 {-| The mouse's position and button state. Can produce mouse events for user interaction.
@@ -17,13 +20,15 @@ module MacOS.Mouse exposing
 
 # Query
 
-@docs position, x, y, buttonPressed
+@docs position, x, y, buttonPressed, interactionsAllowed
 
 
 # Update
 
 @docs update, Msg
 @docs MsgData, toMsg
+@docs lock, unlock
+@docs setCursorPointer, setCursorWatch
 
 
 # Mouse Events
@@ -31,15 +36,22 @@ module MacOS.Mouse exposing
 @docs Event, listeners
 @docs filterEventsByObjId
 
+
+# View
+
+@docs view
+
 -}
 
-import Html exposing (Attribute)
+import Html exposing (Attribute, Html, div)
+import Html.Attributes exposing (style)
 import Html.Events as Events
 import Json.Decode as Decode exposing (Decoder)
 import List.Extra
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.Rect exposing (Rect)
 import MacOS.Screen as Screen exposing (Screen)
+import MacOS.UI.Helpers exposing (imgURL, px)
 import Time
 
 
@@ -50,6 +62,8 @@ type Mouse
 type alias Internals =
     { position : Coordinate
     , buttonPressed : Bool
+    , cursor : Maybe Cursor
+    , interactionsAllowed : Bool
     , msgHistory : List Msg
     , eventHistory : List Event
     , doubleClickTimingThreshold : Int
@@ -64,6 +78,11 @@ position (Mouse internals) =
 buttonPressed : Mouse -> Bool
 buttonPressed (Mouse internals) =
     internals.buttonPressed
+
+
+interactionsAllowed : Mouse -> Bool
+interactionsAllowed (Mouse internals) =
+    internals.interactionsAllowed
 
 
 x : Mouse -> Int
@@ -91,11 +110,18 @@ debug (Mouse internals) =
         |> String.join ", "
 
 
+type Cursor
+    = CursorPointer
+    | CursorWatch
+
+
 new : Mouse
 new =
     Mouse
         { position = Coordinate.new ( 16, 16 )
         , buttonPressed = False
+        , cursor = Just CursorPointer
+        , interactionsAllowed = True
         , msgHistory = []
         , doubleClickTimingThreshold = 500
         , eventHistory = []
@@ -164,6 +190,38 @@ update ((NewMouseData msgArgs) as msg) (Mouse internals) =
         }
     , detectedEvents
     )
+
+
+lock : Mouse -> Mouse
+lock (Mouse internals) =
+    Mouse
+        { internals
+            | interactionsAllowed = False
+        }
+
+
+unlock : Mouse -> Mouse
+unlock (Mouse internals) =
+    Mouse
+        { internals
+            | interactionsAllowed = True
+        }
+
+
+setCursorPointer : Mouse -> Mouse
+setCursorPointer (Mouse internals) =
+    Mouse
+        { internals
+            | cursor = Just CursorPointer
+        }
+
+
+setCursorWatch : Mouse -> Mouse
+setCursorWatch (Mouse internals) =
+    Mouse
+        { internals
+            | cursor = Just CursorWatch
+        }
 
 
 type Event
@@ -240,3 +298,38 @@ mouseEventDecoder toMsg_ =
 positionDecoder : Decoder Int
 positionDecoder =
     Decode.float |> Decode.map floor
+
+
+view : Mouse -> Html msg
+view (Mouse internals) =
+    let
+        cursorData =
+            case internals.cursor of
+                Just CursorPointer ->
+                    { image = "MacOS/cursor-pointer.gif"
+                    , offsetX = -4
+                    , offsetY = -1
+                    }
+
+                Just CursorWatch ->
+                    { image = "MacOS/cursor-watch.gif"
+                    , offsetX = -9
+                    , offsetY = -9
+                    }
+
+                Nothing ->
+                    { image = ""
+                    , offsetX = 3
+                    , offsetY = 3
+                    }
+    in
+    div
+        [ style "position" "relative"
+        , style "left" (px (x (Mouse internals) + cursorData.offsetX))
+        , style "top" (px (y (Mouse internals) + cursorData.offsetY))
+        , style "width" (px 16)
+        , style "height" (px 16)
+        , style "background-image" (imgURL cursorData.image)
+        , style "pointer-events" "none"
+        ]
+        []
