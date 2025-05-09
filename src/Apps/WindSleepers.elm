@@ -6,10 +6,6 @@ import MacOS.UI.Object as UIObject
 import MacOS.UI.View.Window as Window
 
 
-type Msg
-    = NoOp
-
-
 program : List (Instruction msg)
 program =
     [ Instruction.CreateWindow
