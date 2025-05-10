@@ -31,8 +31,8 @@ type Config
     | StyleFillBlack
 
 
-view : Config -> Rect -> Html msg
-view config rect =
+view : Config -> Rect -> List (Html msg) -> Html msg
+view config rect childrenViews =
     let
         lineStyleAttrs : List (Html.Attribute msg)
         lineStyleAttrs =
@@ -96,5 +96,5 @@ view config rect =
                 StyleDotted ->
                     style "background" "white"
             ]
-            []
+            childrenViews
         ]

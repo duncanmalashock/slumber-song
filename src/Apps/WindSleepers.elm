@@ -26,18 +26,6 @@ program =
         }
     , Instruction.AttachObject
         { objectId = "scene:ruins"
-        , parentId = "windows"
-        }
-    , Instruction.CreateObject
-        { object =
-            UIObject.image
-                { id = "scene:ruins-in-window"
-                , url = "WindSleepers/ruins.gif"
-                , size = ( 256, 172 )
-                }
-        }
-    , Instruction.AttachObject
-        { objectId = "scene:ruins-in-window"
         , parentId = "scene"
         }
     ]

@@ -249,24 +249,25 @@ setSelected newValue (Object internals) =
         }
 
 
-view : Object msg -> Html msg
-view (Object internals) =
+view : Object msg -> List (Html msg) -> Html msg
+view (Object internals) childrenViews =
     div [ Html.Attributes.id internals.id ]
         [ case internals.view of
             Just objectView ->
                 case internals.selectOptions of
                     Just s ->
                         if s.selected then
-                            View.view internals.rect s.view
+                            View.view internals.rect s.view childrenViews
 
                         else
-                            View.view internals.rect objectView
+                            View.view internals.rect objectView childrenViews
 
                     Nothing ->
-                        View.view internals.rect objectView
+                        View.view internals.rect objectView childrenViews
 
             Nothing ->
-                div [ Html.Attributes.class "NO_VIEW" ] []
+                div [ Html.Attributes.class "NO_VIEW" ]
+                    childrenViews
         ]
 
 

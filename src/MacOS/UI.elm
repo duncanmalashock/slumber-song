@@ -59,6 +59,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.Mouse as Mouse
+import MacOS.Rect as Rect
 import MacOS.UI.Helpers as UIHelpers exposing (domIds)
 import MacOS.UI.Object as UIObject exposing (Object)
 import Set
@@ -83,11 +84,15 @@ new : UI msg
 new =
     UI
         { uiObjects = Dict.empty
-        , drawOrder =
-            Dict.fromList
-                [ ( domIds.root, [] ) ]
+        , drawOrder = Dict.empty
         , objectToParent = Dict.empty
         }
+        |> createObject
+            (UIObject.new
+                { id = domIds.root
+                , rect = Rect.new ( 0, 0 ) ( 512, 342 )
+                }
+            )
 
 
 remove : ObjectId -> UI msg -> UI msg
@@ -193,10 +198,10 @@ hitTest coordinate (UI internals) =
 
 
 mouseEventToHandlerMsg : Mouse.Event -> UI msg -> Maybe msg
-mouseEventToHandlerMsg mouseEvent ((UI internals) as interface) =
+mouseEventToHandlerMsg mouseEvent ((UI internals) as ui) =
     case mouseEvent of
         Mouse.MouseDown objId ->
-            case getObject objId interface of
+            case getObject ui objId of
                 Just obj ->
                     UIObject.getMouseEventHandler mouseEvent obj
 
@@ -207,7 +212,7 @@ mouseEventToHandlerMsg mouseEvent ((UI internals) as interface) =
             Nothing
 
         Mouse.Click objId ->
-            case getObject objId interface of
+            case getObject ui objId of
                 Just obj ->
                     UIObject.getMouseEventHandler mouseEvent obj
 
@@ -215,7 +220,7 @@ mouseEventToHandlerMsg mouseEvent ((UI internals) as interface) =
                     Nothing
 
         Mouse.DoubleClick objId ->
-            case getObject objId interface of
+            case getObject ui objId of
                 Just obj ->
                     UIObject.getMouseEventHandler mouseEvent obj
 
@@ -223,7 +228,7 @@ mouseEventToHandlerMsg mouseEvent ((UI internals) as interface) =
                     Nothing
 
         Mouse.DragStart objId ->
-            case getObject objId interface of
+            case getObject ui objId of
                 Just obj ->
                     UIObject.getMouseEventHandler mouseEvent obj
 
@@ -231,8 +236,8 @@ mouseEventToHandlerMsg mouseEvent ((UI internals) as interface) =
                     Nothing
 
 
-getObject : ObjectId -> UI msg -> Maybe (Object msg)
-getObject objId (UI internals) =
+getObject : UI msg -> ObjectId -> Maybe (Object msg)
+getObject (UI internals) objId =
     Dict.get objId internals.uiObjects
 
 
@@ -274,24 +279,24 @@ update objId updateObj (UI internals) =
 
 view : UI msg -> Html msg
 view ui =
-    UIHelpers.none
+    getObject ui domIds.root
+        |> Maybe.map (viewHelp ui)
+        |> Maybe.withDefault (div [ id "UI ROOT NOT FOUND" ] [])
 
 
+viewHelp : UI msg -> Object msg -> Html msg
+viewHelp ui object =
+    case getChildrenIds ui (UIObject.id object) of
+        [] ->
+            UIObject.view object []
 
--- draw the root
--- (get the root Object and call viewHelp)
--- viewHelp : Object msg -> UI msg -> Html msg
--- viewHelp object ui =
--- -- get the child ids of this object
--- -- if there are no children
--- --   render this object and pass it an empty list
--- -- if there are children
--- --   get them all as Object msg
--- --   render them in a list (call this function recursively)
--- --   render this object and pass the list of rendered children
+        childrenIds ->
+            List.filterMap (getObject ui) childrenIds
+                |> List.map (viewHelp ui)
+                |> UIObject.view object
 
 
-getChildrenIds : ObjectId -> UI msg -> List ObjectId
-getChildrenIds parentId (UI internals) =
+getChildrenIds : UI msg -> ObjectId -> List ObjectId
+getChildrenIds (UI internals) parentId =
     Dict.get parentId internals.drawOrder
         |> Maybe.withDefault []

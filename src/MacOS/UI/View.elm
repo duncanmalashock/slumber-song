@@ -51,14 +51,14 @@ image params =
     Image params
 
 
-view : Rect -> View msg -> Html msg
-view objRect screenObject =
-    case screenObject of
+view : Rect -> View msg -> List (Html msg) -> Html msg
+view objRect objectView childrenViews =
+    case objectView of
         Rect params ->
-            MacOS.UI.View.Rect.view params objRect
+            MacOS.UI.View.Rect.view params objRect childrenViews
 
         Window params ->
-            MacOS.UI.View.Window.view params True
+            MacOS.UI.View.Window.view params True childrenViews
 
         Image params ->
-            MacOS.UI.View.Image.view params objRect
+            MacOS.UI.View.Image.view params objRect childrenViews

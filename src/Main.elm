@@ -541,7 +541,7 @@ update msg model =
                     let
                         maybeDraggedObject : Maybe (Object Msg)
                         maybeDraggedObject =
-                            UI.getObject objId model.ui
+                            UI.getObject model.ui objId
 
                         maybeDragView : Maybe (View Msg)
                         maybeDragView =
@@ -601,8 +601,7 @@ view model =
        - Cursor
     -}
     div
-        ([ id domIds.os
-         , style "width" (px (Screen.width model.screen))
+        ([ style "width" (px (Screen.width model.screen))
          , style "height" (px (Screen.height model.screen))
          , style "background-color" "black"
          , style "background-image" FillPattern.dither50
@@ -626,7 +625,7 @@ viewDraggedObject : Model -> Html Msg
 viewDraggedObject model =
     case model.dragging of
         Just dragging ->
-            View.view dragging.rect dragging.view
+            View.view dragging.rect dragging.view []
 
         Nothing ->
             UIHelpers.none

@@ -19,12 +19,16 @@ imgURL filename =
 
 
 domIds =
-    { os = "MacOS"
-    , root = "MacOS__UI_ROOT"
-    , debugger = "MacOS__DEBUG"
-    , desktop = "MacOS__DESKTOP"
-    , desktopRectangles = "MacOS__DESKTOP_RECTANGLES"
-    , menuBar = "MacOS__MENUBAR"
-    , screenCorners = "MacOS__SCREEN_CORNERS"
-    , mouse = "MacOS__MOUSE"
+    let
+        addDomIdPrefix : String -> String
+        addDomIdPrefix id =
+            "MacOS__" ++ id
+    in
+    { root = addDomIdPrefix "UI_ROOT"
+    , debugger = addDomIdPrefix "DEBUG"
+    , desktop = addDomIdPrefix "DESKTOP"
+    , desktopRectangles = addDomIdPrefix "DESKTOP_RECTANGLES"
+    , menuBar = addDomIdPrefix "MENU_BAR"
+    , screenCorners = addDomIdPrefix "SCREEN_CORNERS"
+    , mouse = addDomIdPrefix "MOUSE"
     }

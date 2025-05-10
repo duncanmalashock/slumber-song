@@ -15,8 +15,8 @@ import MacOS.Rect as Rect exposing (Rect)
 import MacOS.UI.Helpers exposing (imgURL, px)
 
 
-view : { url : String, size : ( Int, Int ) } -> Rect -> Html msg
-view params rect =
+view : { url : String, size : ( Int, Int ) } -> Rect -> List (Html msg) -> Html msg
+view params rect childrenViews =
     div
         [ style "position" "absolute"
         , style "top" (px (Rect.top rect))
@@ -25,4 +25,4 @@ view params rect =
         , style "height" (px (Rect.height rect))
         , style "background-image" (imgURL params.url)
         ]
-        []
+        childrenViews

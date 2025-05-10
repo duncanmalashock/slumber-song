@@ -26,8 +26,8 @@ type alias Window msg =
     }
 
 
-view : Window msg -> Bool -> Html msg
-view config isActive =
+view : Window msg -> Bool -> List (Html msg) -> Html msg
+view config isActive childrenViews =
     div
         [ style "position" "absolute"
         , style "top" (px (Rect.posY config.rect))
@@ -37,10 +37,10 @@ view config isActive =
         , style "background" "white"
         , style "border" "solid 1px"
         , style "box-shadow" "1px 1px 0px"
+        , style "overflow" "hidden"
         ]
-        [ viewWindowTitle config isActive
-
-        --, div [] content
+        [ div [] childrenViews
+        , viewWindowTitle config isActive
         ]
 
 
