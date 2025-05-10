@@ -75,21 +75,25 @@ type alias Flags =
 
 init : Flags -> ( Model, Cmd Msg )
 init flags =
-    ( { currentTime = Time.millisToPosix flags.currentTimeInMS
-      , screen =
+    let
+        screen : Screen
+        screen =
             Screen.new
                 { screenInPixels = ( 512, 342 )
                 , browser = flags.browserDimensions
                 , devicePixelRatio = flags.devicePixelRatio
                 }
+    in
+    ( { currentTime = Time.millisToPosix flags.currentTimeInMS
+      , screen = screen
       , menuBar = MenuBar.new []
       , mouse = Mouse.new
       , ui =
-            UI.new
+            UI.new screen
                 |> UI.createObject
                     (UIObject.new
                         { id = domIds.desktop
-                        , rect = Rect.new ( 0, 0 ) ( 512, 342 )
+                        , rect = Screen.logical screen
                         }
                     )
                 |> UI.attachObject
@@ -99,7 +103,7 @@ init flags =
                 |> UI.createObject
                     (UIObject.new
                         { id = domIds.desktopRectangles
-                        , rect = Rect.new ( 0, 0 ) ( 512, 342 )
+                        , rect = Screen.logical screen
                         }
                     )
                 |> UI.attachObject
@@ -157,7 +161,7 @@ init flags =
                 |> UI.createObject
                     (UIObject.new
                         { id = "windows"
-                        , rect = Rect.new ( 0, 0 ) ( 512, 342 )
+                        , rect = Screen.logical screen
                         }
                     )
                 |> UI.attachObject

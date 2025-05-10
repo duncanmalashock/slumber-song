@@ -60,6 +60,7 @@ import Html.Events exposing (..)
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.Mouse as Mouse
 import MacOS.Rect as Rect
+import MacOS.Screen as Screen exposing (Screen)
 import MacOS.UI.Helpers as UIHelpers exposing (domIds)
 import MacOS.UI.Object as UIObject exposing (Object)
 import Set
@@ -80,8 +81,8 @@ type alias Internals msg =
     }
 
 
-new : UI msg
-new =
+new : Screen -> UI msg
+new screen =
     UI
         { uiObjects = Dict.empty
         , drawOrder = Dict.empty
@@ -90,7 +91,7 @@ new =
         |> createObject
             (UIObject.new
                 { id = domIds.root
-                , rect = Rect.new ( 0, 0 ) ( 512, 342 )
+                , rect = Screen.logical screen
                 }
             )
 
