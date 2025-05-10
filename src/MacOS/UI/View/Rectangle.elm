@@ -1,4 +1,4 @@
-module MacOS.UI.View.Rect exposing
+module MacOS.UI.View.Rectangle exposing
     ( Config(..)
     , view
     )

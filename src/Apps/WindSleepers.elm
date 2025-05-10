@@ -13,8 +13,8 @@ program =
         , window =
             { title = "Temple Ruins"
             , closeMsg = Nothing
-            , rect = Rect.new ( 128, 64 ) ( 256, 172 )
             }
+        , rect = Rect.new ( 128, 64 ) ( 256, 172 )
         }
     , Instruction.CreateObject
         { object =

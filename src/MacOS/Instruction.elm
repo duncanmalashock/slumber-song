@@ -11,12 +11,12 @@ module MacOS.Instruction exposing (Instruction(..))
 
 import MacOS.Rect as Rect exposing (Rect)
 import MacOS.UI.Object as UIObject exposing (Object)
-import MacOS.UI.View.Window as Window exposing (Window)
+import MacOS.UI.View.Window as Window
 
 
 type Instruction msg
     = AnimateZoom { from : Rect, to : Rect, zoomingIn : Bool }
-    | CreateWindow { withId : String, window : Window msg }
+    | CreateWindow { withId : String, window : Window.Config msg, rect : Rect }
     | RemoveWindow { withId : String }
     | CreateObject { object : Object msg }
     | AttachObject { objectId : String, parentId : String }

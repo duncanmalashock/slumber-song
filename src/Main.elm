@@ -19,7 +19,7 @@ import MacOS.UI.FillPattern as FillPattern
 import MacOS.UI.Helpers as UIHelpers exposing (domIds, imgURL, px)
 import MacOS.UI.Object as UIObject exposing (Object)
 import MacOS.UI.View as View exposing (View)
-import MacOS.UI.View.Rect
+import MacOS.UI.View.Rectangle
 import MacOS.UI.View.Window as Window
 import Set
 import Task
@@ -116,7 +116,7 @@ init flags =
                         , rect = Rect.new ( 0, 0 ) ( 0, 0 )
                         }
                         |> UIObject.setView
-                            (View.rect MacOS.UI.View.Rect.StyleDotted)
+                            (View.rect MacOS.UI.View.Rectangle.StyleDotted)
                     )
                 |> UI.attachObject
                     { objectId = "zoomRect0"
@@ -128,7 +128,7 @@ init flags =
                         , rect = Rect.new ( 0, 0 ) ( 0, 0 )
                         }
                         |> UIObject.setView
-                            (View.rect MacOS.UI.View.Rect.StyleDotted)
+                            (View.rect MacOS.UI.View.Rectangle.StyleDotted)
                     )
                 |> UI.attachObject
                     { objectId = "zoomRect1"
@@ -140,7 +140,7 @@ init flags =
                         , rect = Rect.new ( 0, 0 ) ( 0, 0 )
                         }
                         |> UIObject.setView
-                            (View.rect MacOS.UI.View.Rect.StyleDotted)
+                            (View.rect MacOS.UI.View.Rectangle.StyleDotted)
                     )
                 |> UI.attachObject
                     { objectId = "zoomRect2"
@@ -152,7 +152,7 @@ init flags =
                         , rect = Rect.new ( 0, 0 ) ( 0, 0 )
                         }
                         |> UIObject.setView
-                            (View.rect MacOS.UI.View.Rect.StyleDotted)
+                            (View.rect MacOS.UI.View.Rectangle.StyleDotted)
                     )
                 |> UI.attachObject
                     { objectId = "zoomRect3"
@@ -279,7 +279,7 @@ handleInstruction { timeStarted, instruction } model =
             , Cmd.none
             )
 
-        Instruction.CreateWindow { withId, window } ->
+        Instruction.CreateWindow { withId, window, rect } ->
             let
                 updatedUI : UI.UI Msg
                 updatedUI =
@@ -287,12 +287,12 @@ handleInstruction { timeStarted, instruction } model =
                         |> UI.createObject
                             (UIObject.new
                                 { id = withId
-                                , rect = window.rect
+                                , rect = rect
                                 }
                                 |> UIObject.setView
                                     (View.window window)
                                 |> UIObject.setDragOptions
-                                    { traveling = View.rect MacOS.UI.View.Rect.StyleDotted
+                                    { traveling = View.rect MacOS.UI.View.Rectangle.StyleDotted
                                     }
                             )
                         |> UI.attachObject

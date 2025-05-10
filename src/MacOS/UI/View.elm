@@ -26,39 +26,39 @@ import Html.Events as Events exposing (..)
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.Rect as Rect exposing (Rect)
 import MacOS.UI.View.Image
-import MacOS.UI.View.Rect
+import MacOS.UI.View.Rectangle
 import MacOS.UI.View.Window
 
 
 type View msg
-    = Rect MacOS.UI.View.Rect.Config
-    | Window (MacOS.UI.View.Window.Window msg)
-    | Image { url : String, size : ( Int, Int ) }
+    = Rectangle MacOS.UI.View.Rectangle.Config
+    | Window (MacOS.UI.View.Window.Config msg)
+    | Image MacOS.UI.View.Image.Config
 
 
-rect : MacOS.UI.View.Rect.Config -> View msg
-rect params =
-    Rect params
+rect : MacOS.UI.View.Rectangle.Config -> View msg
+rect config =
+    Rectangle config
 
 
-window : MacOS.UI.View.Window.Window msg -> View msg
-window params =
-    Window params
+window : MacOS.UI.View.Window.Config msg -> View msg
+window config =
+    Window config
 
 
-image : { url : String, size : ( Int, Int ) } -> View msg
-image params =
-    Image params
+image : MacOS.UI.View.Image.Config -> View msg
+image config =
+    Image config
 
 
 view : Rect -> View msg -> List (Html msg) -> Html msg
-view objRect objectView childrenViews =
+view objectRect objectView childrenViews =
     case objectView of
-        Rect params ->
-            MacOS.UI.View.Rect.view params objRect childrenViews
+        Rectangle config ->
+            MacOS.UI.View.Rectangle.view config objectRect childrenViews
 
-        Window params ->
-            MacOS.UI.View.Window.view params True objRect childrenViews
+        Window config ->
+            MacOS.UI.View.Window.view config True objectRect childrenViews
 
-        Image params ->
-            MacOS.UI.View.Image.view params objRect childrenViews
+        Image config ->
+            MacOS.UI.View.Image.view config objectRect childrenViews

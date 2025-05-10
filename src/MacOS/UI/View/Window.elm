@@ -1,11 +1,19 @@
-module MacOS.UI.View.Window exposing (Window, view)
+module MacOS.UI.View.Window exposing
+    ( Config
+    , view
+    )
 
 {-| A window containing other `View`s, configurable with different visual settings.
 
 
+# Config
+
+@docs Config
+
+
 # View
 
-@docs Window, view
+@docs view
 
 -}
 
@@ -19,21 +27,20 @@ import MacOS.Rect as Rect exposing (Rect)
 import MacOS.UI.Helpers as UIHelpers exposing (px)
 
 
-type alias Window msg =
+type alias Config msg =
     { title : String
     , closeMsg : Maybe msg
-    , rect : Rect
     }
 
 
-view : Window msg -> Bool -> Rect -> List (Html msg) -> Html msg
-view config isActive rect childrenViews =
+view : Config msg -> Bool -> Rect -> List (Html msg) -> Html msg
+view config isActive objectRect childrenViews =
     div
         [ style "position" "absolute"
-        , style "top" (px (Rect.posY rect))
-        , style "left" (px (Rect.posX rect))
-        , style "width" (px (Rect.width rect))
-        , style "height" (px (Rect.height rect))
+        , style "top" (px (Rect.posY objectRect))
+        , style "left" (px (Rect.posX objectRect))
+        , style "width" (px (Rect.width objectRect))
+        , style "height" (px (Rect.height objectRect))
         , style "background" "white"
         , style "border" "solid 1px"
         , style "box-shadow" "1px 1px 0px"
@@ -44,7 +51,7 @@ view config isActive rect childrenViews =
         ]
 
 
-viewWindowTitle : Window msg -> Bool -> Html msg
+viewWindowTitle : Config msg -> Bool -> Html msg
 viewWindowTitle config isActive =
     div
         [ style "position" "absolute"

@@ -1,6 +1,14 @@
-module MacOS.UI.View.Image exposing (view)
+module MacOS.UI.View.Image exposing
+    ( Config
+    , view
+    )
 
 {-| A bitmap image onscreen.
+
+
+# Config
+
+@docs Config
 
 
 # View
@@ -11,18 +19,25 @@ module MacOS.UI.View.Image exposing (view)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.Rect as Rect exposing (Rect)
 import MacOS.UI.Helpers exposing (imgURL, px)
 
 
-view : { url : String, size : ( Int, Int ) } -> Rect -> List (Html msg) -> Html msg
-view params rect childrenViews =
+type alias Config =
+    { url : String
+    , size : ( Int, Int )
+    }
+
+
+view : Config -> Rect -> List (Html msg) -> Html msg
+view config objectRect childrenViews =
     div
         [ style "position" "absolute"
-        , style "top" (px (Rect.top rect))
-        , style "left" (px (Rect.left rect))
-        , style "width" (px (Rect.width rect))
-        , style "height" (px (Rect.height rect))
-        , style "background-image" (imgURL params.url)
+        , style "top" (px (Rect.top objectRect))
+        , style "left" (px (Rect.left objectRect))
+        , style "width" (px (Rect.width objectRect))
+        , style "height" (px (Rect.height objectRect))
+        , style "background-image" (imgURL config.url)
         ]
         childrenViews
