@@ -279,21 +279,45 @@ update objId updateObj (UI internals) =
 
 view : UI msg -> Html msg
 view ui =
+    let
+        rootNotFoundView : Html msg
+        rootNotFoundView =
+            div [ class "UI.view couldn't find `root` object" ]
+                []
+    in
     getObject ui domIds.root
         |> Maybe.map (viewHelp ui)
-        |> Maybe.withDefault (div [ id "UI ROOT NOT FOUND" ] [])
+        |> Maybe.withDefault rootNotFoundView
 
 
 viewHelp : UI msg -> Object msg -> Html msg
 viewHelp ui object =
-    case getChildrenIds ui (UIObject.id object) of
-        [] ->
-            UIObject.view object []
+    let
+        childrenIds : List ObjectId
+        childrenIds =
+            getChildrenIds ui (UIObject.id object)
 
-        childrenIds ->
-            List.filterMap (getObject ui) childrenIds
-                |> List.map (viewHelp ui)
-                |> UIObject.view object
+        childrenViews : List (Html msg)
+        childrenViews =
+            gatherChildrenViews ui childrenIds []
+                |> List.reverse
+    in
+    UIObject.view object childrenViews
+
+
+gatherChildrenViews : UI msg -> List ObjectId -> List (Html msg) -> List (Html msg)
+gatherChildrenViews ui remainingIds viewsSoFar =
+    case remainingIds of
+        [] ->
+            viewsSoFar
+
+        objectId :: rest ->
+            case getObject ui objectId of
+                Just childObject ->
+                    gatherChildrenViews ui rest (viewHelp ui childObject :: viewsSoFar)
+
+                Nothing ->
+                    gatherChildrenViews ui rest viewsSoFar
 
 
 getChildrenIds : UI msg -> ObjectId -> List ObjectId
