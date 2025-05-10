@@ -26,14 +26,14 @@ type alias Window msg =
     }
 
 
-view : Window msg -> Bool -> List (Html msg) -> Html msg
-view config isActive childrenViews =
+view : Window msg -> Bool -> Rect -> List (Html msg) -> Html msg
+view config isActive rect childrenViews =
     div
         [ style "position" "absolute"
-        , style "top" (px (Rect.posY config.rect))
-        , style "left" (px (Rect.posX config.rect))
-        , style "width" (px (Rect.width config.rect))
-        , style "height" (px (Rect.height config.rect))
+        , style "top" (px (Rect.posY rect))
+        , style "left" (px (Rect.posX rect))
+        , style "width" (px (Rect.width rect))
+        , style "height" (px (Rect.height rect))
         , style "background" "white"
         , style "border" "solid 1px"
         , style "box-shadow" "1px 1px 0px"

@@ -58,7 +58,7 @@ view objRect objectView childrenViews =
             MacOS.UI.View.Rect.view params objRect childrenViews
 
         Window params ->
-            MacOS.UI.View.Window.view params True childrenViews
+            MacOS.UI.View.Window.view params True objRect childrenViews
 
         Image params ->
             MacOS.UI.View.Image.view params objRect childrenViews
