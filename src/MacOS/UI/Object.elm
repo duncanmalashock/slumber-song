@@ -249,9 +249,16 @@ setSelected newValue (Object internals) =
         }
 
 
-view : Object msg -> List (Html msg) -> Html msg
-view (Object internals) childrenViews =
-    div [ Html.Attributes.id internals.id ]
+view : { debug : Bool } -> Object msg -> List (Html msg) -> Html msg
+view { debug } (Object internals) childrenViews =
+    div
+        [ Html.Attributes.id internals.id
+        , if debug then
+            UIHelpers.debugColorize
+
+          else
+            style "" ""
+        ]
         [ case internals.view of
             Just objectView ->
                 case internals.selectOptions of

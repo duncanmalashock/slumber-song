@@ -2,11 +2,11 @@ module MacOS.UI exposing
     ( UI, new
     , createObject
     , attachObject
+    , updateObject, updateList
+    , removeObject
     , bringObjectToFront
-    , remove
-    , update, updateList
     , getObject
-    , topmostObjectInList, hitTest
+    , pickObject, hitTest
     , mouseEventToHandlerMsg
     , view
     )
@@ -23,13 +23,13 @@ module MacOS.UI exposing
 
 @docs createObject
 @docs attachObject
-@docs bringObjectToFront
-@docs remove
 
 
 # Update
 
-@docs update, updateList
+@docs updateObject, updateList
+@docs removeObject
+@docs bringObjectToFront
 
 
 # Query
@@ -39,7 +39,7 @@ module MacOS.UI exposing
 
 # Picking Objects
 
-@docs topmostObjectInList, hitTest
+@docs pickObject, hitTest
 
 
 # Events
@@ -59,11 +59,11 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.Mouse as Mouse
-import MacOS.Rect as Rect
+import MacOS.Rect as Rect exposing (Rect)
 import MacOS.Screen as Screen exposing (Screen)
 import MacOS.UI.Helpers as UIHelpers exposing (domIds)
 import MacOS.UI.Object as UIObject exposing (Object)
-import Set
+import Set exposing (Set)
 
 
 type UI msg
@@ -96,8 +96,8 @@ new screen =
             )
 
 
-remove : ObjectId -> UI msg -> UI msg
-remove objId (UI internals) =
+removeObject : ObjectId -> UI msg -> UI msg
+removeObject objId (UI internals) =
     let
         removeFromUiObjects : Internals msg -> Internals msg
         removeFromUiObjects i =
@@ -133,23 +133,39 @@ remove objId (UI internals) =
         |> UI
 
 
-topmostObjectInList : List ObjectId -> UI msg -> Maybe ObjectId
-topmostObjectInList candidates (UI internals) =
+hitTest : Coordinate -> UI msg -> List String
+hitTest coordinate (UI internals) =
+    Dict.toList internals.uiObjects
+        |> List.filterMap
+            (\( key, uiObject ) ->
+                if UIObject.hitTest coordinate uiObject then
+                    Just key
+                        |> Debug.log "hitTest"
+
+                else
+                    Nothing
+            )
+
+
+pickObject : List ObjectId -> UI msg -> Maybe ObjectId
+pickObject candidates (UI internals) =
     let
+        candidateSet : Set ObjectId
         candidateSet =
             Set.fromList candidates
+                |> Debug.log "candidates"
     in
-    []
-        -- internals.layerOrder
+    [ ( domIds.windows, "" ) ]
         |> List.reverse
         |> List.filterMap
-            (\( layerId, _ ) ->
-                Dict.get layerId internals.drawOrder
+            (\( parentId, _ ) ->
+                Dict.get parentId internals.drawOrder
                     |> Maybe.map List.reverse
             )
         |> List.concat
         |> List.filter (\id -> Set.member id candidateSet)
         |> List.head
+        |> Debug.log "picked"
 
 
 createObject : Object msg -> UI msg -> UI msg
@@ -164,38 +180,25 @@ createObject object (UI internals) =
         }
 
 
-attachObject : { objectId : ObjectId, parentId : ObjectId } -> UI msg -> UI msg
-attachObject { objectId, parentId } (UI internals) =
-    -- User could attach an object that hasn't been created yet. What to do??
+attachObject : { objectId : ObjectId, parentId : ObjectId, rect : Rect } -> UI msg -> UI msg
+attachObject params (UI internals) =
     UI
         { internals
             | drawOrder =
-                case Dict.get parentId internals.drawOrder of
+                case Dict.get params.parentId internals.drawOrder of
                     Just _ ->
-                        Dict.update parentId
+                        Dict.update params.parentId
                             (\maybeList ->
-                                Maybe.map (\l -> l ++ [ objectId ]) maybeList
+                                Maybe.map (\l -> l ++ [ params.objectId ]) maybeList
                             )
                             internals.drawOrder
 
                     Nothing ->
-                        Dict.insert parentId [ objectId ] internals.drawOrder
+                        Dict.insert params.parentId [ params.objectId ] internals.drawOrder
             , objectToParent =
-                Dict.insert objectId parentId internals.objectToParent
+                Dict.insert params.objectId params.parentId internals.objectToParent
         }
-
-
-hitTest : Coordinate -> UI msg -> List String
-hitTest coordinate (UI internals) =
-    Dict.toList internals.uiObjects
-        |> List.filterMap
-            (\( key, uiObject ) ->
-                if UIObject.hitTest coordinate uiObject then
-                    Just key
-
-                else
-                    Nothing
-            )
+        |> updateObject params.objectId (UIObject.setRect params.rect)
 
 
 mouseEventToHandlerMsg : Mouse.Event -> UI msg -> Maybe msg
@@ -264,11 +267,11 @@ bringObjectToFront objectId (UI internals) =
 
 updateList : List ( ObjectId, Object msg -> Object msg ) -> UI msg -> UI msg
 updateList newPairs interface =
-    List.foldl (\( key, updater ) -> update key updater) interface newPairs
+    List.foldl (\( key, updater ) -> updateObject key updater) interface newPairs
 
 
-update : ObjectId -> (Object msg -> Object msg) -> UI msg -> UI msg
-update objId updateObj (UI internals) =
+updateObject : ObjectId -> (Object msg -> Object msg) -> UI msg -> UI msg
+updateObject objId updateObj (UI internals) =
     UI
         { internals
             | uiObjects =
@@ -278,8 +281,8 @@ update objId updateObj (UI internals) =
         }
 
 
-view : UI msg -> Html msg
-view ui =
+view : { debugObject : String } -> UI msg -> Html msg
+view params ui =
     let
         rootNotFoundView : Html msg
         rootNotFoundView =
@@ -287,12 +290,12 @@ view ui =
                 []
     in
     getObject ui domIds.root
-        |> Maybe.map (viewHelp ui)
+        |> Maybe.map (viewHelp params ui)
         |> Maybe.withDefault rootNotFoundView
 
 
-viewHelp : UI msg -> Object msg -> Html msg
-viewHelp ui object =
+viewHelp : { debugObject : String } -> UI msg -> Object msg -> Html msg
+viewHelp { debugObject } ui object =
     let
         childrenIds : List ObjectId
         childrenIds =
@@ -300,14 +303,14 @@ viewHelp ui object =
 
         childrenViews : List (Html msg)
         childrenViews =
-            gatherChildrenViews ui childrenIds []
+            gatherChildrenViews { debugObject = debugObject } ui childrenIds []
                 |> List.reverse
     in
-    UIObject.view object childrenViews
+    UIObject.view { debug = debugObject == UIObject.id object } object childrenViews
 
 
-gatherChildrenViews : UI msg -> List ObjectId -> List (Html msg) -> List (Html msg)
-gatherChildrenViews ui remainingIds viewsSoFar =
+gatherChildrenViews : { debugObject : String } -> UI msg -> List ObjectId -> List (Html msg) -> List (Html msg)
+gatherChildrenViews { debugObject } ui remainingIds viewsSoFar =
     case remainingIds of
         [] ->
             viewsSoFar
@@ -315,10 +318,10 @@ gatherChildrenViews ui remainingIds viewsSoFar =
         objectId :: rest ->
             case getObject ui objectId of
                 Just childObject ->
-                    gatherChildrenViews ui rest (viewHelp ui childObject :: viewsSoFar)
+                    gatherChildrenViews { debugObject = debugObject } ui rest (viewHelp { debugObject = debugObject } ui childObject :: viewsSoFar)
 
                 Nothing ->
-                    gatherChildrenViews ui rest viewsSoFar
+                    gatherChildrenViews { debugObject = debugObject } ui rest viewsSoFar
 
 
 getChildrenIds : UI msg -> ObjectId -> List ObjectId

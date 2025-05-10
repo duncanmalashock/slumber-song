@@ -1,6 +1,7 @@
-module MacOS.UI.Helpers exposing (domIds, imgURL, none, px)
+module MacOS.UI.Helpers exposing (debugColorize, domIds, imgURL, none, px)
 
-import Html exposing (Html)
+import Html exposing (Attribute, Html)
+import Html.Attributes exposing (style)
 
 
 px : Int -> String
@@ -18,6 +19,11 @@ imgURL filename =
     "url(\"" ++ filename ++ "\")"
 
 
+debugColorize : Attribute msg
+debugColorize =
+    style "filter" "contrast(0.5) sepia(1) saturate(25) hue-rotate(-29deg)"
+
+
 domIds =
     let
         addDomIdPrefix : String -> String
@@ -28,6 +34,7 @@ domIds =
     , debugger = addDomIdPrefix "DEBUG"
     , desktop = addDomIdPrefix "DESKTOP"
     , desktopRectangles = addDomIdPrefix "DESKTOP_RECTANGLES"
+    , windows = addDomIdPrefix "WINDOWS"
     , menuBar = addDomIdPrefix "MENU_BAR"
     , screenCorners = addDomIdPrefix "SCREEN_CORNERS"
     , mouse = addDomIdPrefix "MOUSE"

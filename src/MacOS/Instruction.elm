@@ -19,4 +19,4 @@ type Instruction msg
     | CreateWindow { withId : String, window : Window.Config msg, rect : Rect }
     | RemoveWindow { withId : String }
     | CreateObject { object : Object msg }
-    | AttachObject { objectId : String, parentId : String }
+    | AttachObject { objectId : String, parentId : String, rect : Rect }

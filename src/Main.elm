@@ -41,7 +41,7 @@ viewDebugger model =
             , style "font-family" "Geneva"
             , style "padding" "0 6px"
             ]
-            [ div [] [ text "" ]
+            [ div [] [ text (Maybe.withDefault "No object picked" model.pickedObjectId) ]
             ]
         ]
 
@@ -52,6 +52,7 @@ type alias Model =
     , menuBar : MenuBar
     , mouse : Mouse
     , ui : UI Msg
+    , pickedObjectId : Maybe String
     , dragging : Maybe Dragging
     , instructions : List (Instruction Msg)
     , currentInstruction : Maybe { timeStarted : Time.Posix, instruction : Instruction Msg }
@@ -99,6 +100,7 @@ init flags =
                 |> UI.attachObject
                     { objectId = domIds.desktop
                     , parentId = domIds.root
+                    , rect = Screen.logical screen
                     }
                 |> UI.createObject
                     (UIObject.new
@@ -109,6 +111,7 @@ init flags =
                 |> UI.attachObject
                     { objectId = domIds.desktopRectangles
                     , parentId = domIds.desktop
+                    , rect = Screen.logical screen
                     }
                 |> UI.createObject
                     (UIObject.new
@@ -121,6 +124,7 @@ init flags =
                 |> UI.attachObject
                     { objectId = "zoomRect0"
                     , parentId = domIds.desktopRectangles
+                    , rect = Screen.logical screen
                     }
                 |> UI.createObject
                     (UIObject.new
@@ -133,6 +137,7 @@ init flags =
                 |> UI.attachObject
                     { objectId = "zoomRect1"
                     , parentId = domIds.desktopRectangles
+                    , rect = Screen.logical screen
                     }
                 |> UI.createObject
                     (UIObject.new
@@ -145,6 +150,7 @@ init flags =
                 |> UI.attachObject
                     { objectId = "zoomRect2"
                     , parentId = domIds.desktopRectangles
+                    , rect = Screen.logical screen
                     }
                 |> UI.createObject
                     (UIObject.new
@@ -157,17 +163,20 @@ init flags =
                 |> UI.attachObject
                     { objectId = "zoomRect3"
                     , parentId = domIds.desktopRectangles
+                    , rect = Screen.logical screen
                     }
                 |> UI.createObject
                     (UIObject.new
-                        { id = "windows"
+                        { id = domIds.windows
                         , rect = Screen.logical screen
                         }
                     )
                 |> UI.attachObject
-                    { objectId = "windows"
+                    { objectId = domIds.windows
                     , parentId = domIds.desktop
+                    , rect = Screen.logical screen
                     }
+      , pickedObjectId = Nothing
       , dragging = Nothing
       , instructions = WindSleepers.program
       , currentInstruction = Nothing
@@ -270,7 +279,7 @@ handleInstruction { timeStarted, instruction } model =
                 updatedUI : UI.UI Msg
                 updatedUI =
                     model.ui
-                        |> UI.remove withId
+                        |> UI.removeObject withId
             in
             ( { model
                 | currentInstruction = Nothing
@@ -297,7 +306,8 @@ handleInstruction { timeStarted, instruction } model =
                             )
                         |> UI.attachObject
                             { objectId = withId
-                            , parentId = "windows"
+                            , parentId = domIds.windows
+                            , rect = rect
                             }
             in
             ( { model
@@ -321,7 +331,7 @@ handleInstruction { timeStarted, instruction } model =
             , Cmd.none
             )
 
-        Instruction.AttachObject { objectId, parentId } ->
+        Instruction.AttachObject { objectId, parentId, rect } ->
             let
                 updatedUI : UI.UI Msg
                 updatedUI =
@@ -329,6 +339,7 @@ handleInstruction { timeStarted, instruction } model =
                         |> UI.attachObject
                             { objectId = objectId
                             , parentId = parentId
+                            , rect = rect
                             }
             in
             ( { model
@@ -408,6 +419,10 @@ update msg model =
                 hitTestResults =
                     UI.hitTest newMousePos model.ui
 
+                pickedObjectId : Maybe String
+                pickedObjectId =
+                    UI.pickObject hitTestResults model.ui
+
                 domUpdate : Mouse.DomUpdate
                 domUpdate =
                     { atTime = model.currentTime
@@ -430,15 +445,11 @@ update msg model =
                     else
                         ( model.mouse, [] )
 
-                pickedId : Maybe String
-                pickedId =
-                    UI.topmostObjectInList hitTestResults model.ui
-
                 eventCmds : Cmd Msg
                 eventCmds =
                     if Mouse.interactionsAllowed model.mouse then
                         newMouseEvents
-                            |> Mouse.filterMouseEventsByObjectId pickedId
+                            |> Mouse.filterMouseEventsByObjectId pickedObjectId
                             |> List.map MouseEvent
                             |> List.map sendMsg
                             |> Cmd.batch
@@ -464,6 +475,7 @@ update msg model =
             ( { model
                 | mouse = updatedMouse
                 , dragging = updatedDragging
+                , pickedObjectId = pickedObjectId
               }
             , eventCmds
             )
@@ -502,7 +514,7 @@ update msg model =
                         updatedModel =
                             { model
                                 | ui =
-                                    UI.update objId
+                                    UI.updateObject objId
                                         (UIObject.setSelected True)
                                         model.ui
                             }
@@ -517,7 +529,7 @@ update msg model =
                         updatedUI =
                             case model.dragging of
                                 Just dragging ->
-                                    UI.update dragging.objId
+                                    UI.updateObject dragging.objId
                                         (UIObject.setPosition (Rect.position dragging.rect))
                                         model.ui
 
@@ -616,7 +628,7 @@ view model =
             ++ Mouse.listeners MouseUpdated
             ++ Screen.scaleAttrs model.screen
         )
-        [ UI.view model.ui
+        [ UI.view { debugObject = Maybe.withDefault "" model.pickedObjectId } model.ui
         , viewDraggedObject model
         , MenuBar.view (Screen.width model.screen) model.menuBar
         , viewScreenCorners (Screen.logical model.screen)
