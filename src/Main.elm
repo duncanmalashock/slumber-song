@@ -541,7 +541,7 @@ update msg model =
                     let
                         maybeDraggedObject : Maybe (Object Msg)
                         maybeDraggedObject =
-                            UI.get objId model.ui
+                            UI.getObject objId model.ui
 
                         maybeDragView : Maybe (View Msg)
                         maybeDragView =

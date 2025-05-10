@@ -5,7 +5,7 @@ module MacOS.UI exposing
     , bringObjectToFront
     , remove
     , update, updateList
-    , get
+    , getObject
     , topmostObjectInList, hitTest
     , mouseEventToHandlerMsg
     , view
@@ -34,7 +34,7 @@ module MacOS.UI exposing
 
 # Query
 
-@docs get
+@docs getObject
 
 
 # Picking Objects
@@ -59,7 +59,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.Mouse as Mouse
-import MacOS.UI.Helpers exposing (domIds)
+import MacOS.UI.Helpers as UIHelpers exposing (domIds)
 import MacOS.UI.Object as UIObject exposing (Object)
 import Set
 
@@ -196,7 +196,7 @@ mouseEventToHandlerMsg : Mouse.Event -> UI msg -> Maybe msg
 mouseEventToHandlerMsg mouseEvent ((UI internals) as interface) =
     case mouseEvent of
         Mouse.MouseDown objId ->
-            case get objId interface of
+            case getObject objId interface of
                 Just obj ->
                     UIObject.getMouseEventHandler mouseEvent obj
 
@@ -207,7 +207,7 @@ mouseEventToHandlerMsg mouseEvent ((UI internals) as interface) =
             Nothing
 
         Mouse.Click objId ->
-            case get objId interface of
+            case getObject objId interface of
                 Just obj ->
                     UIObject.getMouseEventHandler mouseEvent obj
 
@@ -215,7 +215,7 @@ mouseEventToHandlerMsg mouseEvent ((UI internals) as interface) =
                     Nothing
 
         Mouse.DoubleClick objId ->
-            case get objId interface of
+            case getObject objId interface of
                 Just obj ->
                     UIObject.getMouseEventHandler mouseEvent obj
 
@@ -223,7 +223,7 @@ mouseEventToHandlerMsg mouseEvent ((UI internals) as interface) =
                     Nothing
 
         Mouse.DragStart objId ->
-            case get objId interface of
+            case getObject objId interface of
                 Just obj ->
                     UIObject.getMouseEventHandler mouseEvent obj
 
@@ -231,8 +231,8 @@ mouseEventToHandlerMsg mouseEvent ((UI internals) as interface) =
                     Nothing
 
 
-get : ObjectId -> UI msg -> Maybe (Object msg)
-get objId (UI internals) =
+getObject : ObjectId -> UI msg -> Maybe (Object msg)
+getObject objId (UI internals) =
     Dict.get objId internals.uiObjects
 
 
@@ -273,12 +273,22 @@ update objId updateObj (UI internals) =
 
 
 view : UI msg -> Html msg
-view (UI internals) =
-    getChildrenIds domIds.root (UI internals)
-        |> List.filterMap (\objectId -> Dict.get objectId internals.uiObjects)
-        |> List.map UIObject.view
-        |> Html.div
-            [ id domIds.root ]
+view ui =
+    UIHelpers.none
+
+
+
+-- draw the root
+-- (get the root Object and call viewHelp)
+-- viewHelp : Object msg -> UI msg -> Html msg
+-- viewHelp object ui =
+-- -- get the child ids of this object
+-- -- if there are no children
+-- --   render this object and pass it an empty list
+-- -- if there are children
+-- --   get them all as Object msg
+-- --   render them in a list (call this function recursively)
+-- --   render this object and pass the list of rendered children
 
 
 getChildrenIds : ObjectId -> UI msg -> List ObjectId
