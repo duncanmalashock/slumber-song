@@ -57,10 +57,10 @@ view config rect childrenViews =
                             -- using an alternating dot pattern make the line always
                             -- dotted over white and always black over 50% dither
                             if modBy 2 (Rect.top rect + Rect.left rect) == 0 then
-                                [ style "background-position-x" "1px" ]
+                                []
 
                             else
-                                []
+                                [ style "background-position-x" "1px" ]
                     in
                     [ style "background-image" FillPattern.dither50
                     , style "mix-blend-mode" "difference"
@@ -69,7 +69,7 @@ view config rect childrenViews =
     in
     div
         ([ style "position" "absolute"
-         , style "top" (px (Rect.top rect - 1))
+         , style "top" (px (Rect.top rect))
          , style "left" (px (Rect.left rect))
          , style "width" (px (Rect.width rect))
          , style "height" (px (Rect.height rect))
