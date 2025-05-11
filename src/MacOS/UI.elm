@@ -6,6 +6,7 @@ module MacOS.UI exposing
     , removeObject
     , bringObjectToFront
     , getObject
+    , getAbsoluteRect
     , hitTest, pickTopmostObject
     , mouseEventToHandlerMsg
     , view
@@ -35,6 +36,7 @@ module MacOS.UI exposing
 # Query
 
 @docs getObject
+@docs getAbsoluteRect
 
 
 # Picking Objects

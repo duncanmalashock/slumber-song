@@ -61,7 +61,7 @@ type alias Model =
 
 
 type alias Dragging =
-    { objId : String
+    { objectId : String
     , rect : Rect
     , offset : Coordinate
     , view : View Msg
@@ -515,13 +515,13 @@ update msg model =
                         |> Maybe.withDefault Cmd.none
             in
             case event of
-                Mouse.MouseDown objId ->
+                Mouse.MouseDown objectId ->
                     let
                         updatedModel : Model
                         updatedModel =
                             { model
                                 | ui =
-                                    UI.updateObject objId
+                                    UI.updateObject objectId
                                         (UIObject.setSelected True)
                                         model.ui
                             }
@@ -536,7 +536,7 @@ update msg model =
                         updatedUI =
                             case model.dragging of
                                 Just dragging ->
-                                    UI.updateObject dragging.objId
+                                    UI.updateObject dragging.objectId
                                         (UIObject.setPosition (Rect.position dragging.rect))
                                         model.ui
 
@@ -550,21 +550,21 @@ update msg model =
                     , cmd
                     )
 
-                Mouse.Click objId ->
+                Mouse.Click objectId ->
                     ( model
                     , cmd
                     )
 
-                Mouse.DoubleClick objId ->
+                Mouse.DoubleClick objectId ->
                     ( model
                     , cmd
                     )
 
-                Mouse.DragStart objId ->
+                Mouse.DragStart objectId ->
                     let
                         maybeDraggedObject : Maybe (Object Msg)
                         maybeDraggedObject =
-                            UI.getObject model.ui objId
+                            UI.getObject model.ui objectId
 
                         maybeDragView : Maybe (View Msg)
                         maybeDragView =
@@ -574,23 +574,35 @@ update msg model =
                         updatedModel : Model
                         updatedModel =
                             case ( maybeDraggedObject, maybeDragView ) of
-                                ( Just obj, Just dragView ) ->
+                                ( Just draggedObject, Just dragView ) ->
                                     let
+                                        draggedObjectId : String
+                                        draggedObjectId =
+                                            UIObject.id draggedObject
+
+                                        draggedObjectAbsoluteRect : Rect
+                                        draggedObjectAbsoluteRect =
+                                            UI.getAbsoluteRect model.ui draggedObjectId
+                                                |> Maybe.withDefault (Rect.new ( 0, 0 ) ( 0, 0 ))
+
                                         mouseOffset : Coordinate
                                         mouseOffset =
                                             Coordinate.minus
                                                 (Mouse.position model.mouse)
-                                                (UIObject.position obj)
+                                                (Rect.position draggedObjectAbsoluteRect)
                                     in
                                     { model
                                         | dragging =
                                             Just
-                                                { objId = objId
-                                                , rect = UIObject.rect obj
+                                                { objectId = draggedObjectId
+                                                , rect = draggedObjectAbsoluteRect
                                                 , offset = mouseOffset
                                                 , view = dragView
                                                 }
-                                        , ui = UI.bringObjectToFront objId model.ui
+                                        , ui =
+                                            UI.bringObjectToFront
+                                                draggedObjectId
+                                                model.ui
                                     }
 
                                 _ ->

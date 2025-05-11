@@ -4,6 +4,7 @@ import MacOS.Instruction as Instruction exposing (Instruction)
 import MacOS.Rect as Rect
 import MacOS.UI.Helpers as UIHelpers exposing (domIds)
 import MacOS.UI.Object as UIObject
+import MacOS.UI.View as View
 import MacOS.UI.View.Window as Window
 
 
@@ -45,6 +46,13 @@ program =
                 , url = "WindSleepers/skull.gif"
                 , size = ( 15, 17 )
                 }
+                |> UIObject.setDragOptions
+                    { traveling =
+                        View.image
+                            { url = "WindSleepers/skull.gif"
+                            , size = ( 15, 17 )
+                            }
+                    }
         }
     , Instruction.AttachObject
         { objectId = "obj:skull"
