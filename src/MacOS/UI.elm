@@ -6,7 +6,7 @@ module MacOS.UI exposing
     , removeObject
     , bringObjectToFront
     , getObject
-    , hitTest, pickObject
+    , hitTest, pickTopmostObject
     , mouseEventToHandlerMsg
     , view
     )
@@ -39,7 +39,7 @@ module MacOS.UI exposing
 
 # Picking Objects
 
-@docs hitTest, pickObject
+@docs hitTest, pickTopmostObject
 
 
 # Events
@@ -63,6 +63,7 @@ import MacOS.Rect as Rect exposing (Rect)
 import MacOS.Screen as Screen exposing (Screen)
 import MacOS.UI.Helpers as UIHelpers exposing (domIds)
 import MacOS.UI.Object as UIObject exposing (Object)
+import MacOS.UI.View.Rectangle exposing (Config(..))
 import Set exposing (Set)
 
 
@@ -76,6 +77,8 @@ type alias ObjectId =
 
 type alias Internals msg =
     { uiObjects : Dict ObjectId (Object msg)
+
+    -- childrenInDrawOrder is in order from bottom to top
     , childrenInDrawOrder : Dict ObjectId (List ObjectId)
     , objectToParent : Dict ObjectId ObjectId
     , absoluteRects : Dict ObjectId Rect
@@ -141,7 +144,7 @@ getAbsoluteRect ((UI internals) as ui) objectId =
 
 
 updateAbsoluteRectsForDescendants : ObjectId -> UI msg -> UI msg
-updateAbsoluteRectsForDescendants rootId (UI internals) =
+updateAbsoluteRectsForDescendants objectId (UI internals) =
     let
         updateDescendants : ObjectId -> Dict ObjectId Rect -> Dict ObjectId Rect
         updateDescendants currentId currentAbsoluteRects =
@@ -237,13 +240,11 @@ updateAbsoluteRectsForDescendants rootId (UI internals) =
                     Dict.get currentId internals.childrenInDrawOrder
                         |> Maybe.withDefault []
             in
-            List.foldl
-                updateDescendants
-                updatedRects
-                children
+            List.foldl updateDescendants updatedRects children
 
+        updatedAbsoluteRects : Dict ObjectId Rect
         updatedAbsoluteRects =
-            updateDescendants rootId internals.absoluteRects
+            updateDescendants objectId internals.absoluteRects
     in
     UI
         { internals
@@ -264,13 +265,9 @@ hitTest coordinate ((UI internals) as ui) =
             )
 
 
-pickObject : List ObjectId -> UI msg -> Maybe ObjectId
-pickObject candidates (UI internals) =
+pickTopmostObject : List ObjectId -> UI msg -> Maybe ObjectId
+pickTopmostObject candidates (UI internals) =
     let
-        candidateSet : Set ObjectId
-        candidateSet =
-            Set.fromList candidates
-
         collectInDrawOrder : ObjectId -> List ObjectId
         collectInDrawOrder objectId =
             let
@@ -283,20 +280,22 @@ pickObject candidates (UI internals) =
                 descendants =
                     List.concatMap collectInDrawOrder children
             in
-            descendants ++ [ objectId ]
+            objectId :: descendants
 
         allInDrawOrder : List ObjectId
         allInDrawOrder =
-            collectInDrawOrder domIds.windows
+            collectInDrawOrder domIds.root
     in
     allInDrawOrder
-        |> List.filter (\id -> Set.member id candidateSet)
+        |> List.filter (\id -> List.member id candidates)
+        |> List.reverse
         |> List.head
 
 
 createObject : Object msg -> UI msg -> UI msg
 createObject object (UI internals) =
     let
+        objectId : ObjectId
         objectId =
             UIObject.id object
     in
@@ -325,7 +324,6 @@ attachObject params (UI internals) =
                 Dict.insert params.objectId params.parentId internals.objectToParent
         }
         |> updateObject params.objectId (UIObject.setRect params.rect)
-        |> updateAbsoluteRectsForDescendants params.parentId
 
 
 mouseEventToHandlerMsg : Mouse.Event -> UI msg -> Maybe msg
@@ -416,10 +414,21 @@ view params ui =
         rootNotFoundView =
             div [ class "UI.view couldn't find `root` object" ]
                 []
+
+        viewDebugRect : Html msg
+        viewDebugRect =
+            div [ id "DEBUGGING UI" ]
+                [ getAbsoluteRect ui params.debugObject
+                    |> Maybe.map (\rect -> MacOS.UI.View.Rectangle.view StyleDotted rect [])
+                    |> Maybe.withDefault UIHelpers.none
+                ]
     in
-    getObject ui domIds.root
-        |> Maybe.map (viewHelp params ui)
-        |> Maybe.withDefault rootNotFoundView
+    div []
+        [ getObject ui domIds.root
+            |> Maybe.map (viewHelp params ui)
+            |> Maybe.withDefault rootNotFoundView
+        , viewDebugRect
+        ]
 
 
 viewHelp : { debugObject : String } -> UI msg -> Object msg -> Html msg

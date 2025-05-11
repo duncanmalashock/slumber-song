@@ -41,7 +41,7 @@ viewDebugger model =
             , style "font-family" "Geneva"
             , style "padding" "0 6px"
             ]
-            [ div [] [ text (Maybe.withDefault "No object picked" model.pickedObjectId) ]
+            [ div [] [ text model.debug ]
             ]
         ]
 
@@ -53,6 +53,7 @@ type alias Model =
     , mouse : Mouse
     , ui : UI Msg
     , pickedObjectId : Maybe String
+    , debug : String
     , dragging : Maybe Dragging
     , instructions : List (Instruction Msg)
     , currentInstruction : Maybe { timeStarted : Time.Posix, instruction : Instruction Msg }
@@ -177,6 +178,7 @@ init flags =
                     , rect = Screen.logical screen
                     }
       , pickedObjectId = Nothing
+      , debug = ""
       , dragging = Nothing
       , instructions = WindSleepers.program
       , currentInstruction = Nothing
@@ -421,7 +423,7 @@ update msg model =
 
                 pickedObjectId : Maybe String
                 pickedObjectId =
-                    UI.pickObject hitTestResults model.ui
+                    UI.pickTopmostObject hitTestResults model.ui
 
                 domUpdate : Mouse.DomUpdate
                 domUpdate =
@@ -471,11 +473,16 @@ update msg model =
 
                         Nothing ->
                             Nothing
+
+                debug : String
+                debug =
+                    "[ " ++ Maybe.withDefault "Nothing" pickedObjectId ++ " ] " ++ String.join ", " hitTestResults
             in
             ( { model
                 | mouse = updatedMouse
                 , dragging = updatedDragging
                 , pickedObjectId = pickedObjectId
+                , debug = debug
               }
             , eventCmds
             )
@@ -623,7 +630,8 @@ view model =
          , style "background-image" FillPattern.dither50
          , style "position" "relative"
          , style "overflow" "hidden"
-         , style "cursor" "none"
+
+         --  , style "cursor" "none"
          ]
             ++ Mouse.listeners MouseUpdated
             ++ Screen.scaleAttrs model.screen

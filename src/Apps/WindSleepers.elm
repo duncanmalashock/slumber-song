@@ -49,6 +49,6 @@ program =
     , Instruction.AttachObject
         { objectId = "obj:skull"
         , parentId = "inventory"
-        , rect = Rect.new ( 8, 29 ) ( 15, 17 )
+        , rect = Rect.new ( 6, 29 ) ( 15, 17 )
         }
     ]
