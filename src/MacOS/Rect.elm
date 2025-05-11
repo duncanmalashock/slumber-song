@@ -5,7 +5,7 @@ module MacOS.Rect exposing
     , top, bottom, left, right
     , hitTest
     , plus, interpolate
-    , setPosition
+    , setPosition, setSize
     )
 
 {-| An area of the screen with a position, width, and height.
@@ -35,7 +35,7 @@ module MacOS.Rect exposing
 
 # Update
 
-@docs setPosition
+@docs setPosition, setSize
 
 -}
 
@@ -64,6 +64,14 @@ setPosition newValue (Rect internals) =
     Rect
         { internals
             | position = newValue
+        }
+
+
+setSize : Coordinate -> Rect -> Rect
+setSize newValue (Rect internals) =
+    Rect
+        { internals
+            | size = newValue
         }
 
 

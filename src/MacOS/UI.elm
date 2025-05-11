@@ -171,7 +171,6 @@ updateAbsoluteRectsForDescendants objectId (UI internals) =
                     case maybeParentRect of
                         Just parentRect ->
                             let
-                                -- Rect x y w h = currentLocalRect
                                 x : Int
                                 x =
                                     Rect.posX currentLocalRect

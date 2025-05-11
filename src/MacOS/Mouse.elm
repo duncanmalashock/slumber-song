@@ -307,7 +307,7 @@ view (Mouse internals) =
             case internals.cursor of
                 Just CursorPointer ->
                     { image = "MacOS/cursor-pointer.gif"
-                    , offsetX = -3
+                    , offsetX = -4
                     , offsetY = -1
                     }
 

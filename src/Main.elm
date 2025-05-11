@@ -127,7 +127,7 @@ init flags =
                 |> UI.attachObject
                     { objectId = "zoomRect0"
                     , parentId = domIds.desktopRectangles
-                    , rect = Screen.logical screen
+                    , rect = Rect.new ( 0, 0 ) ( 0, 0 )
                     }
                 |> UI.createObject
                     (UIObject.new
@@ -140,7 +140,7 @@ init flags =
                 |> UI.attachObject
                     { objectId = "zoomRect1"
                     , parentId = domIds.desktopRectangles
-                    , rect = Screen.logical screen
+                    , rect = Rect.new ( 0, 0 ) ( 0, 0 )
                     }
                 |> UI.createObject
                     (UIObject.new
@@ -153,7 +153,7 @@ init flags =
                 |> UI.attachObject
                     { objectId = "zoomRect2"
                     , parentId = domIds.desktopRectangles
-                    , rect = Screen.logical screen
+                    , rect = Rect.new ( 0, 0 ) ( 0, 0 )
                     }
                 |> UI.createObject
                     (UIObject.new
@@ -166,7 +166,7 @@ init flags =
                 |> UI.attachObject
                     { objectId = "zoomRect3"
                     , parentId = domIds.desktopRectangles
-                    , rect = Screen.logical screen
+                    , rect = Rect.new ( 0, 0 ) ( 0, 0 )
                     }
                 |> UI.createObject
                     (UIObject.new
@@ -482,7 +482,7 @@ update msg model =
 
                 debug : String
                 debug =
-                    Debug.toString updatedDragging
+                    Maybe.withDefault "Nothing" pickedObjectId
             in
             ( { model
                 | mouse = updatedMouse
@@ -593,6 +593,7 @@ update msg model =
                                         draggedObjectAbsoluteRect =
                                             UI.getAbsoluteRect model.ui draggedObjectId
                                                 |> Maybe.withDefault (Rect.new ( 0, 0 ) ( 0, 0 ))
+                                                |> Rect.setSize (UIObject.size draggedObject)
 
                                         mouseOffset : Coordinate
                                         mouseOffset =
@@ -653,8 +654,7 @@ view model =
          , style "background-image" FillPattern.dither50
          , style "position" "relative"
          , style "overflow" "hidden"
-
-         --  , style "cursor" "none"
+         , style "cursor" "none"
          ]
             ++ Mouse.listeners MouseUpdated
             ++ Screen.scaleAttrs model.screen

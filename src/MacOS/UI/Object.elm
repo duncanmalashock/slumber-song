@@ -3,7 +3,7 @@ module MacOS.UI.Object exposing
     , image
     , setView, setSelectOptions, setDragOptions
     , onClick, onDoubleClick, onDragStart, onMouseDown
-    , id, position, rect
+    , id, position, size, rect
     , getDragOptions, getMouseEventHandler
     , setPosition, setRect, setSelected
     , addPosition
@@ -31,7 +31,7 @@ module MacOS.UI.Object exposing
 
 # Query
 
-@docs id, position, rect
+@docs id, position, size, rect
 @docs getDragOptions, getMouseEventHandler
 
 
@@ -205,6 +205,11 @@ getDragOptions (Object internals) =
 rect : Object msg -> Rect
 rect (Object internals) =
     internals.rect
+
+
+size : Object msg -> Coordinate
+size (Object internals) =
+    Rect.size internals.rect
 
 
 position : Object msg -> Coordinate
