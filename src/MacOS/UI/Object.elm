@@ -6,6 +6,7 @@ module MacOS.UI.Object exposing
     , id, position, rect
     , getDragOptions, getMouseEventHandler
     , setPosition, setRect, setSelected
+    , addPosition
     , view
     )
 
@@ -37,6 +38,7 @@ module MacOS.UI.Object exposing
 # Update
 
 @docs setPosition, setRect, setSelected
+@docs addPosition
 
 
 # View
@@ -215,6 +217,14 @@ setPosition newValue (Object internals) =
     Object
         { internals
             | rect = Rect.setPosition newValue internals.rect
+        }
+
+
+addPosition : Coordinate -> Object msg -> Object msg
+addPosition newValue (Object internals) =
+    Object
+        { internals
+            | rect = Rect.plus newValue internals.rect
         }
 
 

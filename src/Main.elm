@@ -62,8 +62,10 @@ type alias Model =
 
 type alias Dragging =
     { objectId : String
-    , rect : Rect
-    , offset : Coordinate
+    , absolutePositionAtClick : Coordinate
+    , dragDelta : Coordinate
+    , clickOffset : Coordinate
+    , drawRect : Rect
     , view : View Msg
     }
 
@@ -465,10 +467,14 @@ update msg model =
                         Just dragging ->
                             Just
                                 { dragging
-                                    | rect =
+                                    | drawRect =
                                         Rect.setPosition
-                                            (Coordinate.plus newMousePos dragging.offset)
-                                            dragging.rect
+                                            (Coordinate.plus newMousePos dragging.clickOffset)
+                                            dragging.drawRect
+                                    , dragDelta =
+                                        newMousePos
+                                            |> Coordinate.minus dragging.absolutePositionAtClick
+                                            |> Coordinate.plus dragging.clickOffset
                                 }
 
                         Nothing ->
@@ -476,7 +482,7 @@ update msg model =
 
                 debug : String
                 debug =
-                    "[ " ++ Maybe.withDefault "Nothing" pickedObjectId ++ " ] " ++ String.join ", " hitTestResults
+                    Debug.toString updatedDragging
             in
             ( { model
                 | mouse = updatedMouse
@@ -537,7 +543,10 @@ update msg model =
                             case model.dragging of
                                 Just dragging ->
                                     UI.updateObject dragging.objectId
-                                        (UIObject.setPosition (Rect.position dragging.rect))
+                                        -- this is the bug
+                                        (UIObject.addPosition
+                                            dragging.dragDelta
+                                        )
                                         model.ui
 
                                 Nothing ->
@@ -595,9 +604,11 @@ update msg model =
                                         | dragging =
                                             Just
                                                 { objectId = draggedObjectId
-                                                , rect = draggedObjectAbsoluteRect
-                                                , offset = mouseOffset
+                                                , absolutePositionAtClick = Rect.position draggedObjectAbsoluteRect
+                                                , clickOffset = mouseOffset
+                                                , drawRect = draggedObjectAbsoluteRect
                                                 , view = dragView
+                                                , dragDelta = Coordinate.new ( 0, 0 )
                                                 }
                                         , ui =
                                             UI.bringObjectToFront
@@ -661,7 +672,7 @@ viewDraggedObject : Model -> Html Msg
 viewDraggedObject model =
     case model.dragging of
         Just dragging ->
-            View.view dragging.rect dragging.view []
+            View.view dragging.drawRect dragging.view []
 
         Nothing ->
             UIHelpers.none
