@@ -23,7 +23,7 @@ program =
             { title = "inventory"
             , closeMsg = Nothing
             }
-        , rect = Rect.new ( 8, 28 ) ( 118, 225 )
+        , rect = Rect.new ( 4, 28 ) ( 118, 225 )
         }
     , Instruction.CreateObject
         { object =
@@ -49,6 +49,6 @@ program =
     , Instruction.AttachObject
         { objectId = "obj:skull"
         , parentId = "inventory"
-        , rect = Rect.new ( 13, 32 ) ( 15, 17 )
+        , rect = Rect.new ( 8, 29 ) ( 15, 17 )
         }
     ]

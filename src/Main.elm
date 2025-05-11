@@ -257,7 +257,7 @@ handleInstruction { timeStarted, instruction } model =
                 updatedUI =
                     zoomRects
                         |> List.map (\( key, rect ) -> ( key, UIObject.setRect rect ))
-                        |> (\updaters -> UI.updateList updaters model.ui)
+                        |> UI.updateObjectList model.ui
 
                 updatedCurrentInstruction : Maybe { timeStarted : Time.Posix, instruction : Instruction Msg }
                 updatedCurrentInstruction =

@@ -5,7 +5,6 @@ module MacOS.UI.Object exposing
     , onClick, onDoubleClick, onDragStart, onMouseDown
     , id, position, rect
     , getDragOptions, getMouseEventHandler
-    , hitTest
     , setPosition, setRect, setSelected
     , view
     )
@@ -33,11 +32,6 @@ module MacOS.UI.Object exposing
 
 @docs id, position, rect
 @docs getDragOptions, getMouseEventHandler
-
-
-# Hit testing
-
-@docs hitTest
 
 
 # Update
@@ -276,8 +270,3 @@ view { debug } (Object internals) childrenViews =
                 div [ Html.Attributes.class "NO_VIEW" ]
                     childrenViews
         ]
-
-
-hitTest : Coordinate -> Object msg -> Bool
-hitTest coordinate (Object internals) =
-    Rect.hitTest coordinate internals.rect

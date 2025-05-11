@@ -2,11 +2,11 @@ module MacOS.UI exposing
     ( UI, new
     , createObject
     , attachObject
-    , updateObject, updateList
+    , updateObject, updateObjectList
     , removeObject
     , bringObjectToFront
     , getObject
-    , pickObject, hitTest
+    , hitTest, pickObject
     , mouseEventToHandlerMsg
     , view
     )
@@ -27,7 +27,7 @@ module MacOS.UI exposing
 
 # Update
 
-@docs updateObject, updateList
+@docs updateObject, updateObjectList
 @docs removeObject
 @docs bringObjectToFront
 
@@ -39,7 +39,7 @@ module MacOS.UI exposing
 
 # Picking Objects
 
-@docs pickObject, hitTest
+@docs hitTest, pickObject
 
 
 # Events
@@ -76,8 +76,9 @@ type alias ObjectId =
 
 type alias Internals msg =
     { uiObjects : Dict ObjectId (Object msg)
-    , drawOrder : Dict ObjectId (List ObjectId)
+    , childrenInDrawOrder : Dict ObjectId (List ObjectId)
     , objectToParent : Dict ObjectId ObjectId
+    , absoluteRects : Dict ObjectId Rect
     }
 
 
@@ -85,8 +86,9 @@ new : Screen -> UI msg
 new screen =
     UI
         { uiObjects = Dict.empty
-        , drawOrder = Dict.empty
+        , childrenInDrawOrder = Dict.empty
         , objectToParent = Dict.empty
+        , absoluteRects = Dict.empty
         }
         |> createObject
             (UIObject.new
@@ -109,8 +111,8 @@ removeObject objId (UI internals) =
         removeFromDrawOrder : Internals msg -> Internals msg
         removeFromDrawOrder i =
             { i
-                | drawOrder =
-                    i.drawOrder
+                | childrenInDrawOrder =
+                    i.childrenInDrawOrder
                         |> Dict.toList
                         |> List.map
                             (\( key, value ) ->
@@ -133,14 +135,129 @@ removeObject objId (UI internals) =
         |> UI
 
 
+getAbsoluteRect : UI msg -> ObjectId -> Maybe Rect
+getAbsoluteRect ((UI internals) as ui) objectId =
+    Dict.get objectId internals.absoluteRects
+
+
+updateAbsoluteRectsForDescendants : ObjectId -> UI msg -> UI msg
+updateAbsoluteRectsForDescendants rootId (UI internals) =
+    let
+        updateDescendants : ObjectId -> Dict ObjectId Rect -> Dict ObjectId Rect
+        updateDescendants currentId currentAbsoluteRects =
+            let
+                maybeParentRect : Maybe Rect
+                maybeParentRect =
+                    Dict.get currentId internals.objectToParent
+                        |> Maybe.andThen (\parentId -> Dict.get parentId currentAbsoluteRects)
+
+                maybeCurrentObject : Maybe (Object msg)
+                maybeCurrentObject =
+                    Dict.get currentId internals.uiObjects
+
+                currentLocalRect : Rect
+                currentLocalRect =
+                    maybeCurrentObject
+                        |> Maybe.map UIObject.rect
+                        |> Maybe.withDefault (Rect.new ( 0, 0 ) ( 0, 0 ))
+
+                newAbsoluteRect : Rect
+                newAbsoluteRect =
+                    case maybeParentRect of
+                        Just parentRect ->
+                            let
+                                -- Rect x y w h = currentLocalRect
+                                x : Int
+                                x =
+                                    Rect.posX currentLocalRect
+
+                                y : Int
+                                y =
+                                    Rect.posY currentLocalRect
+
+                                w : Int
+                                w =
+                                    Rect.width currentLocalRect
+
+                                h : Int
+                                h =
+                                    Rect.height currentLocalRect
+
+                                px : Int
+                                px =
+                                    Rect.posX parentRect
+
+                                py : Int
+                                py =
+                                    Rect.posY parentRect
+
+                                pw : Int
+                                pw =
+                                    Rect.width parentRect
+
+                                ph : Int
+                                ph =
+                                    Rect.height parentRect
+
+                                absX : Int
+                                absX =
+                                    x + px
+
+                                absY : Int
+                                absY =
+                                    y + py
+
+                                clippedX : Int
+                                clippedX =
+                                    clamp px (px + pw) absX
+
+                                clippedY : Int
+                                clippedY =
+                                    clamp py (py + ph) absY
+
+                                clippedW : Int
+                                clippedW =
+                                    Basics.max 0 (Basics.min w ((px + pw) - clippedX))
+
+                                clippedH : Int
+                                clippedH =
+                                    Basics.max 0 (Basics.min h ((py + ph) - clippedY))
+                            in
+                            Rect.new ( clippedX, clippedY ) ( clippedW, clippedH )
+
+                        Nothing ->
+                            currentLocalRect
+
+                updatedRects : Dict ObjectId Rect
+                updatedRects =
+                    Dict.insert currentId newAbsoluteRect currentAbsoluteRects
+
+                children : List ObjectId
+                children =
+                    Dict.get currentId internals.childrenInDrawOrder
+                        |> Maybe.withDefault []
+            in
+            List.foldl
+                updateDescendants
+                updatedRects
+                children
+
+        updatedAbsoluteRects =
+            updateDescendants rootId internals.absoluteRects
+    in
+    UI
+        { internals
+            | absoluteRects = updatedAbsoluteRects
+        }
+
+
 hitTest : Coordinate -> UI msg -> List String
-hitTest coordinate (UI internals) =
-    Dict.toList internals.uiObjects
+hitTest coordinate ((UI internals) as ui) =
+    Dict.keys internals.uiObjects
         |> List.filterMap
-            (\( key, uiObject ) ->
-                if UIObject.hitTest coordinate uiObject then
-                    Just key
-                        |> Debug.log "hitTest"
+            (\objectId ->
+                if Maybe.map (Rect.hitTest coordinate) (getAbsoluteRect ui objectId) == Just True then
+                    Just objectId
 
                 else
                     Nothing
@@ -153,19 +270,28 @@ pickObject candidates (UI internals) =
         candidateSet : Set ObjectId
         candidateSet =
             Set.fromList candidates
-                |> Debug.log "candidates"
+
+        collectInDrawOrder : ObjectId -> List ObjectId
+        collectInDrawOrder objectId =
+            let
+                children : List ObjectId
+                children =
+                    Dict.get objectId internals.childrenInDrawOrder
+                        |> Maybe.withDefault []
+
+                descendants : List ObjectId
+                descendants =
+                    List.concatMap collectInDrawOrder children
+            in
+            descendants ++ [ objectId ]
+
+        allInDrawOrder : List ObjectId
+        allInDrawOrder =
+            collectInDrawOrder domIds.windows
     in
-    [ ( domIds.windows, "" ) ]
-        |> List.reverse
-        |> List.filterMap
-            (\( parentId, _ ) ->
-                Dict.get parentId internals.drawOrder
-                    |> Maybe.map List.reverse
-            )
-        |> List.concat
+    allInDrawOrder
         |> List.filter (\id -> Set.member id candidateSet)
         |> List.head
-        |> Debug.log "picked"
 
 
 createObject : Object msg -> UI msg -> UI msg
@@ -184,21 +310,22 @@ attachObject : { objectId : ObjectId, parentId : ObjectId, rect : Rect } -> UI m
 attachObject params (UI internals) =
     UI
         { internals
-            | drawOrder =
-                case Dict.get params.parentId internals.drawOrder of
+            | childrenInDrawOrder =
+                case Dict.get params.parentId internals.childrenInDrawOrder of
                     Just _ ->
                         Dict.update params.parentId
                             (\maybeList ->
                                 Maybe.map (\l -> l ++ [ params.objectId ]) maybeList
                             )
-                            internals.drawOrder
+                            internals.childrenInDrawOrder
 
                     Nothing ->
-                        Dict.insert params.parentId [ params.objectId ] internals.drawOrder
+                        Dict.insert params.parentId [ params.objectId ] internals.childrenInDrawOrder
             , objectToParent =
                 Dict.insert params.objectId params.parentId internals.objectToParent
         }
         |> updateObject params.objectId (UIObject.setRect params.rect)
+        |> updateAbsoluteRectsForDescendants params.parentId
 
 
 mouseEventToHandlerMsg : Mouse.Event -> UI msg -> Maybe msg
@@ -257,28 +384,29 @@ bringObjectToFront objectId (UI internals) =
                                 List.filter ((/=) objectId) ids ++ [ objectId ]
                             )
                         )
-                        internals.drawOrder
+                        internals.childrenInDrawOrder
             in
-            UI { internals | drawOrder = updatedDrawOrder }
+            UI { internals | childrenInDrawOrder = updatedDrawOrder }
 
         Nothing ->
             UI internals
 
 
-updateList : List ( ObjectId, Object msg -> Object msg ) -> UI msg -> UI msg
-updateList newPairs interface =
-    List.foldl (\( key, updater ) -> updateObject key updater) interface newPairs
+updateObjectList : UI msg -> List ( ObjectId, Object msg -> Object msg ) -> UI msg
+updateObjectList ui newPairs =
+    List.foldl (\( key, updater ) -> updateObject key updater) ui newPairs
 
 
 updateObject : ObjectId -> (Object msg -> Object msg) -> UI msg -> UI msg
-updateObject objId updateObj (UI internals) =
+updateObject objectId updateObj (UI internals) =
     UI
         { internals
             | uiObjects =
-                Dict.update objId
+                Dict.update objectId
                     (\maybeObj -> Maybe.map updateObj maybeObj)
                     internals.uiObjects
         }
+        |> updateAbsoluteRectsForDescendants objectId
 
 
 view : { debugObject : String } -> UI msg -> Html msg
@@ -326,5 +454,5 @@ gatherChildrenViews { debugObject } ui remainingIds viewsSoFar =
 
 getChildrenIds : UI msg -> ObjectId -> List ObjectId
 getChildrenIds (UI internals) parentId =
-    Dict.get parentId internals.drawOrder
+    Dict.get parentId internals.childrenInDrawOrder
         |> Maybe.withDefault []
