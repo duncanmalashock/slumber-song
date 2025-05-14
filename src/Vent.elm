@@ -20,22 +20,18 @@ import Vent.VentScript as VentScript
 
 
 type alias Flags =
-    { useVDomInterface : Bool
-    , gameFile : String
+    { gameFile : String
     }
 
 
 flagsDecoder : Decode.Decoder Flags
 flagsDecoder =
-    Decode.map2 Flags
-        (Decode.field "useVDomInterface" Decode.bool)
+    Decode.map Flags
         (Decode.field "gameFile" Decode.string)
 
 
 type alias Model =
     { game : RemoteData Game.Game String
-    , interfaceMode : InterfaceMode
-    , parserInput : String
     }
 
 
@@ -46,43 +42,10 @@ type RemoteData data err
     | LoadFailed err
 
 
-type InterfaceMode
-    = InterfaceJS
-    | InterfaceElmVDom
-
-
 type Msg
     = GameDataLoaded (List Object)
-    | ReceivedGameMsg Game.Msg
-    | GameMsgDecodeError Decode.Error
-    | UserClickedSaveButton
-    | UserTypedIntoParserInput String
-
-
-msgDecoder : Decode.Decoder Msg
-msgDecoder =
-    Decode.field "tag" Decode.string
-        |> Decode.andThen
-            (\tag ->
-                case tag of
-                    "GameDataLoaded" ->
-                        Decode.field "payload"
-                            (Decode.map GameDataLoaded
-                                (Decode.list Object.decoder)
-                            )
-
-                    "UserClickedCommandButton" ->
-                        Decode.field "payload"
-                            (Decode.map
-                                (Game.UserClickedCommandButton
-                                    >> ReceivedGameMsg
-                                )
-                                (Decode.field "command" Command.decoder)
-                            )
-
-                    _ ->
-                        Decode.fail "Unknown tag"
-            )
+    | GameMsg Game.Msg
+    | ReceivedDataFromJS Decode.Value
 
 
 init : Flags -> ( Model, Cmd Msg )
@@ -91,19 +54,6 @@ init flags =
         initialModel : Model
         initialModel =
             { game = Loading
-            , interfaceMode =
-                if flags.useVDomInterface then
-                    InterfaceElmVDom
-
-                else
-                    InterfaceJS
-            , parserInput = String.trimLeft """
-%open
-if true then
-@skull.isOpen = true
-$printText "As if by magic, the skull rises."
-end
-"""
             }
     in
     ( initialModel
@@ -152,7 +102,7 @@ update msg model =
             , Ports.send effects
             )
 
-        ReceivedGameMsg gameMsg ->
+        GameMsg gameMsg ->
             let
                 ( updatedGame, effects ) =
                     updateLoadedGame gameMsg model.game
@@ -163,160 +113,7 @@ update msg model =
             , Ports.send effects
             )
 
-        GameMsgDecodeError decodeError ->
-            ( model
-            , Ports.send
-                [ Effect.ReportError <|
-                    "Couldn't decode msg: "
-                        ++ Decode.errorToString decodeError
-                ]
-            )
-
-        UserClickedSaveButton ->
-            case model.game of
-                NotLoaded ->
-                    ( model, Cmd.none )
-
-                Loading ->
-                    ( model, Cmd.none )
-
-                LoadSuccessful loadedGame ->
-                    ( model
-                    , Ports.send [ SaveGameData (Game.encode loadedGame) ]
-                    )
-
-                LoadFailed err ->
-                    ( model, Cmd.none )
-
-        UserTypedIntoParserInput input ->
-            ( { model | parserInput = input }, Cmd.none )
-
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    Ports.receive jsonToMsg
-
-
-jsonToMsg : Decode.Value -> Msg
-jsonToMsg json =
-    case Decode.decodeValue msgDecoder json of
-        Ok msg ->
-            msg
-
-        Err err ->
-            GameMsgDecodeError err
-
-
-view : Model -> Html Msg
-view model =
-    case model.interfaceMode of
-        InterfaceJS ->
-            Html.text ""
-
-        InterfaceElmVDom ->
-            elmView model
-
-
-elmView : Model -> Html Msg
-elmView model =
-    case model.game of
-        LoadSuccessful game ->
-            Html.div []
-                [ viewCommands game
-                , viewObjects game
-                , viewNarration game
-                , viewSaveButton game
-                , viewParserInput (Game.objects game) model.parserInput
-                ]
-
-        NotLoaded ->
-            Html.text "No game loaded"
-
-        Loading ->
-            Html.text "Loading game..."
-
-        LoadFailed err ->
-            Html.text "Error: Couldn't load game"
-
-
-viewCommands : Game -> Html Msg
-viewCommands game =
-    let
-        viewCommand : Command -> Html Msg
-        viewCommand c =
-            Html.button
-                [ onClick
-                    (ReceivedGameMsg
-                        (Game.UserClickedCommandButton c)
-                    )
-                ]
-                [ Html.text (Command.toName c) ]
-    in
-    Html.div
-        [ Html.id "commands" ]
-        (List.map viewCommand Command.listForMenu)
-
-
-viewObjects : Game -> Html Msg
-viewObjects game =
-    let
-        viewObject : Object -> Html Msg
-        viewObject obj =
-            Html.button
-                [ onClick
-                    (ReceivedGameMsg
-                        (Game.UserClickedObject (Object.id obj))
-                    )
-                ]
-                [ Html.text (Object.name obj) ]
-    in
-    Html.div
-        [ Html.id "objects" ]
-        [ Html.div [] [ viewObject (Game.player game) ]
-        , Html.div [] (List.map viewObject (Game.objectsInInventory game))
-        , Html.div [] [ viewObject (Game.currentRoom game) ]
-        , Html.div [] (List.map viewObject (Game.objectsInCurrentRoom game))
-        ]
-
-
-viewNarration : Game -> Html Msg
-viewNarration game =
-    Html.div
-        [ Html.id "narration" ]
-        [ Html.text (Game.narration game)
-        ]
-
-
-viewParserInput : ObjectStore -> String -> Html Msg
-viewParserInput objectStore input =
-    Html.div []
-        [ Html.textarea
-            [ Html.Events.onInput UserTypedIntoParserInput
-            , Html.value input
-            , Html.rows 20
-            , Html.style "width" "60ch"
-            ]
-            []
-        , Html.pre [ Html.style "width" "60ch", Html.style "text-wrap" "auto" ]
-            []
-
-        -- [ Html.text (Debug.toString <| Vent.compile "skull" objectStore input) ]
-        ]
-
-
-viewSaveButton : Game -> Html Msg
-viewSaveButton game =
-    Html.button
-        [ onClick UserClickedSaveButton
-        ]
-        [ Html.text "Save Game Data" ]
-
-
-main : Program Flags Model Msg
-main =
-    Browser.element
-        { init = init
-        , update = update
-        , view = view
-        , subscriptions = subscriptions
-        }
+    Ports.receive ReceivedDataFromJS

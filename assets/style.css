@@ -40,9 +40,7 @@ button {
   color: black;
 }
 
-button:hover {
-  background: black;
-  color: white;
+button, textarea, input {
   cursor: none;
 }
 

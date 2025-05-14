@@ -21,7 +21,6 @@ type alias Internals =
     , selectedCommand : Maybe Command
     , sourceObjectId : Maybe String
     , targetObjectId : Maybe String
-    , objectDragInfo : Maybe { objectId : String, from : ObjectLocation, to : ObjectLocation }
     , narration : String
     }
 
@@ -40,7 +39,6 @@ new objectList =
         , selectedCommand = Nothing
         , sourceObjectId = Nothing
         , targetObjectId = Nothing
-        , objectDragInfo = Nothing
         , narration = ""
         }
     , []
@@ -150,7 +148,6 @@ respondToInput ((Game internals) as game) =
                 { selectedCommand = internals.selectedCommand
                 , sourceObjectId = internals.sourceObjectId
                 , targetObjectId = internals.targetObjectId
-                , objectDragInfo = internals.objectDragInfo
                 }
     in
     case maybeInteraction of
@@ -451,7 +448,6 @@ applyUpdate updateToApply (Game internals) =
                     | selectedCommand = Nothing
                     , sourceObjectId = Nothing
                     , targetObjectId = Nothing
-                    , objectDragInfo = Nothing
                 }
 
 

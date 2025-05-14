@@ -543,7 +543,6 @@ update msg model =
                             case model.dragging of
                                 Just dragging ->
                                     UI.updateObject dragging.objectId
-                                        -- this is the bug
                                         (UIObject.addPosition
                                             dragging.dragDelta
                                         )
@@ -659,7 +658,7 @@ view model =
             ++ Mouse.listeners MouseUpdated
             ++ Screen.scaleAttrs model.screen
         )
-        [ UI.view { debugObject = Maybe.withDefault "" model.pickedObjectId } model.ui
+        [ UI.view { debugObject = "" } model.ui
         , viewDraggedObject model
         , MenuBar.view (Screen.width model.screen) model.menuBar
         , viewScreenCorners (Screen.logical model.screen)

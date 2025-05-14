@@ -88,23 +88,12 @@ detect :
     { selectedCommand : Maybe Command
     , sourceObjectId : Maybe String
     , targetObjectId : Maybe String
-    , objectDragInfo : Maybe { objectId : String, from : ObjectLocation, to : ObjectLocation }
     }
     -> Maybe Interaction
 detect params =
     case params.selectedCommand of
         Nothing ->
-            case params.objectDragInfo of
-                Just { objectId, from, to } ->
-                    Just <|
-                        AttemptMoveObject
-                            { objectId = objectId
-                            , from = from
-                            , to = to
-                            }
-
-                Nothing ->
-                    Nothing
+            Nothing
 
         Just Move ->
             -- Can't be selected with the menu
