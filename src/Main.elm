@@ -41,7 +41,7 @@ viewDebugger model =
             , style "font-family" "Geneva"
             , style "padding" "0 6px"
             ]
-            [ div [] [ text model.debug ]
+            [ div [] [ text (Maybe.withDefault "Nothing" model.debug) ]
             ]
         ]
 
@@ -53,7 +53,7 @@ type alias Model =
     , mouse : Mouse
     , ui : UI Msg
     , pickedObjectId : Maybe String
-    , debug : String
+    , debug : Maybe String
     , dragging : Maybe Dragging
     , instructions : List (Instruction Msg)
     , currentInstruction : Maybe { timeStarted : Time.Posix, instruction : Instruction Msg }
@@ -180,7 +180,7 @@ init flags =
                     , rect = Screen.logical screen
                     }
       , pickedObjectId = Nothing
-      , debug = ""
+      , debug = Nothing
       , dragging = Nothing
       , instructions = WindSleepers.program
       , currentInstruction = Nothing
@@ -423,8 +423,8 @@ update msg model =
                 hitTestResults =
                     UI.hitTest newMousePos model.ui
 
-                pickedObjectId : Maybe String
-                pickedObjectId =
+                maybePickedObjectId : Maybe String
+                maybePickedObjectId =
                     UI.pickTopmostObject hitTestResults model.ui
 
                 domUpdate : Mouse.DomUpdate
@@ -449,11 +449,19 @@ update msg model =
                     else
                         ( model.mouse, [] )
 
+                filteredMouseEvents : List Mouse.Event
+                filteredMouseEvents =
+                    case maybePickedObjectId of
+                        Just pickedObjectId ->
+                            Mouse.filterEventsByObjectId pickedObjectId newMouseEvents
+
+                        Nothing ->
+                            newMouseEvents
+
                 eventCmds : Cmd Msg
                 eventCmds =
-                    if Mouse.interactionsAllowed model.mouse then
-                        newMouseEvents
-                            |> Mouse.filterMouseEventsByObjectId pickedObjectId
+                    if not (Mouse.locked model.mouse) then
+                        filteredMouseEvents
                             |> List.map MouseEvent
                             |> List.map sendMsg
                             |> Cmd.batch
@@ -479,16 +487,12 @@ update msg model =
 
                         Nothing ->
                             Nothing
-
-                debug : String
-                debug =
-                    Maybe.withDefault "Nothing" pickedObjectId
             in
             ( { model
                 | mouse = updatedMouse
                 , dragging = updatedDragging
-                , pickedObjectId = pickedObjectId
-                , debug = debug
+                , pickedObjectId = maybePickedObjectId
+                , debug = maybePickedObjectId
               }
             , eventCmds
             )
@@ -631,21 +635,6 @@ sendMsg msg =
 
 view : Model -> Html Msg
 view model =
-    {-
-       UI Layers
-       (From bottom to top)
-
-       - Desktop
-       - Desktop Objects
-       - Desktop-related Rectangles
-       - Windows
-       - Window-related Rectangles
-       - Menu Bar & Menus
-       - Dialogs
-       - Rounded Screen Corners
-       - Debugger
-       - Cursor
-    -}
     div
         ([ style "width" (px (Screen.width model.screen))
          , style "height" (px (Screen.height model.screen))

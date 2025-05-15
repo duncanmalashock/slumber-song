@@ -1,12 +1,12 @@
 module MacOS.Mouse exposing
     ( Mouse, new
-    , position, x, y, buttonPressed, interactionsAllowed
+    , position, x, y, buttonPressed, locked
     , update, Msg
     , DomUpdate, toMsg
     , lock, unlock
     , setCursorPointer, setCursorWatch
     , Event(..), listeners
-    , filterMouseEventsByObjectId
+    , filterEventsByObjectId
     , view
     )
 
@@ -20,7 +20,7 @@ module MacOS.Mouse exposing
 
 # Query
 
-@docs position, x, y, buttonPressed, interactionsAllowed
+@docs position, x, y, buttonPressed, locked
 
 
 # Update
@@ -34,7 +34,7 @@ module MacOS.Mouse exposing
 # Mouse Events
 
 @docs Event, listeners
-@docs filterMouseEventsByObjectId
+@docs filterEventsByObjectId
 
 
 # View
@@ -63,7 +63,7 @@ type alias Internals =
     { position : Coordinate
     , buttonPressed : Bool
     , cursor : Maybe Cursor
-    , interactionsAllowed : Bool
+    , locked : Bool
     , msgHistory : List Msg
     , eventHistory : List Event
     , doubleClickTimingThreshold : Int
@@ -80,9 +80,9 @@ buttonPressed (Mouse internals) =
     internals.buttonPressed
 
 
-interactionsAllowed : Mouse -> Bool
-interactionsAllowed (Mouse internals) =
-    internals.interactionsAllowed
+locked : Mouse -> Bool
+locked (Mouse internals) =
+    internals.locked
 
 
 x : Mouse -> Int
@@ -121,7 +121,7 @@ new =
         { position = Coordinate.new ( 16, 16 )
         , buttonPressed = False
         , cursor = Just CursorPointer
-        , interactionsAllowed = True
+        , locked = False
         , msgHistory = []
         , doubleClickTimingThreshold = 500
         , eventHistory = []
@@ -196,7 +196,7 @@ lock : Mouse -> Mouse
 lock (Mouse internals) =
     Mouse
         { internals
-            | interactionsAllowed = False
+            | locked = True
         }
 
 
@@ -204,7 +204,7 @@ unlock : Mouse -> Mouse
 unlock (Mouse internals) =
     Mouse
         { internals
-            | interactionsAllowed = True
+            | locked = False
         }
 
 
@@ -232,32 +232,27 @@ type Event
     | DragStart String
 
 
-filterMouseEventsByObjectId : Maybe String -> List Event -> List Event
-filterMouseEventsByObjectId maybeObjId events =
-    case maybeObjId of
-        Just objId ->
-            events
-                |> List.filter
-                    (\e ->
-                        case e of
-                            MouseDown idToTest ->
-                                idToTest == objId
+filterEventsByObjectId : String -> List Event -> List Event
+filterEventsByObjectId objectId events =
+    events
+        |> List.filter
+            (\e ->
+                case e of
+                    MouseDown idToTest ->
+                        idToTest == objectId
 
-                            MouseUp ->
-                                True
+                    MouseUp ->
+                        True
 
-                            Click idToTest ->
-                                idToTest == objId
+                    Click idToTest ->
+                        idToTest == objectId
 
-                            DoubleClick idToTest ->
-                                idToTest == objId
+                    DoubleClick idToTest ->
+                        idToTest == objectId
 
-                            DragStart idToTest ->
-                                idToTest == objId
-                    )
-
-        Nothing ->
-            events
+                    DragStart idToTest ->
+                        idToTest == objectId
+            )
 
 
 detectEvents : ( Bool, Bool ) -> List msg -> List Event -> List String -> List Event
@@ -297,7 +292,8 @@ mouseEventDecoder toMsg_ =
 
 positionDecoder : Decoder Int
 positionDecoder =
-    Decode.float |> Decode.map floor
+    Decode.float
+        |> Decode.map floor
 
 
 view : Mouse -> Html msg
@@ -319,8 +315,8 @@ view (Mouse internals) =
 
                 Nothing ->
                     { image = ""
-                    , offsetX = 3
-                    , offsetY = 3
+                    , offsetX = 0
+                    , offsetY = 0
                     }
     in
     div
