@@ -79,6 +79,10 @@ update msg model =
         _ =
             Debug.log "WindSleepers.update" msg
     in
-    ( model
-    , []
-    )
+    case msg of
+        ReceivedMsgFromOS toAppMsg ->
+            case toAppMsg of
+                DroppedObject droppedObjectInfo ->
+                    ( model
+                    , []
+                    )

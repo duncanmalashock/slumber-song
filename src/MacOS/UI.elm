@@ -5,8 +5,7 @@ module MacOS.UI exposing
     , updateObject, updateObjectList
     , removeObject
     , bringObjectToFront
-    , getObject
-    , getAbsoluteRect
+    , getObject, getAbsoluteRect, getWindowIds
     , hitTest, pickTopmostObject
     , mouseEventToHandlerMsg
     , view
@@ -35,8 +34,7 @@ module MacOS.UI exposing
 
 # Query
 
-@docs getObject
-@docs getAbsoluteRect
+@docs getObject, getAbsoluteRect, getWindowIds
 
 
 # Picking Objects
@@ -143,6 +141,12 @@ removeObject objId (UI internals) =
 getAbsoluteRect : UI msg -> ObjectId -> Maybe Rect
 getAbsoluteRect ((UI internals) as ui) objectId =
     Dict.get objectId internals.absoluteRects
+
+
+getWindowIds : UI msg -> List ObjectId
+getWindowIds (UI internals) =
+    Dict.get domIds.windows internals.childrenInDrawOrder
+        |> Maybe.withDefault []
 
 
 updateAbsoluteRectsForDescendants : ObjectId -> UI msg -> UI msg
@@ -253,12 +257,26 @@ updateAbsoluteRectsForDescendants objectId (UI internals) =
         }
 
 
-hitTest : Coordinate -> UI msg -> List String
-hitTest coordinate ((UI internals) as ui) =
-    Dict.keys internals.uiObjects
+hitTest : { candidates : Maybe (List ObjectId), coordinate : Coordinate } -> UI msg -> List String
+hitTest params ((UI internals) as ui) =
+    let
+        candidateIds : List ObjectId
+        candidateIds =
+            case params.candidates of
+                Just list ->
+                    list
+
+                Nothing ->
+                    Dict.keys internals.uiObjects
+    in
+    candidateIds
         |> List.filterMap
             (\objectId ->
-                if Maybe.map (Rect.hitTest coordinate) (getAbsoluteRect ui objectId) == Just True then
+                if
+                    Maybe.map (Rect.hitTest params.coordinate)
+                        (getAbsoluteRect ui objectId)
+                        == Just True
+                then
                     Just objectId
 
                 else

@@ -79,6 +79,10 @@ type alias Flags =
     }
 
 
+type alias ObjectId =
+    String
+
+
 init : Flags -> ( Model, Cmd Msg )
 init flags =
     let
@@ -427,7 +431,11 @@ update msg model =
 
                 hitTestResults : List String
                 hitTestResults =
-                    UI.hitTest newMousePos model.ui
+                    UI.hitTest
+                        { candidates = Nothing
+                        , coordinate = newMousePos
+                        }
+                        model.ui
 
                 maybePickedObjectId : Maybe String
                 maybePickedObjectId =
@@ -551,12 +559,49 @@ update msg model =
                         ( updatedApp, fromAppInstructions ) =
                             case model.dragging of
                                 Just dragging ->
+                                    let
+                                        droppedOnWindow : Maybe ObjectId
+                                        droppedOnWindow =
+                                            UI.hitTest
+                                                { candidates =
+                                                    UI.getWindowIds model.ui
+                                                        |> Just
+                                                , coordinate = Mouse.position model.mouse
+                                                }
+                                                model.ui
+                                                |> (\windowIds ->
+                                                        UI.pickTopmostObject
+                                                            windowIds
+                                                            model.ui
+                                                   )
+                                    in
                                     ToAppMsg.DroppedObject
                                         { objectId = dragging.objectId
-                                        , droppedOnWindow = Nothing
-                                        , droppedOnObjects = []
-                                        , dropPositionAbsolute = Coordinate.new ( 0, 0 )
-                                        , dropPositionOnWindow = Coordinate.new ( 0, 0 )
+                                        , droppedOnWindow = droppedOnWindow
+                                        , droppedOnObjects =
+                                            UI.hitTest
+                                                { candidates = Nothing
+                                                , coordinate = Mouse.position model.mouse
+                                                }
+                                                model.ui
+                                        , dropPositionAbsolute =
+                                            Mouse.position model.mouse
+                                        , dropPositionInWindow =
+                                            case droppedOnWindow of
+                                                Just windowId ->
+                                                    UI.getAbsoluteRect model.ui windowId
+                                                        |> Maybe.map Rect.position
+                                                        |> Maybe.map
+                                                            (\windowCoordinates ->
+                                                                Coordinate.minus
+                                                                    windowCoordinates
+                                                                    (Mouse.position model.mouse)
+                                                            )
+                                                        |> Maybe.withDefault
+                                                            (Mouse.position model.mouse)
+
+                                                Nothing ->
+                                                    Mouse.position model.mouse
                                         }
                                         |> (\msgForApp ->
                                                 WindSleepers.update (WindSleepers.ReceivedMsgFromOS msgForApp) model.app

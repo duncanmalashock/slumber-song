@@ -12,7 +12,7 @@ type alias DroppedObjectInfo =
     , droppedOnWindow : Maybe ObjectId
     , droppedOnObjects : List ObjectId
     , dropPositionAbsolute : Coordinate
-    , dropPositionOnWindow : Coordinate
+    , dropPositionInWindow : Coordinate
     }
 
 
