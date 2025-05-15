@@ -1,6 +1,6 @@
 module MacOS.UI.View exposing
     ( View
-    , rect, image, window
+    , rect, image, textarea, window
     , view
     )
 
@@ -11,7 +11,7 @@ module MacOS.UI.View exposing
 
 # Kinds of views
 
-@docs rect, image, window
+@docs rect, image, textarea, window
 
 
 # Convert to HTML
@@ -27,6 +27,7 @@ import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.Rect as Rect exposing (Rect)
 import MacOS.UI.View.Image
 import MacOS.UI.View.Rectangle
+import MacOS.UI.View.Textarea
 import MacOS.UI.View.Window
 
 
@@ -34,6 +35,7 @@ type View msg
     = Rectangle MacOS.UI.View.Rectangle.Config
     | Window (MacOS.UI.View.Window.Config msg)
     | Image MacOS.UI.View.Image.Config
+    | Textarea MacOS.UI.View.Textarea.Config
 
 
 rect : MacOS.UI.View.Rectangle.Config -> View msg
@@ -51,8 +53,13 @@ image config =
     Image config
 
 
-view : Rect -> View msg -> List (Html msg) -> Html msg
-view objectRect objectView childrenViews =
+textarea : MacOS.UI.View.Textarea.Config -> View msg
+textarea config =
+    Textarea config
+
+
+view : Rect -> String -> View msg -> List (Html msg) -> Html msg
+view objectRect textContent objectView childrenViews =
     case objectView of
         Rectangle config ->
             MacOS.UI.View.Rectangle.view config objectRect childrenViews
@@ -62,3 +69,6 @@ view objectRect objectView childrenViews =
 
         Image config ->
             MacOS.UI.View.Image.view config objectRect childrenViews
+
+        Textarea config ->
+            MacOS.UI.View.Textarea.view config objectRect textContent childrenViews

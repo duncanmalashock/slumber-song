@@ -1,11 +1,11 @@
 module MacOS.UI.Object exposing
     ( Object, new
-    , image
+    , image, textarea
     , setView, setSelectOptions, setDragOptions
     , onClick, onDoubleClick, onDragStart, onMouseDown
-    , id, position, size, rect
+    , id, position, size, text, rect
     , getDragOptions, getMouseEventHandler
-    , setPosition, setRect, setSelected
+    , setPosition, setRect, setText, setSelected
     , addPosition
     , view
     )
@@ -20,7 +20,7 @@ module MacOS.UI.Object exposing
 
 ## Kinds of Objects
 
-@docs image
+@docs image, textarea
 
 
 # Define interactions
@@ -31,13 +31,13 @@ module MacOS.UI.Object exposing
 
 # Query
 
-@docs id, position, size, rect
+@docs id, position, size, text, rect
 @docs getDragOptions, getMouseEventHandler
 
 
 # Update
 
-@docs setPosition, setRect, setSelected
+@docs setPosition, setRect, setText, setSelected
 @docs addPosition
 
 
@@ -55,6 +55,7 @@ import MacOS.Mouse as Mouse
 import MacOS.Rect as Rect exposing (Rect)
 import MacOS.UI.Helpers as UIHelpers
 import MacOS.UI.View as View exposing (View)
+import MacOS.UI.View.Textarea as Textarea
 
 
 type Object msg
@@ -64,6 +65,7 @@ type Object msg
 type alias Internals msg =
     { id : String
     , rect : Rect
+    , text : String
     , view : Maybe (View msg)
     , selectOptions : Maybe (SelectOptions msg)
     , dragOptions : Maybe (DragOptions msg)
@@ -89,6 +91,7 @@ new params =
     Object
         { id = params.id
         , rect = params.rect
+        , text = ""
         , view = Nothing
         , selectOptions = Nothing
         , dragOptions = Nothing
@@ -104,7 +107,24 @@ image params =
     Object
         { id = params.id
         , rect = Rect.new ( 0, 0 ) params.size
+        , text = ""
         , view = Just (View.image { url = params.url, size = params.size })
+        , selectOptions = Nothing
+        , dragOptions = Nothing
+        , onMouseDown = Nothing
+        , onClick = Nothing
+        , onDoubleClick = Nothing
+        , onDragStart = Nothing
+        }
+
+
+textarea : { id : String, font : Textarea.Font } -> Object msg
+textarea params =
+    Object
+        { id = params.id
+        , rect = Rect.new ( 0, 0 ) ( 0, 0 )
+        , text = ""
+        , view = Just (View.textarea { font = params.font })
         , selectOptions = Nothing
         , dragOptions = Nothing
         , onMouseDown = Nothing
@@ -207,6 +227,11 @@ rect (Object internals) =
     internals.rect
 
 
+text : Object msg -> String
+text (Object internals) =
+    internals.text
+
+
 size : Object msg -> Coordinate
 size (Object internals) =
     Rect.size internals.rect
@@ -238,6 +263,14 @@ setRect newValue (Object internals) =
     Object
         { internals
             | rect = newValue
+        }
+
+
+setText : String -> Object msg -> Object msg
+setText newValue (Object internals) =
+    Object
+        { internals
+            | text = newValue
         }
 
 
@@ -273,13 +306,13 @@ view { debug } (Object internals) childrenViews =
                 case internals.selectOptions of
                     Just s ->
                         if s.selected then
-                            View.view internals.rect s.view childrenViews
+                            View.view internals.rect internals.text s.view childrenViews
 
                         else
-                            View.view internals.rect objectView childrenViews
+                            View.view internals.rect internals.text objectView childrenViews
 
                     Nothing ->
-                        View.view internals.rect objectView childrenViews
+                        View.view internals.rect internals.text objectView childrenViews
 
             Nothing ->
                 div [ Html.Attributes.class "NO_VIEW" ]

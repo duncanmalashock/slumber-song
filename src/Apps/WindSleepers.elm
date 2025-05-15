@@ -6,6 +6,7 @@ import MacOS.ToAppMsg as ToAppMsg exposing (ToAppMsg(..))
 import MacOS.UI.Helpers as UIHelpers exposing (domIds)
 import MacOS.UI.Object as UIObject
 import MacOS.UI.View as View
+import MacOS.UI.View.Textarea as Textarea
 import MacOS.UI.View.Window as Window
 
 
@@ -22,7 +23,7 @@ init =
                 { title = "Temple Ruins"
                 , closeMsg = Nothing
                 }
-            , rect = Rect.new ( 128, 64 ) ( 256, 192 )
+            , rect = Rect.new ( 128, 61 ) ( 256, 192 )
             }
       , Instruction.CreateWindow
             { withId = "inventory"
@@ -31,6 +32,31 @@ init =
                 , closeMsg = Nothing
                 }
             , rect = Rect.new ( 4, 28 ) ( 118, 225 )
+            }
+      , Instruction.CreateWindow
+            { withId = "narration"
+            , window =
+                { title = "Untitled"
+                , closeMsg = Nothing
+                }
+            , rect = Rect.new ( 8, 255 ) ( 496, 85 )
+            }
+      , Instruction.CreateObject
+            { object =
+                UIObject.textarea
+                    { id = "narration:text"
+                    , font = Textarea.Chicago
+                    }
+            }
+      , Instruction.AttachObject
+            { objectId = "narration:text"
+            , parentId = "narration"
+            , rect = Rect.new ( 0, 18 ) ( 496, 85 )
+            }
+      , Instruction.AttachObject
+            { objectId = "obj:skull"
+            , parentId = "inventory"
+            , rect = Rect.new ( 6, 29 ) ( 15, 17 )
             }
       , Instruction.CreateObject
             { object =
@@ -108,9 +134,22 @@ update msg model =
                           ]
                         )
 
+                    else if droppedObjectInfo.droppedOnWindow == Just "narration" then
+                        ( model
+                        , [ Instruction.UpdateObjectText
+                                { objectId = "narration:text"
+                                , text = "Object aren't allowed in the text window!"
+                                }
+                          ]
+                        )
+
                     else if droppedObjectInfo.droppedOnWindow == Nothing then
                         ( model
-                        , []
+                        , [ Instruction.UpdateObjectText
+                                { objectId = "narration:text"
+                                , text = "The skull would get lost if it was put on the desktop."
+                                }
+                          ]
                         )
 
                     else

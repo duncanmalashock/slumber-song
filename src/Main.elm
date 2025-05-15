@@ -42,7 +42,7 @@ viewDebugger model =
             , style "font-family" "Geneva"
             , style "padding" "0 6px"
             ]
-            [ div [] [ text (Maybe.withDefault "Nothing" model.debug) ]
+            [-- div [] [ text (Maybe.withDefault "Nothing" model.debug) ]
             ]
         ]
 
@@ -397,6 +397,20 @@ handleInstruction { timeStarted, instruction } model =
 
                         Nothing ->
                             model.ui
+            in
+            ( { model
+                | currentInstruction = Nothing
+                , ui = updatedUI
+              }
+            , Cmd.none
+            )
+
+        Instruction.UpdateObjectText { objectId, text } ->
+            let
+                updatedUI : UI.UI Msg
+                updatedUI =
+                    model.ui
+                        |> UI.updateObject objectId (UIObject.setText text)
             in
             ( { model
                 | currentInstruction = Nothing
@@ -763,7 +777,7 @@ viewDraggedObject : Model -> Html Msg
 viewDraggedObject model =
     case model.dragging of
         Just dragging ->
-            View.view dragging.drawRect dragging.view []
+            View.view dragging.drawRect "" dragging.view []
 
         Nothing ->
             UIHelpers.none
