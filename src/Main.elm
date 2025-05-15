@@ -14,6 +14,7 @@ import MacOS.MenuBar as MenuBar exposing (MenuBar)
 import MacOS.Mouse as Mouse exposing (Mouse)
 import MacOS.Rect as Rect exposing (Rect)
 import MacOS.Screen as Screen exposing (Screen)
+import MacOS.ToAppMsg as ToAppMsg exposing (ToAppMsg)
 import MacOS.UI as UI exposing (UI)
 import MacOS.UI.FillPattern as FillPattern
 import MacOS.UI.Helpers as UIHelpers exposing (domIds, imgURL, px)
@@ -55,6 +56,7 @@ type alias Model =
     , pickedObjectId : Maybe String
     , debug : Maybe String
     , dragging : Maybe Dragging
+    , app : WindSleepers.Model
     , instructions : List (Instruction Msg)
     , currentInstruction : Maybe { timeStarted : Time.Posix, instruction : Instruction Msg }
     }
@@ -87,6 +89,9 @@ init flags =
                 , browser = flags.browserDimensions
                 , devicePixelRatio = flags.devicePixelRatio
                 }
+
+        ( app, appInitInstructions ) =
+            WindSleepers.init
     in
     ( { currentTime = Time.millisToPosix flags.currentTimeInMS
       , screen = screen
@@ -182,7 +187,8 @@ init flags =
       , pickedObjectId = Nothing
       , debug = Nothing
       , dragging = Nothing
-      , instructions = WindSleepers.program
+      , app = app
+      , instructions = appInitInstructions
       , currentInstruction = Nothing
       }
     , Cmd.none
@@ -458,8 +464,8 @@ update msg model =
                         Nothing ->
                             newMouseEvents
 
-                eventCmds : Cmd Msg
-                eventCmds =
+                mouseEventCmds : Cmd Msg
+                mouseEventCmds =
                     if not (Mouse.locked model.mouse) then
                         filteredMouseEvents
                             |> List.map MouseEvent
@@ -494,7 +500,7 @@ update msg model =
                 , pickedObjectId = maybePickedObjectId
                 , debug = maybePickedObjectId
               }
-            , eventCmds
+            , mouseEventCmds
             )
 
         ClickedCloseBoxForWindow windowId ->
@@ -519,8 +525,8 @@ update msg model =
                 maybeMsgFromEventHandler =
                     UI.mouseEventToHandlerMsg event model.ui
 
-                cmd : Cmd Msg
-                cmd =
+                maybeMouseEventCmd : Cmd Msg
+                maybeMouseEventCmd =
                     Maybe.map sendMsg maybeMsgFromEventHandler
                         |> Maybe.withDefault Cmd.none
             in
@@ -537,39 +543,44 @@ update msg model =
                             }
                     in
                     ( updatedModel
-                    , cmd
+                    , maybeMouseEventCmd
                     )
 
                 Mouse.MouseUp ->
                     let
-                        updatedUI : UI.UI Msg
-                        updatedUI =
+                        ( updatedApp, fromAppInstructions ) =
                             case model.dragging of
                                 Just dragging ->
-                                    UI.updateObject dragging.objectId
-                                        (UIObject.addPosition
-                                            dragging.dragDelta
-                                        )
-                                        model.ui
+                                    ToAppMsg.DroppedObject
+                                        { objectId = dragging.objectId
+                                        , droppedOnWindow = Nothing
+                                        , droppedOnObjects = []
+                                        , dropPositionAbsolute = Coordinate.new ( 0, 0 )
+                                        , dropPositionOnWindow = Coordinate.new ( 0, 0 )
+                                        }
+                                        |> (\msgForApp ->
+                                                WindSleepers.update (WindSleepers.ReceivedMsgFromOS msgForApp) model.app
+                                           )
 
                                 Nothing ->
-                                    model.ui
+                                    ( model.app, [] )
                     in
                     ( { model
                         | dragging = Nothing
-                        , ui = updatedUI
+                        , app = updatedApp
+                        , instructions = model.instructions ++ fromAppInstructions
                       }
-                    , cmd
+                    , maybeMouseEventCmd
                     )
 
                 Mouse.Click objectId ->
                     ( model
-                    , cmd
+                    , maybeMouseEventCmd
                     )
 
                 Mouse.DoubleClick objectId ->
                     ( model
-                    , cmd
+                    , maybeMouseEventCmd
                     )
 
                 Mouse.DragStart objectId ->
@@ -624,7 +635,7 @@ update msg model =
                                     model
                     in
                     ( updatedModel
-                    , cmd
+                    , maybeMouseEventCmd
                     )
 
 
