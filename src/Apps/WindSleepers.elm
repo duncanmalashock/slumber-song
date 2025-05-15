@@ -22,7 +22,7 @@ init =
                 { title = "Temple Ruins"
                 , closeMsg = Nothing
                 }
-            , rect = Rect.new ( 128, 64 ) ( 256, 172 )
+            , rect = Rect.new ( 128, 64 ) ( 256, 192 )
             }
       , Instruction.CreateWindow
             { withId = "inventory"
@@ -43,7 +43,7 @@ init =
       , Instruction.AttachObject
             { objectId = "scene:ruins"
             , parentId = "scene"
-            , rect = Rect.new ( 0, 0 ) ( 256, 172 )
+            , rect = Rect.new ( 0, 18 ) ( 256, 172 )
             }
       , Instruction.CreateObject
             { object =
@@ -90,12 +90,22 @@ update msg model =
 
                     else if droppedObjectInfo.droppedOnWindow == Just "scene" then
                         ( model
-                        , []
+                        , [ Instruction.ReparentObjectToWindow
+                                { objectId = droppedObjectInfo.objectId
+                                , windowId = "scene"
+                                , positionInWindow = droppedObjectInfo.dropPositionInWindow
+                                }
+                          ]
                         )
 
                     else if droppedObjectInfo.droppedOnWindow == Just "inventory" then
                         ( model
-                        , []
+                        , [ Instruction.ReparentObjectToWindow
+                                { objectId = droppedObjectInfo.objectId
+                                , windowId = "inventory"
+                                , positionInWindow = droppedObjectInfo.dropPositionInWindow
+                                }
+                          ]
                         )
 
                     else if droppedObjectInfo.droppedOnWindow == Nothing then

@@ -377,6 +377,34 @@ handleInstruction { timeStarted, instruction } model =
             , Cmd.none
             )
 
+        Instruction.ReparentObjectToWindow { objectId, windowId, positionInWindow } ->
+            let
+                maybeObject : Maybe (UIObject.Object Msg)
+                maybeObject =
+                    UI.getObject model.ui objectId
+
+                updatedUI : UI.UI Msg
+                updatedUI =
+                    case maybeObject of
+                        Just object ->
+                            model.ui
+                                |> UI.reparentObject
+                                    { objectId = objectId
+                                    , newParentId = windowId
+                                    , newRect =
+                                        Rect.setPosition positionInWindow (UIObject.rect object)
+                                    }
+
+                        Nothing ->
+                            model.ui
+            in
+            ( { model
+                | currentInstruction = Nothing
+                , ui = updatedUI
+              }
+            , Cmd.none
+            )
+
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =

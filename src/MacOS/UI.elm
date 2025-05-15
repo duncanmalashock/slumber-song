@@ -3,6 +3,7 @@ module MacOS.UI exposing
     , createObject
     , attachObject
     , updateObject, updateObjectList
+    , reparentObject
     , removeObject
     , bringObjectToFront
     , getObject, getAbsoluteRect, getWindowIds
@@ -28,6 +29,7 @@ module MacOS.UI exposing
 # Update
 
 @docs updateObject, updateObjectList
+@docs reparentObject
 @docs removeObject
 @docs bringObjectToFront
 
@@ -343,6 +345,46 @@ attachObject params (UI internals) =
                 Dict.insert params.objectId params.parentId internals.objectToParent
         }
         |> updateObject params.objectId (UIObject.setRect params.rect)
+
+
+reparentObject : { objectId : ObjectId, newParentId : ObjectId, newRect : Rect } -> UI msg -> UI msg
+reparentObject { objectId, newParentId, newRect } (UI internals) =
+    let
+        updatedDrawOrderWithoutOldParent : Dict ObjectId (List ObjectId)
+        updatedDrawOrderWithoutOldParent =
+            internals.objectToParent
+                |> Dict.get objectId
+                |> Maybe.map
+                    (\oldParentId ->
+                        Dict.update oldParentId
+                            (Maybe.map (List.filter ((/=) objectId)))
+                            internals.childrenInDrawOrder
+                    )
+                |> Maybe.withDefault internals.childrenInDrawOrder
+
+        updatedDrawOrderWithNewParent : Dict ObjectId (List ObjectId)
+        updatedDrawOrderWithNewParent =
+            Dict.update newParentId
+                (\maybeList ->
+                    Just (Maybe.withDefault [] maybeList ++ [ objectId ])
+                )
+                updatedDrawOrderWithoutOldParent
+
+        updatedObjectToParent : Dict ObjectId ObjectId
+        updatedObjectToParent =
+            Dict.insert objectId newParentId internals.objectToParent
+
+        updatedInternals =
+            { internals
+                | childrenInDrawOrder = updatedDrawOrderWithNewParent
+                , objectToParent = updatedObjectToParent
+            }
+
+        updatedUI =
+            UI updatedInternals
+                |> updateObject objectId (UIObject.setRect newRect)
+    in
+    updateAbsoluteRectsForDescendants objectId updatedUI
 
 
 mouseEventToHandlerMsg : Mouse.Event -> UI msg -> Maybe msg

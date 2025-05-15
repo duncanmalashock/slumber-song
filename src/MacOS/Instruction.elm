@@ -22,3 +22,4 @@ type Instruction msg
     | CreateObject { object : Object msg }
     | AttachObject { objectId : String, parentId : String, rect : Rect }
     | UpdateWindowPosition { objectId : String, position : Coordinate }
+    | ReparentObjectToWindow { objectId : String, windowId : String, positionInWindow : Coordinate }
