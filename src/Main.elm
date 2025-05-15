@@ -363,6 +363,20 @@ handleInstruction { timeStarted, instruction } model =
             , Cmd.none
             )
 
+        Instruction.UpdateWindowPosition { objectId, position } ->
+            let
+                updatedUI : UI.UI Msg
+                updatedUI =
+                    model.ui
+                        |> UI.updateObject objectId (UIObject.setPosition position)
+            in
+            ( { model
+                | currentInstruction = Nothing
+                , ui = updatedUI
+              }
+            , Cmd.none
+            )
+
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -574,6 +588,12 @@ update msg model =
                                                             windowIds
                                                             model.ui
                                                    )
+
+                                        dropPosition : Coordinate
+                                        dropPosition =
+                                            Coordinate.plus
+                                                dragging.clickOffset
+                                                (Mouse.position model.mouse)
                                     in
                                     ToAppMsg.DroppedObject
                                         { objectId = dragging.objectId
@@ -585,8 +605,7 @@ update msg model =
                                                 , coordinate = Mouse.position model.mouse
                                                 }
                                                 model.ui
-                                        , dropPositionAbsolute =
-                                            Mouse.position model.mouse
+                                        , dropPositionAbsolute = dropPosition
                                         , dropPositionInWindow =
                                             case droppedOnWindow of
                                                 Just windowId ->
@@ -596,13 +615,12 @@ update msg model =
                                                             (\windowCoordinates ->
                                                                 Coordinate.minus
                                                                     windowCoordinates
-                                                                    (Mouse.position model.mouse)
+                                                                    dropPosition
                                                             )
-                                                        |> Maybe.withDefault
-                                                            (Mouse.position model.mouse)
+                                                        |> Maybe.withDefault dropPosition
 
                                                 Nothing ->
-                                                    Mouse.position model.mouse
+                                                    dropPosition
                                         }
                                         |> (\msgForApp ->
                                                 WindSleepers.update (WindSleepers.ReceivedMsgFromOS msgForApp) model.app

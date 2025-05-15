@@ -81,7 +81,11 @@ update msg model =
                 DroppedObject droppedObjectInfo ->
                     if droppedObjectInfo.isWindow then
                         ( model
-                        , []
+                        , [ Instruction.UpdateWindowPosition
+                                { objectId = droppedObjectInfo.objectId
+                                , position = droppedObjectInfo.dropPositionAbsolute
+                                }
+                          ]
                         )
 
                     else if droppedObjectInfo.droppedOnWindow == Just "scene" then

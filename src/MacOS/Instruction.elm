@@ -9,6 +9,7 @@ module MacOS.Instruction exposing (Instruction(..))
 
 -}
 
+import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.Rect as Rect exposing (Rect)
 import MacOS.UI.Object as UIObject exposing (Object)
 import MacOS.UI.View.Window as Window
@@ -20,3 +21,4 @@ type Instruction msg
     | RemoveWindow { withId : String }
     | CreateObject { object : Object msg }
     | AttachObject { objectId : String, parentId : String, rect : Rect }
+    | UpdateWindowPosition { objectId : String, position : Coordinate }
