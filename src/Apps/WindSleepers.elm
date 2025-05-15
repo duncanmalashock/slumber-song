@@ -75,14 +75,31 @@ type Msg
 
 update : Msg -> Model -> ( Model, List (Instruction msg) )
 update msg model =
-    let
-        _ =
-            Debug.log "WindSleepers.update" msg
-    in
     case msg of
         ReceivedMsgFromOS toAppMsg ->
             case toAppMsg of
                 DroppedObject droppedObjectInfo ->
-                    ( model
-                    , []
-                    )
+                    if droppedObjectInfo.isWindow then
+                        ( model
+                        , []
+                        )
+
+                    else if droppedObjectInfo.droppedOnWindow == Just "scene" then
+                        ( model
+                        , []
+                        )
+
+                    else if droppedObjectInfo.droppedOnWindow == Just "inventory" then
+                        ( model
+                        , []
+                        )
+
+                    else if droppedObjectInfo.droppedOnWindow == Nothing then
+                        ( model
+                        , []
+                        )
+
+                    else
+                        ( model
+                        , []
+                        )

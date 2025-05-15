@@ -9,6 +9,7 @@ type ToAppMsg
 
 type alias DroppedObjectInfo =
     { objectId : ObjectId
+    , isWindow : Bool
     , droppedOnWindow : Maybe ObjectId
     , droppedOnObjects : List ObjectId
     , dropPositionAbsolute : Coordinate

@@ -577,6 +577,7 @@ update msg model =
                                     in
                                     ToAppMsg.DroppedObject
                                         { objectId = dragging.objectId
+                                        , isWindow = List.member dragging.objectId (UI.getWindowIds model.ui)
                                         , droppedOnWindow = droppedOnWindow
                                         , droppedOnObjects =
                                             UI.hitTest
