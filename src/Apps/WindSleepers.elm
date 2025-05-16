@@ -112,21 +112,13 @@ update msg model =
 
                     else if droppedObjectInfo.droppedOnWindow == Just "scene" then
                         ( model
-                        , [ Instruction.ReparentObjectToWindow
-                                { objectId = droppedObjectInfo.objectId
-                                , windowId = "scene"
-                                , rectInWindow = droppedObjectInfo.dropRectInWindow
-                                }
+                        , [ moveDroppedObjectToWindow droppedObjectInfo
                           ]
                         )
 
                     else if droppedObjectInfo.droppedOnWindow == Just "inventory" then
                         ( model
-                        , [ Instruction.ReparentObjectToWindow
-                                { objectId = droppedObjectInfo.objectId
-                                , windowId = "inventory"
-                                , rectInWindow = droppedObjectInfo.dropRectInWindow
-                                }
+                        , [ moveDroppedObjectToWindow droppedObjectInfo
                           ]
                         )
 
@@ -148,6 +140,15 @@ update msg model =
                         ( model
                         , []
                         )
+
+
+moveDroppedObjectToWindow : ToAppMsg.DroppedObjectInfo -> Instruction msg
+moveDroppedObjectToWindow droppedObjectInfo =
+    Instruction.ReparentObjectToWindow
+        { objectId = droppedObjectInfo.objectId
+        , windowId = Maybe.withDefault "" droppedObjectInfo.droppedOnWindow
+        , rectInWindow = droppedObjectInfo.dropRectInWindow
+        }
 
 
 print : String -> Instruction msg
