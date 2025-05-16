@@ -154,7 +154,6 @@ update msg model =
                         , [ Instruction.AnimateZoom
                                 { from =
                                     droppedObjectInfo.dropRectAbsolute
-                                        |> Debug.log "dropRectAbsolute"
                                 , to = droppedObjectInfo.originRect
                                 , zoomingIn = False
                                 }
