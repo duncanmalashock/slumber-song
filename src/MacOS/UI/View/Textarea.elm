@@ -57,7 +57,8 @@ textStyles config =
             [ style "background-color" "white"
             , style "color" "black"
             , style "font-family" "Chicago"
-            , style "padding" "0 6px"
+            , style "padding" "0 4px"
+            , style "transform" "translate(0,-0.5px)"
             ]
 
         Geneva ->

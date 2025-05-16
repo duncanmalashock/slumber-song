@@ -31,7 +31,7 @@ init =
                 { title = "inventory"
                 , closeMsg = Nothing
                 }
-            , rect = Rect.new ( 4, 28 ) ( 119, 225 )
+            , rect = Rect.new ( 3, 28 ) ( 121, 225 )
             }
       , Instruction.CreateWindow
             { withId = "narration"
@@ -52,11 +52,6 @@ init =
             { objectId = "narration:text"
             , parentId = "narration"
             , rect = Rect.new ( 0, 18 ) ( 496, 85 )
-            }
-      , Instruction.AttachObject
-            { objectId = "obj:skull"
-            , parentId = "inventory"
-            , rect = Rect.new ( 6, 29 ) ( 15, 17 )
             }
       , Instruction.CreateObject
             { object =
@@ -136,31 +131,15 @@ update msg model =
 
                     else if droppedObjectInfo.droppedOnWindow == Just "narration" then
                         ( model
-                        , [ Instruction.AnimateZoom
-                                { from =
-                                    droppedObjectInfo.dropRectAbsolute
-                                , to = droppedObjectInfo.originRect
-                                , zoomingIn = False
-                                }
-                          , Instruction.UpdateObjectText
-                                { objectId = "narration:text"
-                                , text = "Objects aren't allowed in the text window!"
-                                }
+                        , [ rejectDrop droppedObjectInfo
+                          , print "Objects aren't allowed in the text window!"
                           ]
                         )
 
                     else if droppedObjectInfo.droppedOnWindow == Nothing then
                         ( model
-                        , [ Instruction.AnimateZoom
-                                { from =
-                                    droppedObjectInfo.dropRectAbsolute
-                                , to = droppedObjectInfo.originRect
-                                , zoomingIn = False
-                                }
-                          , Instruction.UpdateObjectText
-                                { objectId = "narration:text"
-                                , text = "The skull would get lost if it was put on the desktop."
-                                }
+                        , [ rejectDrop droppedObjectInfo
+                          , print "The skull would get lost if it was put on the desktop."
                           ]
                         )
 
@@ -168,3 +147,20 @@ update msg model =
                         ( model
                         , []
                         )
+
+
+print : String -> Instruction msg
+print textToPrint =
+    Instruction.UpdateObjectText
+        { objectId = "narration:text"
+        , text = textToPrint
+        }
+
+
+rejectDrop : ToAppMsg.DroppedObjectInfo -> Instruction msg
+rejectDrop droppedObjectInfo =
+    Instruction.AnimateZoom
+        { from = droppedObjectInfo.dropRectAbsolute
+        , to = droppedObjectInfo.originRect
+        , zoomingIn = False
+        }
