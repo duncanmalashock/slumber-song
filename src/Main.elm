@@ -69,6 +69,7 @@ type alias Dragging =
     , clickOffset : Coordinate
     , drawRect : Rect
     , view : View Msg
+    , originRect : Rect
     }
 
 
@@ -363,12 +364,12 @@ handleInstruction { timeStarted, instruction } model =
             , Cmd.none
             )
 
-        Instruction.UpdateWindowPosition { objectId, position } ->
+        Instruction.UpdateWindowRect { objectId, rect } ->
             let
                 updatedUI : UI.UI Msg
                 updatedUI =
                     model.ui
-                        |> UI.updateObject objectId (UIObject.setPosition position)
+                        |> UI.updateObject objectId (UIObject.setRect rect)
             in
             ( { model
                 | currentInstruction = Nothing
@@ -377,7 +378,7 @@ handleInstruction { timeStarted, instruction } model =
             , Cmd.none
             )
 
-        Instruction.ReparentObjectToWindow { objectId, windowId, positionInWindow } ->
+        Instruction.ReparentObjectToWindow { objectId, windowId, rectInWindow } ->
             let
                 maybeObject : Maybe (UIObject.Object Msg)
                 maybeObject =
@@ -391,8 +392,7 @@ handleInstruction { timeStarted, instruction } model =
                                 |> UI.reparentObject
                                     { objectId = objectId
                                     , newParentId = windowId
-                                    , newRect =
-                                        Rect.setPosition positionInWindow (UIObject.rect object)
+                                    , newRect = rectInWindow
                                     }
 
                         Nothing ->
@@ -631,11 +631,9 @@ update msg model =
                                                             model.ui
                                                    )
 
-                                        dropPosition : Coordinate
-                                        dropPosition =
-                                            Coordinate.plus
-                                                dragging.clickOffset
-                                                (Mouse.position model.mouse)
+                                        dropRect : Rect
+                                        dropRect =
+                                            dragging.drawRect
                                     in
                                     ToAppMsg.DroppedObject
                                         { objectId = dragging.objectId
@@ -647,22 +645,23 @@ update msg model =
                                                 , coordinate = Mouse.position model.mouse
                                                 }
                                                 model.ui
-                                        , dropPositionAbsolute = dropPosition
-                                        , dropPositionInWindow =
+                                        , dropRectAbsolute = dropRect
+                                        , dropRectInWindow =
                                             case droppedOnWindow of
                                                 Just windowId ->
                                                     UI.getAbsoluteRect model.ui windowId
                                                         |> Maybe.map Rect.position
                                                         |> Maybe.map
                                                             (\windowCoordinates ->
-                                                                Coordinate.minus
+                                                                Rect.minus
                                                                     windowCoordinates
-                                                                    dropPosition
+                                                                    dropRect
                                                             )
-                                                        |> Maybe.withDefault dropPosition
+                                                        |> Maybe.withDefault dropRect
 
                                                 Nothing ->
-                                                    dropPosition
+                                                    dropRect
+                                        , originRect = dragging.originRect
                                         }
                                         |> (\msgForApp ->
                                                 WindSleepers.update (WindSleepers.ReceivedMsgFromOS msgForApp) model.app
@@ -730,6 +729,7 @@ update msg model =
                                                 , drawRect = draggedObjectAbsoluteRect
                                                 , view = dragView
                                                 , dragDelta = Coordinate.new ( 0, 0 )
+                                                , originRect = draggedObjectAbsoluteRect
                                                 }
                                         , ui =
                                             UI.bringObjectToFront

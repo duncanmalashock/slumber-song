@@ -21,6 +21,6 @@ type Instruction msg
     | RemoveWindow { withId : String }
     | CreateObject { object : Object msg }
     | AttachObject { objectId : String, parentId : String, rect : Rect }
-    | UpdateWindowPosition { objectId : String, position : Coordinate }
-    | ReparentObjectToWindow { objectId : String, windowId : String, positionInWindow : Coordinate }
+    | UpdateWindowRect { objectId : String, rect : Rect }
+    | ReparentObjectToWindow { objectId : String, windowId : String, rectInWindow : Rect }
     | UpdateObjectText { objectId : String, text : String }

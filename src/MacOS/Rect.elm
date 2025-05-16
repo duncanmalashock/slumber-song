@@ -4,7 +4,7 @@ module MacOS.Rect exposing
     , size, width, height
     , top, bottom, left, right
     , hitTest
-    , plus, interpolate
+    , plus, minus, interpolate
     , setPosition, setSize
     )
 
@@ -30,7 +30,7 @@ module MacOS.Rect exposing
 
 # Math
 
-@docs plus, interpolate
+@docs plus, minus, interpolate
 
 
 # Update
@@ -144,6 +144,14 @@ plus coordinate (Rect internals) =
     Rect
         { internals
             | position = Coordinate.plus coordinate internals.position
+        }
+
+
+minus : Coordinate -> Rect -> Rect
+minus coordinate (Rect internals) =
+    Rect
+        { internals
+            | position = Coordinate.minus coordinate internals.position
         }
 
 

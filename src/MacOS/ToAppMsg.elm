@@ -1,6 +1,6 @@
 module MacOS.ToAppMsg exposing (DroppedObjectInfo, ToAppMsg(..))
 
-import MacOS.Coordinate as Coordinate exposing (Coordinate)
+import MacOS.Rect as Rect exposing (Rect)
 
 
 type ToAppMsg
@@ -12,8 +12,9 @@ type alias DroppedObjectInfo =
     , isWindow : Bool
     , droppedOnWindow : Maybe ObjectId
     , droppedOnObjects : List ObjectId
-    , dropPositionAbsolute : Coordinate
-    , dropPositionInWindow : Coordinate
+    , dropRectAbsolute : Rect
+    , dropRectInWindow : Rect
+    , originRect : Rect
     }
 
 

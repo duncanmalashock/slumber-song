@@ -107,9 +107,9 @@ update msg model =
                 DroppedObject droppedObjectInfo ->
                     if droppedObjectInfo.isWindow then
                         ( model
-                        , [ Instruction.UpdateWindowPosition
+                        , [ Instruction.UpdateWindowRect
                                 { objectId = droppedObjectInfo.objectId
-                                , position = droppedObjectInfo.dropPositionAbsolute
+                                , rect = droppedObjectInfo.dropRectAbsolute
                                 }
                           ]
                         )
@@ -119,7 +119,7 @@ update msg model =
                         , [ Instruction.ReparentObjectToWindow
                                 { objectId = droppedObjectInfo.objectId
                                 , windowId = "scene"
-                                , positionInWindow = droppedObjectInfo.dropPositionInWindow
+                                , rectInWindow = droppedObjectInfo.dropRectInWindow
                                 }
                           ]
                         )
@@ -129,14 +129,19 @@ update msg model =
                         , [ Instruction.ReparentObjectToWindow
                                 { objectId = droppedObjectInfo.objectId
                                 , windowId = "inventory"
-                                , positionInWindow = droppedObjectInfo.dropPositionInWindow
+                                , rectInWindow = droppedObjectInfo.dropRectInWindow
                                 }
                           ]
                         )
 
                     else if droppedObjectInfo.droppedOnWindow == Just "narration" then
                         ( model
-                        , [ Instruction.UpdateObjectText
+                        , [ Instruction.AnimateZoom
+                                { from = droppedObjectInfo.dropRectAbsolute
+                                , to = droppedObjectInfo.originRect
+                                , zoomingIn = False
+                                }
+                          , Instruction.UpdateObjectText
                                 { objectId = "narration:text"
                                 , text = "Object aren't allowed in the text window!"
                                 }
@@ -145,7 +150,12 @@ update msg model =
 
                     else if droppedObjectInfo.droppedOnWindow == Nothing then
                         ( model
-                        , [ Instruction.UpdateObjectText
+                        , [ Instruction.AnimateZoom
+                                { from = droppedObjectInfo.dropRectAbsolute
+                                , to = droppedObjectInfo.originRect
+                                , zoomingIn = False
+                                }
+                          , Instruction.UpdateObjectText
                                 { objectId = "narration:text"
                                 , text = "The skull would get lost if it was put on the desktop."
                                 }
