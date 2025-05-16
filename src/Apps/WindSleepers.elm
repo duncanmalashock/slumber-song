@@ -31,7 +31,7 @@ init =
                 { title = "inventory"
                 , closeMsg = Nothing
                 }
-            , rect = Rect.new ( 4, 28 ) ( 118, 225 )
+            , rect = Rect.new ( 4, 28 ) ( 119, 225 )
             }
       , Instruction.CreateWindow
             { withId = "narration"
@@ -39,7 +39,7 @@ init =
                 { title = "Untitled"
                 , closeMsg = Nothing
                 }
-            , rect = Rect.new ( 8, 255 ) ( 496, 85 )
+            , rect = Rect.new ( 1, 255 ) ( 509, 85 )
             }
       , Instruction.CreateObject
             { object =
@@ -144,7 +144,7 @@ update msg model =
                                 }
                           , Instruction.UpdateObjectText
                                 { objectId = "narration:text"
-                                , text = "Object aren't allowed in the text window!"
+                                , text = "Objects aren't allowed in the text window!"
                                 }
                           ]
                         )
