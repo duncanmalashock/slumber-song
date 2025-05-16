@@ -170,9 +170,9 @@ handleInstruction { timeStarted, instruction } model =
 
                 zoomRect : Int -> Rect
                 zoomRect x =
-                    -- x ranges from 0 to 11
                     if zoomingIn then
                         let
+                            flopped : Float
                             flopped =
                                 0.69 ^ toFloat ((x * -1 + 11) + 1)
                         in
@@ -195,7 +195,7 @@ handleInstruction { timeStarted, instruction } model =
                                         interp =
                                             i + (animationPhase - 4)
                                     in
-                                    if interp >= 0 && interp <= 12 then
+                                    if interp >= 0 && interp <= 11 then
                                         Just (zoomRect interp)
 
                                     else
@@ -339,6 +339,20 @@ handleInstruction { timeStarted, instruction } model =
                 updatedUI =
                     model.ui
                         |> UI.updateObject objectId (UIObject.setText text)
+            in
+            ( { model
+                | currentInstruction = Nothing
+                , ui = updatedUI
+              }
+            , Cmd.none
+            )
+
+        Instruction.UpdateObjectSelected { objectId, selected } ->
+            let
+                updatedUI : UI.UI Msg
+                updatedUI =
+                    model.ui
+                        |> UI.updateObject objectId (UIObject.setSelected selected)
             in
             ( { model
                 | currentInstruction = Nothing

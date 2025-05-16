@@ -1,5 +1,6 @@
 module MacOS.UI.View.Image exposing
     ( Config
+    , Filter(..)
     , view
     )
 
@@ -9,6 +10,7 @@ module MacOS.UI.View.Image exposing
 # Config
 
 @docs Config
+@docs Filter
 
 
 # View
@@ -27,17 +29,35 @@ import MacOS.UI.Helpers exposing (imgURL, px)
 type alias Config =
     { url : String
     , size : ( Int, Int )
+    , filter : Maybe Filter
     }
+
+
+type Filter
+    = Invert
 
 
 view : Config -> Rect -> List (Html msg) -> Html msg
 view config objectRect childrenViews =
+    let
+        filterStyles : List (Html.Attribute msg)
+        filterStyles =
+            case config.filter of
+                Just Invert ->
+                    [ style "filter" "invert(1)"
+                    ]
+
+                Nothing ->
+                    []
+    in
     div
-        [ style "position" "absolute"
-        , style "top" (px (Rect.top objectRect))
-        , style "left" (px (Rect.left objectRect))
-        , style "width" (px (Rect.width objectRect))
-        , style "height" (px (Rect.height objectRect))
-        , style "background-image" (imgURL config.url)
-        ]
+        ([ style "position" "absolute"
+         , style "top" (px (Rect.top objectRect))
+         , style "left" (px (Rect.left objectRect))
+         , style "width" (px (Rect.width objectRect))
+         , style "height" (px (Rect.height objectRect))
+         , style "background-image" (imgURL config.url)
+         ]
+            ++ filterStyles
+        )
         childrenViews

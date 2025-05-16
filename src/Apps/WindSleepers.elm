@@ -6,12 +6,17 @@ import MacOS.ToAppMsg as ToAppMsg exposing (ToAppMsg(..))
 import MacOS.UI.Helpers as UIHelpers exposing (domIds)
 import MacOS.UI.Object as UIObject
 import MacOS.UI.View as View
+import MacOS.UI.View.Image as Image
 import MacOS.UI.View.Textarea as Textarea
 import MacOS.UI.View.Window as Window
 
 
 type alias Model =
     {}
+
+
+type alias ObjectId =
+    String
 
 
 init : ( Model, List (Instruction msg) )
@@ -59,6 +64,7 @@ init =
                 UIObject.image
                     { id = "scene:ruins"
                     , url = "WindSleepers/ruins.gif"
+                    , filter = Nothing
                     , size = ( 256, 172 )
                     }
             }
@@ -72,13 +78,24 @@ init =
                 UIObject.image
                     { id = "obj:skull"
                     , url = "WindSleepers/skull.gif"
+                    , filter = Nothing
                     , size = ( 15, 17 )
                     }
+                    |> UIObject.setSelectOptions
+                        { view =
+                            View.image
+                                { url = "WindSleepers/skull.gif"
+                                , size = ( 15, 17 )
+                                , filter = Just Image.Invert
+                                }
+                        , selected = False
+                        }
                     |> UIObject.setDragOptions
                         { traveling =
                             View.image
                                 { url = "WindSleepers/skull.gif"
                                 , size = ( 15, 17 )
+                                , filter = Nothing
                                 }
                         }
             }
@@ -113,18 +130,21 @@ update msg model =
                     else if droppedObjectInfo.droppedOnWindow == Just "scene" then
                         ( model
                         , [ moveDroppedObjectToWindow droppedObjectInfo
+                          , unselectObject droppedObjectInfo.objectId
                           ]
                         )
 
                     else if droppedObjectInfo.droppedOnWindow == Just "inventory" then
                         ( model
                         , [ moveDroppedObjectToWindow droppedObjectInfo
+                          , unselectObject droppedObjectInfo.objectId
                           ]
                         )
 
                     else if droppedObjectInfo.droppedOnWindow == Just "narration" then
                         ( model
                         , [ rejectDrop droppedObjectInfo
+                          , unselectObject droppedObjectInfo.objectId
                           , print "Objects aren't allowed in the text window!"
                           ]
                         )
@@ -132,6 +152,7 @@ update msg model =
                     else if droppedObjectInfo.droppedOnWindow == Nothing then
                         ( model
                         , [ rejectDrop droppedObjectInfo
+                          , unselectObject droppedObjectInfo.objectId
                           , print "The skull would get lost if it was put on the desktop."
                           ]
                         )
@@ -148,6 +169,14 @@ moveDroppedObjectToWindow droppedObjectInfo =
         { objectId = droppedObjectInfo.objectId
         , windowId = Maybe.withDefault "" droppedObjectInfo.droppedOnWindow
         , rectInWindow = droppedObjectInfo.dropRectInWindow
+        }
+
+
+unselectObject : ObjectId -> Instruction msg
+unselectObject objectId =
+    Instruction.UpdateObjectSelected
+        { objectId = objectId
+        , selected = False
         }
 
 

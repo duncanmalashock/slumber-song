@@ -3,7 +3,7 @@ module MacOS.UI.Object exposing
     , image, textarea
     , setView, setSelectOptions, setDragOptions
     , onClick, onDoubleClick, onDragStart, onMouseDown
-    , id, position, size, text, rect
+    , id, position, size, text, rect, selected
     , getDragOptions, getMouseEventHandler
     , setPosition, setRect, setText, setSelected
     , addPosition
@@ -31,7 +31,7 @@ module MacOS.UI.Object exposing
 
 # Query
 
-@docs id, position, size, text, rect
+@docs id, position, size, text, rect, selected
 @docs getDragOptions, getMouseEventHandler
 
 
@@ -55,6 +55,7 @@ import MacOS.Mouse as Mouse
 import MacOS.Rect as Rect exposing (Rect)
 import MacOS.UI.Helpers as UIHelpers
 import MacOS.UI.View as View exposing (View)
+import MacOS.UI.View.Image as Image
 import MacOS.UI.View.Textarea as Textarea
 
 
@@ -102,13 +103,13 @@ new params =
         }
 
 
-image : { id : String, url : String, size : ( Int, Int ) } -> Object msg
+image : { id : String, url : String, filter : Maybe Image.Filter, size : ( Int, Int ) } -> Object msg
 image params =
     Object
         { id = params.id
         , rect = Rect.new ( 0, 0 ) params.size
         , text = ""
-        , view = Just (View.image { url = params.url, size = params.size })
+        , view = Just (View.image { url = params.url, filter = params.filter, size = params.size })
         , selectOptions = Nothing
         , dragOptions = Nothing
         , onMouseDown = Nothing
@@ -225,6 +226,16 @@ getDragOptions (Object internals) =
 rect : Object msg -> Rect
 rect (Object internals) =
     internals.rect
+
+
+selected : Object msg -> Bool
+selected (Object internals) =
+    case internals.selectOptions of
+        Just selectOptions ->
+            selectOptions.selected
+
+        Nothing ->
+            False
 
 
 text : Object msg -> String

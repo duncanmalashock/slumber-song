@@ -24,3 +24,4 @@ type Instruction msg
     | UpdateWindowRect { objectId : String, rect : Rect }
     | ReparentObjectToWindow { objectId : String, windowId : String, rectInWindow : Rect }
     | UpdateObjectText { objectId : String, text : String }
+    | UpdateObjectSelected { objectId : String, selected : Bool }
