@@ -118,13 +118,13 @@ image params =
         }
 
 
-textarea : { id : String, font : Textarea.Font } -> Object msg
+textarea : { id : String, font : Textarea.Font, color : Textarea.Color } -> Object msg
 textarea params =
     Object
         { id = params.id
         , rect = Rect.new ( 0, 0 ) ( 0, 0 )
         , text = ""
-        , view = Just (View.textarea { font = params.font })
+        , view = Just (View.textarea { color = params.color, font = params.font })
         , selectOptions = Nothing
         , dragOptions = Nothing
         , onMouseDown = Nothing

@@ -46,6 +46,7 @@ init =
                 UIObject.textarea
                     { id = "narration:text"
                     , font = Textarea.Chicago
+                    , color = Textarea.Black
                     }
             }
       , Instruction.AttachObject

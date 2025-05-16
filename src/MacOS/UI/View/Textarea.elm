@@ -1,7 +1,7 @@
 module MacOS.UI.View.Textarea exposing
     ( Config
     , view
-    , Font(..)
+    , Color(..), Font(..)
     )
 
 {-| A bitmap image onscreen.
@@ -27,12 +27,18 @@ import MacOS.UI.Helpers exposing (imgURL, px)
 
 type alias Config =
     { font : Font
+    , color : Color
     }
 
 
 type Font
     = Chicago
     | Geneva
+
+
+type Color
+    = Black
+    | White
 
 
 view : Config -> Rect -> String -> List (Html msg) -> Html msg
@@ -52,18 +58,30 @@ view config objectRect textContent childrenViews =
 
 textStyles : Config -> List (Html.Attribute msg)
 textStyles config =
-    case config.font of
-        Chicago ->
-            [ style "background-color" "white"
-            , style "color" "black"
-            , style "font-family" "Chicago"
-            , style "padding" "0 4px"
-            , style "transform" "translate(0,-0.5px)"
-            ]
+    let
+        colorStyles : List (Html.Attribute msg)
+        colorStyles =
+            case config.color of
+                Black ->
+                    [ style "color" "black" ]
 
-        Geneva ->
-            [ style "background-color" "white"
-            , style "color" "black"
-            , style "font-family" "Geneva"
-            , style "padding" "0 6px"
-            ]
+                White ->
+                    [ style "color" "white" ]
+
+        fontStyles : List (Html.Attribute msg)
+        fontStyles =
+            case config.font of
+                Chicago ->
+                    [ style "font-family" "Chicago"
+                    , style "line-height" "16px"
+                    , style "padding" "0 4px"
+                    , style "transform" "translate(0,-0.5px)"
+                    ]
+
+                Geneva ->
+                    [ style "font-family" "Geneva"
+                    , style "line-height" "12px"
+                    , style "padding" "0 4px"
+                    ]
+    in
+    fontStyles ++ colorStyles
