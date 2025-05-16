@@ -59,6 +59,7 @@ type alias Model =
     , app : WindSleepers.Model
     , instructions : List (Instruction Msg)
     , currentInstruction : Maybe { timeStarted : Time.Posix, instruction : Instruction Msg }
+    , zoomRects : List Rect
     }
 
 
@@ -117,69 +118,6 @@ init flags =
                     }
                 |> UI.createObject
                     (UIObject.new
-                        { id = domIds.desktopRectangles
-                        , rect = Screen.logical screen
-                        }
-                    )
-                |> UI.attachObject
-                    { objectId = domIds.desktopRectangles
-                    , parentId = domIds.desktop
-                    , rect = Screen.logical screen
-                    }
-                |> UI.createObject
-                    (UIObject.new
-                        { id = "zoomRect0"
-                        , rect = Rect.new ( 0, 0 ) ( 0, 0 )
-                        }
-                        |> UIObject.setView
-                            (View.rect MacOS.UI.View.Rectangle.StyleDotted)
-                    )
-                |> UI.attachObject
-                    { objectId = "zoomRect0"
-                    , parentId = domIds.desktopRectangles
-                    , rect = Rect.new ( 0, 0 ) ( 0, 0 )
-                    }
-                |> UI.createObject
-                    (UIObject.new
-                        { id = "zoomRect1"
-                        , rect = Rect.new ( 0, 0 ) ( 0, 0 )
-                        }
-                        |> UIObject.setView
-                            (View.rect MacOS.UI.View.Rectangle.StyleDotted)
-                    )
-                |> UI.attachObject
-                    { objectId = "zoomRect1"
-                    , parentId = domIds.desktopRectangles
-                    , rect = Rect.new ( 0, 0 ) ( 0, 0 )
-                    }
-                |> UI.createObject
-                    (UIObject.new
-                        { id = "zoomRect2"
-                        , rect = Rect.new ( 0, 0 ) ( 0, 0 )
-                        }
-                        |> UIObject.setView
-                            (View.rect MacOS.UI.View.Rectangle.StyleDotted)
-                    )
-                |> UI.attachObject
-                    { objectId = "zoomRect2"
-                    , parentId = domIds.desktopRectangles
-                    , rect = Rect.new ( 0, 0 ) ( 0, 0 )
-                    }
-                |> UI.createObject
-                    (UIObject.new
-                        { id = "zoomRect3"
-                        , rect = Rect.new ( 0, 0 ) ( 0, 0 )
-                        }
-                        |> UIObject.setView
-                            (View.rect MacOS.UI.View.Rectangle.StyleDotted)
-                    )
-                |> UI.attachObject
-                    { objectId = "zoomRect3"
-                    , parentId = domIds.desktopRectangles
-                    , rect = Rect.new ( 0, 0 ) ( 0, 0 )
-                    }
-                |> UI.createObject
-                    (UIObject.new
                         { id = domIds.windows
                         , rect = Screen.logical screen
                         }
@@ -195,6 +133,7 @@ init flags =
       , app = app
       , instructions = appInitInstructions
       , currentInstruction = Nothing
+      , zoomRects = []
       }
     , Cmd.none
     )
@@ -242,37 +181,26 @@ handleInstruction { timeStarted, instruction } model =
                     else
                         Rect.interpolate to from (0.69 ^ toFloat (x + 1))
 
-                zoomRects : List ( String, Rect )
+                zoomRects : List Rect
                 zoomRects =
                     if animationComplete then
-                        List.range 0 3
-                            |> List.map
-                                (\i ->
-                                    ( "zoomRect" ++ String.fromInt i
-                                    , Rect.new ( 0, 0 ) ( 0, 0 )
-                                    )
-                                )
+                        []
 
                     else
                         List.range 0 3
-                            |> List.map
+                            |> List.filterMap
                                 (\i ->
                                     let
-                                        clamped : Int
-                                        clamped =
-                                            (i + (animationPhase - 4))
-                                                |> Basics.clamp 0 11
+                                        interp : Int
+                                        interp =
+                                            i + (animationPhase - 4)
                                     in
-                                    ( "zoomRect" ++ String.fromInt i
-                                    , zoomRect clamped
-                                    )
-                                )
+                                    if interp >= 0 && interp <= 12 then
+                                        Just (zoomRect interp)
 
-                updatedUI : UI Msg
-                updatedUI =
-                    zoomRects
-                        |> List.map (\( key, rect ) -> ( key, UIObject.setRect rect ))
-                        |> UI.updateObjectList model.ui
+                                    else
+                                        Nothing
+                                )
 
                 updatedCurrentInstruction : Maybe { timeStarted : Time.Posix, instruction : Instruction Msg }
                 updatedCurrentInstruction =
@@ -284,7 +212,7 @@ handleInstruction { timeStarted, instruction } model =
             in
             ( { model
                 | currentInstruction = updatedCurrentInstruction
-                , ui = updatedUI
+                , zoomRects = zoomRects
               }
             , Cmd.none
             )
@@ -767,6 +695,7 @@ view model =
         [ UI.view { debugObject = "" } model.ui
         , viewDraggedObject model
         , MenuBar.view (Screen.width model.screen) model.menuBar
+        , viewZoomRects model
         , viewScreenCorners (Screen.logical model.screen)
         , viewDebugger model
         , Mouse.view model.mouse
@@ -781,6 +710,22 @@ viewDraggedObject model =
 
         Nothing ->
             UIHelpers.none
+
+
+viewZoomRects : Model -> Html Msg
+viewZoomRects model =
+    div
+        [ style "position" "absolute"
+        ]
+        (model.zoomRects
+            |> List.map
+                (\rect ->
+                    MacOS.UI.View.Rectangle.view
+                        MacOS.UI.View.Rectangle.StyleDotted
+                        rect
+                        []
+                )
+        )
 
 
 type Corner

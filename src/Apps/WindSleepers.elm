@@ -137,7 +137,8 @@ update msg model =
                     else if droppedObjectInfo.droppedOnWindow == Just "narration" then
                         ( model
                         , [ Instruction.AnimateZoom
-                                { from = droppedObjectInfo.dropRectAbsolute
+                                { from =
+                                    droppedObjectInfo.dropRectAbsolute
                                 , to = droppedObjectInfo.originRect
                                 , zoomingIn = False
                                 }
@@ -151,7 +152,9 @@ update msg model =
                     else if droppedObjectInfo.droppedOnWindow == Nothing then
                         ( model
                         , [ Instruction.AnimateZoom
-                                { from = droppedObjectInfo.dropRectAbsolute
+                                { from =
+                                    droppedObjectInfo.dropRectAbsolute
+                                        |> Debug.log "dropRectAbsolute"
                                 , to = droppedObjectInfo.originRect
                                 , zoomingIn = False
                                 }

@@ -33,7 +33,6 @@ domIds =
     { root = addDomIdPrefix "UI_ROOT"
     , debugger = addDomIdPrefix "DEBUG"
     , desktop = addDomIdPrefix "DESKTOP"
-    , desktopRectangles = addDomIdPrefix "DESKTOP_RECTANGLES"
     , windows = addDomIdPrefix "WINDOWS"
     , menuBar = addDomIdPrefix "MENU_BAR"
     , screenCorners = addDomIdPrefix "SCREEN_CORNERS"
