@@ -25,10 +25,10 @@ init =
     , [ Instruction.CreateWindow
             { withId = "scene"
             , window =
-                { title = "Temple Ruins"
+                { title = "Entrance"
                 , closeMsg = Nothing
                 }
-            , rect = Rect.new ( 128, 61 ) ( 256, 192 )
+            , rect = Rect.new ( 128, 61 ) ( 256, 191 )
             }
       , Instruction.CreateWindow
             { withId = "inventory"
@@ -62,30 +62,30 @@ init =
       , Instruction.CreateObject
             { object =
                 UIObject.image
-                    { id = "scene:ruins"
-                    , url = "WindSleepers/ruins.gif"
+                    { id = "scene:entrance"
+                    , url = "WindSleepers/entrance.gif"
                     , filter = Nothing
-                    , size = ( 256, 172 )
+                    , size = ( 256, 171 )
                     }
             }
       , Instruction.AttachObject
-            { objectId = "scene:ruins"
+            { objectId = "scene:entrance"
             , parentId = "scene"
-            , rect = Rect.new ( 0, 18 ) ( 256, 172 )
+            , rect = Rect.new ( 0, 18 ) ( 256, 171 )
             }
       , Instruction.CreateObject
             { object =
                 UIObject.image
-                    { id = "obj:skull"
-                    , url = "WindSleepers/skull.gif"
+                    { id = "obj:entrance-door"
+                    , url = "WindSleepers/entrance-door.gif"
                     , filter = Nothing
-                    , size = ( 15, 17 )
+                    , size = ( 63, 122 )
                     }
                     |> UIObject.setSelectOptions
                         { view =
                             View.image
-                                { url = "WindSleepers/skull.gif"
-                                , size = ( 15, 17 )
+                                { url = "WindSleepers/entrance-door.gif"
+                                , size = ( 63, 122 )
                                 , filter = Just Image.Invert
                                 }
                         , selected = False
@@ -93,17 +93,111 @@ init =
                     |> UIObject.setDragOptions
                         { traveling =
                             View.image
-                                { url = "WindSleepers/skull.gif"
-                                , size = ( 15, 17 )
+                                { url = "WindSleepers/entrance-door.gif"
+                                , size = ( 63, 122 )
+                                , filter = Nothing
+                                }
+                        }
+            }
+      , Instruction.AttachObject
+            { objectId = "obj:entrance-door"
+            , parentId = "scene"
+            , rect = Rect.new ( 96, 33 ) ( 63, 122 )
+            }
+      , Instruction.CreateObject
+            { object =
+                UIObject.image
+                    { id = "obj:entrance-key"
+                    , url = "WindSleepers/entrance-key.gif"
+                    , filter = Nothing
+                    , size = ( 15, 8 )
+                    }
+                    |> UIObject.setSelectOptions
+                        { view =
+                            View.image
+                                { url = "WindSleepers/entrance-key.gif"
+                                , size = ( 15, 8 )
+                                , filter = Just Image.Invert
+                                }
+                        , selected = False
+                        }
+                    |> UIObject.setDragOptions
+                        { traveling =
+                            View.image
+                                { url = "WindSleepers/entrance-key.gif"
+                                , size = ( 15, 8 )
+                                , filter = Nothing
+                                }
+                        }
+            }
+      , Instruction.AttachObject
+            { objectId = "obj:entrance-key"
+            , parentId = "scene"
+            , rect = Rect.new ( 120, 25 ) ( 15, 8 )
+            }
+      , Instruction.CreateObject
+            { object =
+                UIObject.image
+                    { id = "obj:skull"
+                    , url = "WindSleepers/door-skull.gif"
+                    , filter = Nothing
+                    , size = ( 25, 18 )
+                    }
+                    |> UIObject.setSelectOptions
+                        { view =
+                            View.image
+                                { url = "WindSleepers/door-skull.gif"
+                                , size = ( 25, 18 )
+                                , filter = Just Image.Invert
+                                }
+                        , selected = False
+                        }
+                    |> UIObject.setDragOptions
+                        { traveling =
+                            View.image
+                                { url = "WindSleepers/door-skull.gif"
+                                , size = ( 25, 18 )
                                 , filter = Nothing
                                 }
                         }
             }
       , Instruction.AttachObject
             { objectId = "obj:skull"
-            , parentId = "inventory"
-            , rect = Rect.new ( 6, 29 ) ( 15, 17 )
+            , parentId = "scene"
+            , rect = Rect.new ( 116, 19 ) ( 25, 18 )
             }
+      , Instruction.CreateObject
+            { object =
+                UIObject.image
+                    { id = "obj:torch"
+                    , url = "WindSleepers/torch.gif"
+                    , filter = Nothing
+                    , size = ( 35, 92 )
+                    }
+                    |> UIObject.setSelectOptions
+                        { view =
+                            View.image
+                                { url = "WindSleepers/torch.gif"
+                                , size = ( 35, 92 )
+                                , filter = Just Image.Invert
+                                }
+                        , selected = False
+                        }
+                    |> UIObject.setDragOptions
+                        { traveling =
+                            View.image
+                                { url = "WindSleepers/torch.gif"
+                                , size = ( 35, 92 )
+                                , filter = Nothing
+                                }
+                        }
+            }
+      , Instruction.AttachObject
+            { objectId = "obj:torch"
+            , parentId = "inventory"
+            , rect = Rect.new ( 8, 24 ) ( 35, 92 )
+            }
+      , print "Good evening. Welcome to Shadowgate."
       ]
     )
 
