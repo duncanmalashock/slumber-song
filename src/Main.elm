@@ -558,56 +558,62 @@ update msg model =
                             case model.dragging of
                                 Just dragging ->
                                     let
+                                        isWindow : Bool
+                                        isWindow =
+                                            UI.isWindow dragging.objectId model.ui
+
                                         droppedOnWindow : Maybe ObjectId
                                         droppedOnWindow =
                                             UI.hitTest
-                                                { candidates =
-                                                    UI.getWindowIds model.ui
-                                                        |> Just
+                                                { candidates = Just (UI.getWindowIds model.ui)
                                                 , coordinate = Mouse.position model.mouse
                                                 }
                                                 model.ui
                                                 |> (\windowIds ->
-                                                        UI.pickTopmostObject
-                                                            windowIds
-                                                            model.ui
+                                                        UI.pickTopmostObject windowIds model.ui
                                                    )
 
-                                        dropRect : Rect
-                                        dropRect =
-                                            dragging.drawRect
-                                    in
-                                    ToAppMsg.DroppedObject
-                                        { objectId = dragging.objectId
-                                        , isWindow = List.member dragging.objectId (UI.getWindowIds model.ui)
-                                        , droppedOnWindow = droppedOnWindow
-                                        , droppedOnObjects =
+                                        droppedOnObjects : List ObjectId
+                                        droppedOnObjects =
                                             UI.hitTest
                                                 { candidates = Nothing
                                                 , coordinate = Mouse.position model.mouse
                                                 }
                                                 model.ui
-                                        , dropRectAbsolute = dropRect
-                                        , dropRectInWindow =
+
+                                        dropRect : Rect
+                                        dropRect =
+                                            dragging.drawRect
+
+                                        dropRectInWindow : Rect
+                                        dropRectInWindow =
                                             case droppedOnWindow of
                                                 Just windowId ->
                                                     UI.getAbsoluteRect model.ui windowId
                                                         |> Maybe.map Rect.position
                                                         |> Maybe.map
                                                             (\windowCoordinates ->
-                                                                Rect.minus
-                                                                    windowCoordinates
-                                                                    dropRect
+                                                                Rect.minus windowCoordinates dropRect
                                                             )
                                                         |> Maybe.withDefault dropRect
 
                                                 Nothing ->
                                                     dropRect
-                                        , originRect = dragging.originRect
-                                        }
-                                        |> (\msgForApp ->
-                                                WindSleepers.update (WindSleepers.ReceivedMsgFromOS msgForApp) model.app
-                                           )
+                                    in
+                                    WindSleepers.update
+                                        (WindSleepers.ReceivedMsgFromOS
+                                            (ToAppMsg.DroppedObject
+                                                { objectId = dragging.objectId
+                                                , isWindow = isWindow
+                                                , droppedOnWindow = droppedOnWindow
+                                                , droppedOnObjects = droppedOnObjects
+                                                , dropRectAbsolute = dropRect
+                                                , dropRectInWindow = dropRectInWindow
+                                                , originRect = dragging.originRect
+                                                }
+                                            )
+                                        )
+                                        model.app
 
                                 Nothing ->
                                     ( model.app, [] )
@@ -673,10 +679,6 @@ update msg model =
                                                 , dragDelta = Coordinate.new ( 0, 0 )
                                                 , originRect = draggedObjectAbsoluteRect
                                                 }
-                                        , ui =
-                                            UI.bringObjectToFront
-                                                draggedObjectId
-                                                model.ui
                                     }
 
                                 _ ->

@@ -6,7 +6,7 @@ module MacOS.UI exposing
     , reparentObject
     , removeObject
     , bringObjectToFront
-    , getObject, getAbsoluteRect, getWindowIds
+    , getObject, getAbsoluteRect, isWindow, getWindowIds
     , hitTest, pickTopmostObject
     , mouseEventToHandlerMsg
     , view
@@ -36,7 +36,7 @@ module MacOS.UI exposing
 
 # Query
 
-@docs getObject, getAbsoluteRect, getWindowIds
+@docs getObject, getAbsoluteRect, isWindow, getWindowIds
 
 
 # Picking Objects
@@ -143,6 +143,11 @@ removeObject objId (UI internals) =
 getAbsoluteRect : UI msg -> ObjectId -> Maybe Rect
 getAbsoluteRect ((UI internals) as ui) objectId =
     Dict.get objectId internals.absoluteRects
+
+
+isWindow : ObjectId -> UI msg -> Bool
+isWindow objectId ((UI internals) as ui) =
+    List.member objectId (getWindowIds ui)
 
 
 getWindowIds : UI msg -> List ObjectId

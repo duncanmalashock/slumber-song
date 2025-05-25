@@ -133,7 +133,7 @@ init =
       , Instruction.AttachObject
             { objectId = "obj:entrance-key"
             , parentId = "scene"
-            , rect = Rect.new ( 120, 25 ) ( 15, 8 )
+            , rect = Rect.new ( 120, 25 ) ( 16, 8 )
             }
       , Instruction.CreateObject
             { object =
