@@ -5,6 +5,11 @@ import MacOS.Rect as Rect exposing (Rect)
 
 type ToAppMsg
     = DroppedObject DroppedObjectInfo
+    | DoubleClickedObject DoubleClickedObjectInfo
+
+
+type alias ObjectId =
+    String
 
 
 type alias DroppedObjectInfo =
@@ -18,5 +23,6 @@ type alias DroppedObjectInfo =
     }
 
 
-type alias ObjectId =
-    String
+type alias DoubleClickedObjectInfo =
+    { objectId : ObjectId
+    }

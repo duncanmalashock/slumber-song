@@ -265,6 +265,33 @@ update msg model =
                         , []
                         )
 
+                DoubleClickedObject doubleClickedObjectInfo ->
+                    let
+                        descriptionText : Maybe String
+                        descriptionText =
+                            case doubleClickedObjectInfo.objectId of
+                                "obj:torch" ->
+                                    Just "It's a common, wooden torch."
+
+                                "obj:skull" ->
+                                    Just "It's the skull of some creature. Whatever it is, its meaning is quite clear: Death lurks inside."
+
+                                "obj:entrance-door" ->
+                                    Just "It's a heavy wooden door."
+
+                                "obj:entrance-key" ->
+                                    Just "It's a small, brass key."
+
+                                _ ->
+                                    Nothing
+                    in
+                    ( model
+                    , List.filterMap identity
+                        [ Just (unselectObject doubleClickedObjectInfo.objectId)
+                        , Maybe.map print descriptionText
+                        ]
+                    )
+
 
 moveDroppedObjectToWindow : ToAppMsg.DroppedObjectInfo -> Instruction msg
 moveDroppedObjectToWindow droppedObjectInfo =

@@ -56,6 +56,8 @@ type alias Model =
     { currentTime : Time.Posix
     , screen : Screen
     , menuBar : MenuBar
+
+    -- Mouse and data for MouseEvents
     , mouse : Mouse
     , lastMouseDown : Maybe { objectId : String, time : Time.Posix, coordinate : Coordinate }
     , lastMouseDownObject : Maybe (Object Msg)
@@ -63,14 +65,18 @@ type alias Model =
     , lastClick : Maybe { objectId : String, time : Time.Posix }
     , lastDoubleClick : Maybe { objectId : String, time : Time.Posix }
     , maxTimeBetweenDoubleClicks : Int
+
+    -- UI concerns
     , ui : UI Msg
     , pickedObjectId : Maybe String
     , debug : Maybe String
     , dragging : Maybe Dragging
+    , zoomRects : List Rect
+
+    -- Program and OS operations
     , app : Shadowgate.Model
     , instructions : List (Instruction Msg)
     , currentInstruction : Maybe { timeStarted : Time.Posix, instruction : Instruction Msg }
-    , zoomRects : List Rect
     }
 
 
@@ -674,8 +680,21 @@ update msg model =
                     )
 
                 MouseEvent.DoubleClick objectId ->
+                    let
+                        ( updatedApp, fromAppInstructions ) =
+                            Shadowgate.update
+                                (Shadowgate.ReceivedMsgFromOS
+                                    (ToAppMsg.DoubleClickedObject
+                                        { objectId = objectId
+                                        }
+                                    )
+                                )
+                                model.app
+                    in
                     ( { model
                         | lastDoubleClick = Just { objectId = objectId, time = model.currentTime }
+                        , app = updatedApp
+                        , instructions = model.instructions ++ fromAppInstructions
                       }
                     , maybeMouseEventCmd
                     )
