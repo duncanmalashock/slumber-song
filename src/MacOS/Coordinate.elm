@@ -2,6 +2,7 @@ module MacOS.Coordinate exposing
     ( Coordinate, new
     , x, y
     , plus, minus
+    , cityBlockDistance
     )
 
 {-| A point in screen space.
@@ -20,6 +21,7 @@ module MacOS.Coordinate exposing
 # Coordinate math
 
 @docs plus, minus
+@docs cityBlockDistance
 
 -}
 
@@ -51,3 +53,8 @@ plus (Coordinate p1) (Coordinate p2) =
 minus : Coordinate -> Coordinate -> Coordinate
 minus (Coordinate p1) (Coordinate p2) =
     Coordinate { x = p2.x - p1.x, y = p2.y - p1.y }
+
+
+cityBlockDistance : Coordinate -> Coordinate -> Int
+cityBlockDistance (Coordinate p1) (Coordinate p2) =
+    Basics.abs (p1.x - p2.x) + Basics.abs (p1.y - p2.y)

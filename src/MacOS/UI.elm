@@ -61,6 +61,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.Mouse as Mouse
+import MacOS.MouseEvent as MouseEvent exposing (MouseEvent)
 import MacOS.Rect as Rect exposing (Rect)
 import MacOS.Screen as Screen exposing (Screen)
 import MacOS.UI.Helpers as UIHelpers exposing (domIds)
@@ -392,10 +393,10 @@ reparentObject { objectId, newParentId, newRect } (UI internals) =
     updateAbsoluteRectsForDescendants objectId updatedUI
 
 
-mouseEventToHandlerMsg : Mouse.Event -> UI msg -> Maybe msg
+mouseEventToHandlerMsg : MouseEvent -> UI msg -> Maybe msg
 mouseEventToHandlerMsg mouseEvent ((UI internals) as ui) =
     case mouseEvent of
-        Mouse.MouseDown objId ->
+        MouseEvent.MouseDown objId ->
             case getObject ui objId of
                 Just obj ->
                     UIObject.getMouseEventHandler mouseEvent obj
@@ -403,10 +404,10 @@ mouseEventToHandlerMsg mouseEvent ((UI internals) as ui) =
                 Nothing ->
                     Nothing
 
-        Mouse.MouseUp ->
+        MouseEvent.MouseUp _ ->
             Nothing
 
-        Mouse.Click objId ->
+        MouseEvent.Click objId ->
             case getObject ui objId of
                 Just obj ->
                     UIObject.getMouseEventHandler mouseEvent obj
@@ -414,7 +415,7 @@ mouseEventToHandlerMsg mouseEvent ((UI internals) as ui) =
                 Nothing ->
                     Nothing
 
-        Mouse.DoubleClick objId ->
+        MouseEvent.DoubleClick objId ->
             case getObject ui objId of
                 Just obj ->
                     UIObject.getMouseEventHandler mouseEvent obj
@@ -422,7 +423,7 @@ mouseEventToHandlerMsg mouseEvent ((UI internals) as ui) =
                 Nothing ->
                     Nothing
 
-        Mouse.DragStart objId ->
+        MouseEvent.DragStart objId ->
             case getObject ui objId of
                 Just obj ->
                     UIObject.getMouseEventHandler mouseEvent obj

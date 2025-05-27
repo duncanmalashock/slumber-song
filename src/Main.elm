@@ -12,6 +12,7 @@ import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.Instruction as Instruction exposing (Instruction)
 import MacOS.MenuBar as MenuBar exposing (MenuBar)
 import MacOS.Mouse as Mouse exposing (Mouse)
+import MacOS.MouseEvent as MouseEvent exposing (MouseEvent)
 import MacOS.Rect as Rect exposing (Rect)
 import MacOS.Screen as Screen exposing (Screen)
 import MacOS.ToAppMsg as ToAppMsg exposing (ToAppMsg)
@@ -42,7 +43,11 @@ viewDebugger model =
             , style "font-family" "Geneva"
             , style "padding" "0 6px"
             ]
-            [-- div [] [ text (Maybe.withDefault "Nothing" model.debug) ]
+            [--     div [] [ text ("buttonJustPressed: " ++ Debug.toString (Mouse.buttonJustPressed model.mouse)) ]
+             -- , div [] [ text ("lastMouseDown: " ++ Debug.toString model.lastMouseDown) ]
+             -- , div [] [ text ("lastMouseUp: " ++ Debug.toString model.lastMouseUp) ]
+             -- , div [] [ text ("lastClick: " ++ Debug.toString model.lastClick) ]
+             -- , div [] [ text ("lastDoubleClick: " ++ Debug.toString model.lastDoubleClick) ]
             ]
         ]
 
@@ -52,6 +57,12 @@ type alias Model =
     , screen : Screen
     , menuBar : MenuBar
     , mouse : Mouse
+    , lastMouseDown : Maybe { objectId : String, time : Time.Posix, coordinate : Coordinate }
+    , lastMouseDownObject : Maybe (Object Msg)
+    , lastMouseUp : Maybe { objectId : String, time : Time.Posix }
+    , lastClick : Maybe { objectId : String, time : Time.Posix }
+    , lastDoubleClick : Maybe { objectId : String, time : Time.Posix }
+    , maxTimeBetweenDoubleClicks : Int
     , ui : UI Msg
     , pickedObjectId : Maybe String
     , debug : Maybe String
@@ -103,6 +114,12 @@ init flags =
       , screen = screen
       , menuBar = MenuBar.new []
       , mouse = Mouse.new
+      , lastMouseDown = Nothing
+      , lastMouseDownObject = Nothing
+      , lastMouseUp = Nothing
+      , lastClick = Nothing
+      , lastDoubleClick = Nothing
+      , maxTimeBetweenDoubleClicks = 500
       , ui =
             UI.new screen
                 |> UI.createObject
@@ -143,7 +160,7 @@ type Msg
     = Tick Time.Posix
     | BrowserResized Int Int
     | MouseUpdated { clientPos : ( Int, Int ), buttonPressed : Bool }
-    | MouseEvent Mouse.Event
+    | MouseEvent MouseEvent
     | ClickedCloseBoxForWindow String
 
 
@@ -245,6 +262,7 @@ handleInstruction { timeStarted, instruction } model =
                                     (View.window window)
                                 |> UIObject.setDragOptions
                                     { traveling = View.rect MacOS.UI.View.Rectangle.StyleDotted
+                                    , preDragInPixels = 0
                                     }
                             )
                         |> UI.attachObject
@@ -452,28 +470,42 @@ update msg model =
                     (newMousePos /= Mouse.position model.mouse)
                         || (newMouseButtonState /= Mouse.buttonPressed model.mouse)
 
-                ( updatedMouse, newMouseEvents ) =
+                updatedMouse : Mouse
+                updatedMouse =
                     if mouseStateChanged then
                         Mouse.update
                             (Mouse.toMsg domUpdate)
                             model.mouse
 
                     else
-                        ( model.mouse, [] )
+                        model.mouse
 
-                filteredMouseEvents : List Mouse.Event
-                filteredMouseEvents =
-                    case maybePickedObjectId of
-                        Just pickedObjectId ->
-                            Mouse.filterEventsByObjectId pickedObjectId newMouseEvents
+                newMouseEvents : List MouseEvent
+                newMouseEvents =
+                    let
+                        maybePickedObject : Maybe (Object Msg)
+                        maybePickedObject =
+                            Maybe.andThen (UI.getObject model.ui) maybePickedObjectId
+                    in
+                    if mouseStateChanged then
+                        detectMouseEvents
+                            model.dragging
+                            updatedMouse
+                            maybePickedObject
+                            model.lastMouseUp
+                            model.lastMouseDown
+                            model.lastMouseDownObject
+                            model.lastClick
+                            model.currentTime
+                            model.maxTimeBetweenDoubleClicks
 
-                        Nothing ->
-                            newMouseEvents
+                    else
+                        []
 
                 mouseEventCmds : Cmd Msg
                 mouseEventCmds =
                     if not (Mouse.locked model.mouse) then
-                        filteredMouseEvents
+                        newMouseEvents
                             |> List.map MouseEvent
                             |> List.map sendMsg
                             |> Cmd.batch
@@ -537,7 +569,7 @@ update msg model =
                         |> Maybe.withDefault Cmd.none
             in
             case event of
-                Mouse.MouseDown objectId ->
+                MouseEvent.MouseDown objectId ->
                     let
                         updatedModel : Model
                         updatedModel =
@@ -546,13 +578,20 @@ update msg model =
                                     UI.updateObject objectId
                                         (UIObject.setSelected True)
                                         model.ui
+                                , lastMouseDown =
+                                    Just
+                                        { objectId = objectId
+                                        , time = model.currentTime
+                                        , coordinate = Mouse.position model.mouse
+                                        }
+                                , lastMouseDownObject = UI.getObject model.ui objectId
                             }
                     in
                     ( updatedModel
                     , maybeMouseEventCmd
                     )
 
-                Mouse.MouseUp ->
+                MouseEvent.MouseUp objectId ->
                     let
                         ( updatedApp, fromAppInstructions ) =
                             case model.dragging of
@@ -620,23 +659,28 @@ update msg model =
                     in
                     ( { model
                         | dragging = Nothing
+                        , lastMouseUp = Just { objectId = objectId, time = model.currentTime }
                         , app = updatedApp
                         , instructions = model.instructions ++ fromAppInstructions
                       }
                     , maybeMouseEventCmd
                     )
 
-                Mouse.Click objectId ->
-                    ( model
+                MouseEvent.Click objectId ->
+                    ( { model
+                        | lastClick = Just { objectId = objectId, time = model.currentTime }
+                      }
                     , maybeMouseEventCmd
                     )
 
-                Mouse.DoubleClick objectId ->
-                    ( model
+                MouseEvent.DoubleClick objectId ->
+                    ( { model
+                        | lastDoubleClick = Just { objectId = objectId, time = model.currentTime }
+                      }
                     , maybeMouseEventCmd
                     )
 
-                Mouse.DragStart objectId ->
+                MouseEvent.DragStart objectId ->
                     let
                         maybeDraggedObject : Maybe (Object Msg)
                         maybeDraggedObject =
@@ -664,8 +708,18 @@ update msg model =
 
                                         mouseOffset : Coordinate
                                         mouseOffset =
+                                            let
+                                                clickPoint : Coordinate
+                                                clickPoint =
+                                                    case model.lastMouseDown of
+                                                        Just mouseDown ->
+                                                            mouseDown.coordinate
+
+                                                        Nothing ->
+                                                            Mouse.position model.mouse
+                                            in
                                             Coordinate.minus
-                                                (Mouse.position model.mouse)
+                                                clickPoint
                                                 (Rect.position draggedObjectAbsoluteRect)
                                     in
                                     { model
@@ -687,6 +741,184 @@ update msg model =
                     ( updatedModel
                     , maybeMouseEventCmd
                     )
+
+
+detectMouseEvents :
+    Maybe Dragging
+    -> Mouse
+    -> Maybe (Object Msg)
+    -> Maybe { objectId : ObjectId, time : Time.Posix }
+    -> Maybe { objectId : ObjectId, time : Time.Posix, coordinate : Coordinate }
+    -> Maybe (Object Msg)
+    -> Maybe { objectId : ObjectId, time : Time.Posix }
+    -> Time.Posix
+    -> Int
+    -> List MouseEvent
+detectMouseEvents dragging mouse maybePickedObject lastMouseUp lastMouseDown maybeLastMouseDownObject lastMouseClick currentTime maxTimeBetweenDoubleClicks =
+    List.filterMap identity
+        [ detectMouseDownEvent mouse maybePickedObject
+        , detectMouseUpEvent mouse maybePickedObject
+        , detectClickEvent mouse maybePickedObject lastMouseDown
+        , detectDoubleClickEvent mouse maybePickedObject lastMouseDown lastMouseClick currentTime maxTimeBetweenDoubleClicks
+        , detectDragStartEvent dragging mouse maybePickedObject lastMouseUp lastMouseDown
+        ]
+
+
+detectMouseDownEvent : Mouse -> Maybe (Object Msg) -> Maybe MouseEvent
+detectMouseDownEvent mouse maybePickedObject =
+    case maybePickedObject of
+        Just pickedObject ->
+            if Mouse.buttonJustPressed mouse then
+                Just (MouseEvent.MouseDown (UIObject.id pickedObject))
+
+            else
+                Nothing
+
+        Nothing ->
+            Nothing
+
+
+detectMouseUpEvent : Mouse -> Maybe (Object Msg) -> Maybe MouseEvent
+detectMouseUpEvent mouse maybePickedObject =
+    case maybePickedObject of
+        Just pickedObject ->
+            if Mouse.buttonJustReleased mouse then
+                Just (MouseEvent.MouseUp (UIObject.id pickedObject))
+
+            else
+                Nothing
+
+        Nothing ->
+            Nothing
+
+
+detectClickEvent :
+    Mouse
+    -> Maybe (Object Msg)
+    -> Maybe { objectId : ObjectId, time : Time.Posix, coordinate : Coordinate }
+    -> Maybe MouseEvent
+detectClickEvent mouse maybePickedObject lastMouseDown =
+    case maybePickedObject of
+        Just pickedObject ->
+            if Mouse.buttonJustReleased mouse then
+                case lastMouseDown of
+                    Just mouseDown ->
+                        if mouseDown.objectId == UIObject.id pickedObject then
+                            Just (MouseEvent.Click (UIObject.id pickedObject))
+
+                        else
+                            Nothing
+
+                    Nothing ->
+                        Nothing
+
+            else
+                Nothing
+
+        Nothing ->
+            Nothing
+
+
+detectDoubleClickEvent :
+    Mouse
+    -> Maybe (Object Msg)
+    -> Maybe { objectId : ObjectId, time : Time.Posix, coordinate : Coordinate }
+    -> Maybe { objectId : ObjectId, time : Time.Posix }
+    -> Time.Posix
+    -> Int
+    -> Maybe MouseEvent
+detectDoubleClickEvent mouse maybePickedObject lastMouseDown lastClick currentTime maxTimeBetweenDoubleClicks =
+    case maybePickedObject of
+        Just pickedObject ->
+            if Mouse.buttonJustReleased mouse then
+                case lastMouseDown of
+                    Just mouseDown ->
+                        if mouseDown.objectId == UIObject.id pickedObject then
+                            case lastClick of
+                                Just click ->
+                                    let
+                                        timeIsUnderMaxTime : Bool
+                                        timeIsUnderMaxTime =
+                                            (Time.posixToMillis currentTime - Time.posixToMillis click.time) <= maxTimeBetweenDoubleClicks
+                                    in
+                                    if click.objectId == mouseDown.objectId && timeIsUnderMaxTime then
+                                        Just (MouseEvent.DoubleClick (UIObject.id pickedObject))
+
+                                    else
+                                        Nothing
+
+                                Nothing ->
+                                    Nothing
+
+                        else
+                            Nothing
+
+                    Nothing ->
+                        Nothing
+
+            else
+                Nothing
+
+        Nothing ->
+            Nothing
+
+
+detectDragStartEvent :
+    Maybe Dragging
+    -> Mouse
+    -> Maybe (Object Msg)
+    -> Maybe { objectId : ObjectId, time : Time.Posix }
+    -> Maybe { objectId : ObjectId, time : Time.Posix, coordinate : Coordinate }
+    -> Maybe MouseEvent
+detectDragStartEvent dragging mouse maybeLastMouseDownObject lastMouseUp lastMouseDown =
+    let
+        buttonIsPressed : Bool
+        buttonIsPressed =
+            Mouse.buttonPressed mouse
+
+        buttonWasHeldContinuously : Bool
+        buttonWasHeldContinuously =
+            case ( lastMouseDown, lastMouseUp ) of
+                ( Just mouseDown, Just mouseUp ) ->
+                    Time.posixToMillis mouseUp.time < Time.posixToMillis mouseDown.time
+
+                ( Just mouseDown, Nothing ) ->
+                    True
+
+                ( Nothing, _ ) ->
+                    False
+
+        mouseHasMovedPastDragMinimum : Bool
+        mouseHasMovedPastDragMinimum =
+            case ( lastMouseDown, maybeLastMouseDownObject ) of
+                ( Just mouseDown, Just mouseDownObject ) ->
+                    let
+                        preDragInPixels : Int
+                        preDragInPixels =
+                            UIObject.getDragOptions mouseDownObject
+                                |> Maybe.map .preDragInPixels
+                                |> Maybe.withDefault 0
+                    in
+                    Coordinate.cityBlockDistance (Mouse.position mouse) mouseDown.coordinate >= preDragInPixels
+
+                _ ->
+                    False
+    in
+    case dragging of
+        Just _ ->
+            Nothing
+
+        Nothing ->
+            if buttonIsPressed && buttonWasHeldContinuously && mouseHasMovedPastDragMinimum then
+                case maybeLastMouseDownObject of
+                    Just mouseDownObject ->
+                        Just (MouseEvent.DragStart (UIObject.id mouseDownObject))
+
+                    Nothing ->
+                        Nothing
+
+            else
+                Nothing
 
 
 sendMsg : Msg -> Cmd Msg

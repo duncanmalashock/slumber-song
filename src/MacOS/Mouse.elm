@@ -1,12 +1,12 @@
 module MacOS.Mouse exposing
     ( Mouse, new
     , position, x, y, buttonPressed, locked
+    , buttonJustPressed, buttonJustReleased
     , update, Msg
     , DomUpdate, toMsg
     , lock, unlock
     , setCursorPointer, setCursorWatch
-    , Event(..), listeners
-    , filterEventsByObjectId
+    , listeners
     , view
     )
 
@@ -21,6 +21,7 @@ module MacOS.Mouse exposing
 # Query
 
 @docs position, x, y, buttonPressed, locked
+@docs buttonJustPressed, buttonJustReleased
 
 
 # Update
@@ -31,10 +32,9 @@ module MacOS.Mouse exposing
 @docs setCursorPointer, setCursorWatch
 
 
-# Mouse Events
+# Mouse interactions
 
-@docs Event, listeners
-@docs filterEventsByObjectId
+@docs listeners
 
 
 # View
@@ -65,8 +65,6 @@ type alias Internals =
     , cursor : Maybe Cursor
     , locked : Bool
     , msgHistory : List Msg
-    , eventHistory : List Event
-    , doubleClickTimingThreshold : Int
     }
 
 
@@ -93,6 +91,26 @@ x (Mouse internals) =
 y : Mouse -> Int
 y (Mouse internals) =
     Coordinate.y internals.position
+
+
+buttonJustPressed : Mouse -> Bool
+buttonJustPressed (Mouse internals) =
+    case internals.msgHistory of
+        (NewMouseData last) :: (NewMouseData nextToLast) :: _ ->
+            last.buttonPressed && not nextToLast.buttonPressed
+
+        _ ->
+            False
+
+
+buttonJustReleased : Mouse -> Bool
+buttonJustReleased (Mouse internals) =
+    case internals.msgHistory of
+        (NewMouseData last) :: (NewMouseData nextToLast) :: _ ->
+            not last.buttonPressed && nextToLast.buttonPressed
+
+        _ ->
+            False
 
 
 debug : Mouse -> String
@@ -123,8 +141,6 @@ new =
         , cursor = Just CursorPointer
         , locked = False
         , msgHistory = []
-        , doubleClickTimingThreshold = 500
-        , eventHistory = []
         }
 
 
@@ -150,12 +166,7 @@ maxMsgListLength =
     16
 
 
-maxEventListLength : Int
-maxEventListLength =
-    4
-
-
-update : Msg -> Mouse -> ( Mouse, List Event )
+update : Msg -> Mouse -> Mouse
 update ((NewMouseData msgArgs) as msg) (Mouse internals) =
     let
         updatedMsgHistory : List Msg
@@ -169,27 +180,13 @@ update ((NewMouseData msgArgs) as msg) (Mouse internals) =
         buttonChanged : Bool
         buttonChanged =
             msgArgs.buttonPressed /= internals.buttonPressed
-
-        detectedEvents : List Event
-        detectedEvents =
-            detectEvents
-                ( buttonChanged, newButtonPressed )
-                updatedMsgHistory
-                internals.eventHistory
-                msgArgs.overObjIds
     in
-    ( Mouse
+    Mouse
         { internals
             | msgHistory = updatedMsgHistory
             , position = newPosition
             , buttonPressed = newButtonPressed
-            , eventHistory =
-                detectedEvents
-                    ++ internals.eventHistory
-                    |> List.take maxEventListLength
         }
-    , detectedEvents
-    )
 
 
 lock : Mouse -> Mouse
@@ -222,50 +219,6 @@ setCursorWatch (Mouse internals) =
         { internals
             | cursor = Just CursorWatch
         }
-
-
-type Event
-    = MouseDown String
-    | MouseUp
-    | Click String
-    | DoubleClick String
-    | DragStart String
-
-
-filterEventsByObjectId : String -> List Event -> List Event
-filterEventsByObjectId objectId events =
-    events
-        |> List.filter
-            (\e ->
-                case e of
-                    MouseDown idToTest ->
-                        idToTest == objectId
-
-                    MouseUp ->
-                        True
-
-                    Click idToTest ->
-                        idToTest == objectId
-
-                    DoubleClick idToTest ->
-                        idToTest == objectId
-
-                    DragStart idToTest ->
-                        idToTest == objectId
-            )
-
-
-detectEvents : ( Bool, Bool ) -> List msg -> List Event -> List String -> List Event
-detectEvents ( buttonChanged, buttonIsDown ) recentMsgs recentEvents overObjIds =
-    if buttonChanged && buttonIsDown then
-        List.map MouseDown overObjIds
-            ++ List.map DragStart overObjIds
-
-    else if buttonChanged && not buttonIsDown then
-        [ MouseUp ]
-
-    else
-        []
 
 
 listeners : ({ clientPos : ( Int, Int ), buttonPressed : Bool } -> msg) -> List (Attribute msg)

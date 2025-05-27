@@ -21,6 +21,11 @@ type alias ObjectId =
 
 init : ( Model, List (Instruction msg) )
 init =
+    let
+        objectPreDrag : Int
+        objectPreDrag =
+            6
+    in
     ( {}
     , [ Instruction.CreateWindow
             { withId = "scene"
@@ -97,6 +102,7 @@ init =
                                 , size = ( 63, 122 )
                                 , filter = Nothing
                                 }
+                        , preDragInPixels = objectPreDrag
                         }
             }
       , Instruction.AttachObject
@@ -128,6 +134,7 @@ init =
                                 , size = ( 15, 8 )
                                 , filter = Nothing
                                 }
+                        , preDragInPixels = objectPreDrag
                         }
             }
       , Instruction.AttachObject
@@ -159,6 +166,7 @@ init =
                                 , size = ( 25, 18 )
                                 , filter = Nothing
                                 }
+                        , preDragInPixels = objectPreDrag
                         }
             }
       , Instruction.AttachObject
@@ -190,6 +198,7 @@ init =
                                 , size = ( 35, 92 )
                                 , filter = Nothing
                                 }
+                        , preDragInPixels = objectPreDrag
                         }
             }
       , Instruction.AttachObject

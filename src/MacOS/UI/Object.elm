@@ -52,6 +52,7 @@ import Html.Attributes exposing (..)
 import Html.Events as Events exposing (..)
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.Mouse as Mouse
+import MacOS.MouseEvent as MouseEvent exposing (MouseEvent)
 import MacOS.Rect as Rect exposing (Rect)
 import MacOS.UI.Helpers as UIHelpers
 import MacOS.UI.View as View exposing (View)
@@ -78,7 +79,9 @@ type alias Internals msg =
 
 
 type alias DragOptions msg =
-    { traveling : View msg }
+    { preDragInPixels : Int
+    , traveling : View msg
+    }
 
 
 type alias SelectOptions msg =
@@ -172,22 +175,22 @@ onDragStart msg (Object internals) =
         }
 
 
-getMouseEventHandler : Mouse.Event -> Object msg -> Maybe msg
+getMouseEventHandler : MouseEvent -> Object msg -> Maybe msg
 getMouseEventHandler mouseEvent (Object internals) =
     case mouseEvent of
-        Mouse.MouseDown _ ->
+        MouseEvent.MouseDown _ ->
             internals.onMouseDown
 
-        Mouse.MouseUp ->
+        MouseEvent.MouseUp _ ->
             Nothing
 
-        Mouse.Click _ ->
+        MouseEvent.Click _ ->
             internals.onClick
 
-        Mouse.DoubleClick _ ->
+        MouseEvent.DoubleClick _ ->
             internals.onDoubleClick
 
-        Mouse.DragStart _ ->
+        MouseEvent.DragStart _ ->
             internals.onDragStart
 
 
@@ -214,6 +217,7 @@ setDragOptions params (Object internals) =
             | dragOptions =
                 Just
                     { traveling = params.traveling
+                    , preDragInPixels = params.preDragInPixels
                     }
         }
 
