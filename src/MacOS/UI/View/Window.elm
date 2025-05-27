@@ -85,6 +85,7 @@ viewWindowTitle config isActive =
             , style "display" "inline-block"
             , style "transform" "translateY(0.5px)"
             , style "pointer-events" "none"
+            , style "font-family" "Chicago"
             ]
             [ text config.title ]
         ]

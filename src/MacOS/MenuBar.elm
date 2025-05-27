@@ -74,6 +74,7 @@ view width (MenuBar { menus }) =
         , style "top" "0"
         , style "left" "0"
         , style "background" "black"
+        , style "font-family" "Chicago"
         ]
         [ div
             [ style "width" (px width)
