@@ -754,13 +754,13 @@ detectMouseEvents :
     -> Time.Posix
     -> Int
     -> List MouseEvent
-detectMouseEvents dragging mouse maybePickedObject lastMouseUp lastMouseDown maybeLastMouseDownObject lastMouseClick currentTime maxTimeBetweenDoubleClicks =
+detectMouseEvents dragging mouse maybePickedObject lastMouseUp lastMouseDown lastMouseDownObject lastMouseClick currentTime maxTimeBetweenDoubleClicks =
     List.filterMap identity
         [ detectMouseDownEvent mouse maybePickedObject
         , detectMouseUpEvent mouse maybePickedObject
         , detectClickEvent mouse maybePickedObject lastMouseDown
         , detectDoubleClickEvent mouse maybePickedObject lastMouseDown lastMouseClick currentTime maxTimeBetweenDoubleClicks
-        , detectDragStartEvent dragging mouse maybePickedObject lastMouseUp lastMouseDown
+        , detectDragStartEvent dragging mouse lastMouseDownObject lastMouseUp lastMouseDown
         ]
 
 
@@ -870,7 +870,7 @@ detectDragStartEvent :
     -> Maybe { objectId : ObjectId, time : Time.Posix }
     -> Maybe { objectId : ObjectId, time : Time.Posix, coordinate : Coordinate }
     -> Maybe MouseEvent
-detectDragStartEvent dragging mouse maybeLastMouseDownObject lastMouseUp lastMouseDown =
+detectDragStartEvent dragging mouse lastMouseDownObject lastMouseUp lastMouseDown =
     let
         buttonIsPressed : Bool
         buttonIsPressed =
@@ -890,7 +890,7 @@ detectDragStartEvent dragging mouse maybeLastMouseDownObject lastMouseUp lastMou
 
         mouseHasMovedPastDragMinimum : Bool
         mouseHasMovedPastDragMinimum =
-            case ( lastMouseDown, maybeLastMouseDownObject ) of
+            case ( lastMouseDown, lastMouseDownObject ) of
                 ( Just mouseDown, Just mouseDownObject ) ->
                     let
                         preDragInPixels : Int
@@ -910,7 +910,7 @@ detectDragStartEvent dragging mouse maybeLastMouseDownObject lastMouseUp lastMou
 
         Nothing ->
             if buttonIsPressed && buttonWasHeldContinuously && mouseHasMovedPastDragMinimum then
-                case maybeLastMouseDownObject of
+                case lastMouseDownObject of
                     Just mouseDownObject ->
                         Just (MouseEvent.DragStart (UIObject.id mouseDownObject))
 
