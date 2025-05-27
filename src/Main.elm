@@ -564,16 +564,6 @@ update msg model =
             )
 
         MouseEvent event ->
-            let
-                maybeMsgFromEventHandler : Maybe Msg
-                maybeMsgFromEventHandler =
-                    UI.mouseEventToHandlerMsg event model.ui
-
-                maybeMouseEventCmd : Cmd Msg
-                maybeMouseEventCmd =
-                    Maybe.map sendMsg maybeMsgFromEventHandler
-                        |> Maybe.withDefault Cmd.none
-            in
             case event of
                 MouseEvent.MouseDown objectId ->
                     let
@@ -594,7 +584,7 @@ update msg model =
                             }
                     in
                     ( updatedModel
-                    , maybeMouseEventCmd
+                    , Cmd.none
                     )
 
                 MouseEvent.MouseUp objectId ->
@@ -669,14 +659,14 @@ update msg model =
                         , app = updatedApp
                         , instructions = model.instructions ++ fromAppInstructions
                       }
-                    , maybeMouseEventCmd
+                    , Cmd.none
                     )
 
                 MouseEvent.Click objectId ->
                     ( { model
                         | lastClick = Just { objectId = objectId, time = model.currentTime }
                       }
-                    , maybeMouseEventCmd
+                    , Cmd.none
                     )
 
                 MouseEvent.DoubleClick objectId ->
@@ -696,7 +686,7 @@ update msg model =
                         , app = updatedApp
                         , instructions = model.instructions ++ fromAppInstructions
                       }
-                    , maybeMouseEventCmd
+                    , Cmd.none
                     )
 
                 MouseEvent.DragStart objectId ->
@@ -758,7 +748,7 @@ update msg model =
                                     model
                     in
                     ( updatedModel
-                    , maybeMouseEventCmd
+                    , Cmd.none
                     )
 
 

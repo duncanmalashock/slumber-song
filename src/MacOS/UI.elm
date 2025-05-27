@@ -8,7 +8,6 @@ module MacOS.UI exposing
     , bringObjectToFront
     , getObject, getAbsoluteRect, isWindow, getWindowIds
     , hitTest, pickTopmostObject
-    , mouseEventToHandlerMsg
     , view
     )
 
@@ -42,11 +41,6 @@ module MacOS.UI exposing
 # Picking Objects
 
 @docs hitTest, pickTopmostObject
-
-
-# Events
-
-@docs mouseEventToHandlerMsg
 
 
 # View
@@ -391,45 +385,6 @@ reparentObject { objectId, newParentId, newRect } (UI internals) =
                 |> updateObject objectId (UIObject.setRect newRect)
     in
     updateAbsoluteRectsForDescendants objectId updatedUI
-
-
-mouseEventToHandlerMsg : MouseEvent -> UI msg -> Maybe msg
-mouseEventToHandlerMsg mouseEvent ((UI internals) as ui) =
-    case mouseEvent of
-        MouseEvent.MouseDown objId ->
-            case getObject ui objId of
-                Just obj ->
-                    UIObject.getMouseEventHandler mouseEvent obj
-
-                Nothing ->
-                    Nothing
-
-        MouseEvent.MouseUp _ ->
-            Nothing
-
-        MouseEvent.Click objId ->
-            case getObject ui objId of
-                Just obj ->
-                    UIObject.getMouseEventHandler mouseEvent obj
-
-                Nothing ->
-                    Nothing
-
-        MouseEvent.DoubleClick objId ->
-            case getObject ui objId of
-                Just obj ->
-                    UIObject.getMouseEventHandler mouseEvent obj
-
-                Nothing ->
-                    Nothing
-
-        MouseEvent.DragStart objId ->
-            case getObject ui objId of
-                Just obj ->
-                    UIObject.getMouseEventHandler mouseEvent obj
-
-                Nothing ->
-                    Nothing
 
 
 getObject : UI msg -> ObjectId -> Maybe (Object msg)
