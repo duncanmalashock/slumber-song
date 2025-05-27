@@ -282,6 +282,9 @@ update msg model =
                                 "obj:entrance-key" ->
                                     Just "It's a small, brass key."
 
+                                "scene:entrance" ->
+                                    Just "You stand before a stone wall that has been carved out of the earth. The forest ends some twenty feet from the wall, as if sensing some great evil."
+
                                 _ ->
                                     Nothing
                     in
