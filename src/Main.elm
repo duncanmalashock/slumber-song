@@ -1,6 +1,6 @@
 module Main exposing (main)
 
-import Apps.WindSleepers as WindSleepers
+import Apps.Shadowgate as Shadowgate
 import Browser
 import Browser.Events
 import Dict exposing (Dict)
@@ -67,7 +67,7 @@ type alias Model =
     , pickedObjectId : Maybe String
     , debug : Maybe String
     , dragging : Maybe Dragging
-    , app : WindSleepers.Model
+    , app : Shadowgate.Model
     , instructions : List (Instruction Msg)
     , currentInstruction : Maybe { timeStarted : Time.Posix, instruction : Instruction Msg }
     , zoomRects : List Rect
@@ -108,7 +108,7 @@ init flags =
                 }
 
         ( app, appInitInstructions ) =
-            WindSleepers.init
+            Shadowgate.init
     in
     ( { currentTime = Time.millisToPosix flags.currentTimeInMS
       , screen = screen
@@ -639,8 +639,8 @@ update msg model =
                                                 Nothing ->
                                                     dropRect
                                     in
-                                    WindSleepers.update
-                                        (WindSleepers.ReceivedMsgFromOS
+                                    Shadowgate.update
+                                        (Shadowgate.ReceivedMsgFromOS
                                             (ToAppMsg.DroppedObject
                                                 { objectId = dragging.objectId
                                                 , isWindow = isWindow

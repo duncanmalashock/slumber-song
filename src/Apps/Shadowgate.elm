@@ -1,4 +1,4 @@
-module Apps.WindSleepers exposing (Model, Msg(..), init, update)
+module Apps.Shadowgate exposing (Model, Msg(..), init, update)
 
 import MacOS.Instruction as Instruction exposing (Instruction)
 import MacOS.Rect as Rect
@@ -68,7 +68,7 @@ init =
             { object =
                 UIObject.image
                     { id = "scene:entrance"
-                    , url = "WindSleepers/entrance.gif"
+                    , url = "Shadowgate/entrance.gif"
                     , filter = Nothing
                     , size = ( 256, 171 )
                     }
@@ -82,14 +82,14 @@ init =
             { object =
                 UIObject.image
                     { id = "obj:entrance-door"
-                    , url = "WindSleepers/entrance-door.gif"
+                    , url = "Shadowgate/entrance-door.gif"
                     , filter = Nothing
                     , size = ( 63, 122 )
                     }
                     |> UIObject.setSelectOptions
                         { view =
                             View.image
-                                { url = "WindSleepers/entrance-door.gif"
+                                { url = "Shadowgate/entrance-door.gif"
                                 , size = ( 63, 122 )
                                 , filter = Just Image.Invert
                                 }
@@ -98,7 +98,7 @@ init =
                     |> UIObject.setDragOptions
                         { traveling =
                             View.image
-                                { url = "WindSleepers/entrance-door.gif"
+                                { url = "Shadowgate/entrance-door.gif"
                                 , size = ( 63, 122 )
                                 , filter = Nothing
                                 }
@@ -114,14 +114,14 @@ init =
             { object =
                 UIObject.image
                     { id = "obj:entrance-key"
-                    , url = "WindSleepers/entrance-key.gif"
+                    , url = "Shadowgate/entrance-key.gif"
                     , filter = Nothing
                     , size = ( 15, 8 )
                     }
                     |> UIObject.setSelectOptions
                         { view =
                             View.image
-                                { url = "WindSleepers/entrance-key.gif"
+                                { url = "Shadowgate/entrance-key.gif"
                                 , size = ( 15, 8 )
                                 , filter = Just Image.Invert
                                 }
@@ -130,7 +130,7 @@ init =
                     |> UIObject.setDragOptions
                         { traveling =
                             View.image
-                                { url = "WindSleepers/entrance-key.gif"
+                                { url = "Shadowgate/entrance-key.gif"
                                 , size = ( 15, 8 )
                                 , filter = Nothing
                                 }
@@ -146,14 +146,14 @@ init =
             { object =
                 UIObject.image
                     { id = "obj:skull"
-                    , url = "WindSleepers/door-skull.gif"
+                    , url = "Shadowgate/door-skull.gif"
                     , filter = Nothing
                     , size = ( 25, 18 )
                     }
                     |> UIObject.setSelectOptions
                         { view =
                             View.image
-                                { url = "WindSleepers/door-skull.gif"
+                                { url = "Shadowgate/door-skull.gif"
                                 , size = ( 25, 18 )
                                 , filter = Just Image.Invert
                                 }
@@ -162,7 +162,7 @@ init =
                     |> UIObject.setDragOptions
                         { traveling =
                             View.image
-                                { url = "WindSleepers/door-skull.gif"
+                                { url = "Shadowgate/door-skull.gif"
                                 , size = ( 25, 18 )
                                 , filter = Nothing
                                 }
@@ -178,14 +178,14 @@ init =
             { object =
                 UIObject.image
                     { id = "obj:torch"
-                    , url = "WindSleepers/torch.gif"
+                    , url = "Shadowgate/torch.gif"
                     , filter = Nothing
                     , size = ( 35, 92 )
                     }
                     |> UIObject.setSelectOptions
                         { view =
                             View.image
-                                { url = "WindSleepers/torch.gif"
+                                { url = "Shadowgate/torch.gif"
                                 , size = ( 35, 92 )
                                 , filter = Just Image.Invert
                                 }
@@ -194,7 +194,7 @@ init =
                     |> UIObject.setDragOptions
                         { traveling =
                             View.image
-                                { url = "WindSleepers/torch.gif"
+                                { url = "Shadowgate/torch.gif"
                                 , size = ( 35, 92 )
                                 , filter = Nothing
                                 }
