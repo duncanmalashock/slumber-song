@@ -81,19 +81,28 @@ createNarrationWindow =
     ]
 
 
-createRoom : List (Instruction msg)
-createRoom =
+createRoom :
+    { id : String
+    , image : String
+    }
+    -> List (Instruction msg)
+createRoom params =
+    let
+        imageUrl : String
+        imageUrl =
+            "Shadowgate/" ++ params.image ++ ".gif"
+    in
     [ Instruction.CreateObject
         { object =
             UIObject.image
-                { id = "room:entrance"
-                , url = "Shadowgate/entrance.gif"
+                { id = params.id
+                , url = imageUrl
                 , filter = Nothing
                 , size = ( 256, 171 )
                 }
         }
     , Instruction.AttachObject
-        { objectId = "room:entrance"
+        { objectId = params.id
         , parentId = windowIds.scene
         , rect = Rect.new ( 0, 18 ) ( 256, 171 )
         }
@@ -195,6 +204,9 @@ init =
         , [ createInventoryWindow ]
         , createNarrationWindow
         , createRoom
+            { id = "room:entrance"
+            , image = "entrance"
+            }
         , createSceneObject
             { id = "obj:entrance-door"
             , image = "entrance-door"
@@ -286,7 +298,7 @@ update msg model =
                                 "obj:torch" ->
                                     Just "It's a common, wooden torch."
 
-                                "obj:skull" ->
+                                "obj:entrance-skull" ->
                                     Just "It's the skull of some creature. Whatever it is, its meaning is quite clear: Death lurks inside."
 
                                 "obj:entrance-door" ->
@@ -329,7 +341,7 @@ unselectObject objectId =
 print : String -> Instruction msg
 print textToPrint =
     Instruction.UpdateObjectText
-        { objectId = "narration:text"
+        { objectId = objectIds.narrationText
         , text = textToPrint
         }
 
