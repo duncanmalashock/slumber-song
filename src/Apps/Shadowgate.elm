@@ -19,195 +19,208 @@ type alias ObjectId =
     String
 
 
-init : ( Model, List (Instruction msg) )
-init =
+windowIds =
+    { scene = "window:scene"
+    , inventory = "window:inventory"
+    , narration = "window:narration"
+    }
+
+
+objectIds =
+    { narrationText = "narration:text"
+    }
+
+
+createSceneWindow : Instruction msg
+createSceneWindow =
+    Instruction.CreateWindow
+        { withId = windowIds.scene
+        , window =
+            { title = "Entrance"
+            , closeMsg = Nothing
+            }
+        , rect = Rect.new ( 128, 61 ) ( 256, 191 )
+        }
+
+
+createInventoryWindow : Instruction msg
+createInventoryWindow =
+    Instruction.CreateWindow
+        { withId = windowIds.inventory
+        , window =
+            { title = "inventory"
+            , closeMsg = Nothing
+            }
+        , rect = Rect.new ( 3, 28 ) ( 121, 225 )
+        }
+
+
+createNarrationWindow : List (Instruction msg)
+createNarrationWindow =
+    [ Instruction.CreateWindow
+        { withId = windowIds.narration
+        , window =
+            { title = "Untitled"
+            , closeMsg = Nothing
+            }
+        , rect = Rect.new ( 1, 255 ) ( 509, 85 )
+        }
+    , Instruction.CreateObject
+        { object =
+            UIObject.textarea
+                { id = objectIds.narrationText
+                , font = Textarea.Chicago
+                , color = Textarea.Black
+                }
+        }
+    , Instruction.AttachObject
+        { objectId = objectIds.narrationText
+        , parentId = windowIds.narration
+        , rect = Rect.new ( 0, 18 ) ( 496, 85 )
+        }
+    ]
+
+
+createRoom : List (Instruction msg)
+createRoom =
+    [ Instruction.CreateObject
+        { object =
+            UIObject.image
+                { id = "room:entrance"
+                , url = "Shadowgate/entrance.gif"
+                , filter = Nothing
+                , size = ( 256, 171 )
+                }
+        }
+    , Instruction.AttachObject
+        { objectId = "room:entrance"
+        , parentId = windowIds.scene
+        , rect = Rect.new ( 0, 18 ) ( 256, 171 )
+        }
+    ]
+
+
+createObject :
+    { id : String
+    , image : String
+    , size : ( Int, Int )
+    , position : ( Int, Int )
+    , parentId : String
+    }
+    -> List (Instruction msg)
+createObject params =
     let
         objectPreDrag : Int
         objectPreDrag =
             6
+
+        imageUrl : String
+        imageUrl =
+            "Shadowgate/" ++ params.image ++ ".gif"
     in
+    [ Instruction.CreateObject
+        { object =
+            UIObject.image
+                { id = params.id
+                , url = imageUrl
+                , filter = Nothing
+                , size = params.size
+                }
+                |> UIObject.setSelectOptions
+                    { view =
+                        View.image
+                            { url = imageUrl
+                            , size = params.size
+                            , filter = Just Image.Invert
+                            }
+                    , selected = False
+                    }
+                |> UIObject.setDragOptions
+                    { traveling =
+                        View.image
+                            { url = imageUrl
+                            , size = params.size
+                            , filter = Nothing
+                            }
+                    , preDragInPixels = objectPreDrag
+                    }
+        }
+    , Instruction.AttachObject
+        { objectId = params.id
+        , parentId = params.parentId
+        , rect = Rect.new params.position params.size
+        }
+    ]
+
+
+createSceneObject :
+    { id : String
+    , image : String
+    , size : ( Int, Int )
+    , position : ( Int, Int )
+    }
+    -> List (Instruction msg)
+createSceneObject params =
+    createObject
+        { id = params.id
+        , image = params.image
+        , size = params.size
+        , position = params.position
+        , parentId = windowIds.scene
+        }
+
+
+createInventoryObject :
+    { id : String
+    , image : String
+    , size : ( Int, Int )
+    , position : ( Int, Int )
+    }
+    -> List (Instruction msg)
+createInventoryObject params =
+    createObject
+        { id = params.id
+        , image = params.image
+        , size = params.size
+        , position = params.position
+        , parentId = windowIds.inventory
+        }
+
+
+init : ( Model, List (Instruction msg) )
+init =
     ( {}
-    , [ Instruction.CreateWindow
-            { withId = "scene"
-            , window =
-                { title = "Entrance"
-                , closeMsg = Nothing
-                }
-            , rect = Rect.new ( 128, 61 ) ( 256, 191 )
+    , List.concat
+        [ [ createSceneWindow ]
+        , [ createInventoryWindow ]
+        , createNarrationWindow
+        , createRoom
+        , createSceneObject
+            { id = "obj:entrance-door"
+            , image = "entrance-door"
+            , size = ( 63, 122 )
+            , position = ( 96, 33 )
             }
-      , Instruction.CreateWindow
-            { withId = "inventory"
-            , window =
-                { title = "inventory"
-                , closeMsg = Nothing
-                }
-            , rect = Rect.new ( 3, 28 ) ( 121, 225 )
+        , createSceneObject
+            { id = "obj:entrance-key"
+            , image = "entrance-key"
+            , size = ( 15, 8 )
+            , position = ( 120, 25 )
             }
-      , Instruction.CreateWindow
-            { withId = "narration"
-            , window =
-                { title = "Untitled"
-                , closeMsg = Nothing
-                }
-            , rect = Rect.new ( 1, 255 ) ( 509, 85 )
+        , createSceneObject
+            { id = "obj:entrance-skull"
+            , image = "entrance-skull"
+            , size = ( 25, 18 )
+            , position = ( 116, 19 )
             }
-      , Instruction.CreateObject
-            { object =
-                UIObject.textarea
-                    { id = "narration:text"
-                    , font = Textarea.Chicago
-                    , color = Textarea.Black
-                    }
+        , createInventoryObject
+            { id = "obj:torch"
+            , image = "torch"
+            , size = ( 35, 92 )
+            , position = ( 8, 24 )
             }
-      , Instruction.AttachObject
-            { objectId = "narration:text"
-            , parentId = "narration"
-            , rect = Rect.new ( 0, 18 ) ( 496, 85 )
-            }
-      , Instruction.CreateObject
-            { object =
-                UIObject.image
-                    { id = "scene:entrance"
-                    , url = "Shadowgate/entrance.gif"
-                    , filter = Nothing
-                    , size = ( 256, 171 )
-                    }
-            }
-      , Instruction.AttachObject
-            { objectId = "scene:entrance"
-            , parentId = "scene"
-            , rect = Rect.new ( 0, 18 ) ( 256, 171 )
-            }
-      , Instruction.CreateObject
-            { object =
-                UIObject.image
-                    { id = "obj:entrance-door"
-                    , url = "Shadowgate/entrance-door.gif"
-                    , filter = Nothing
-                    , size = ( 63, 122 )
-                    }
-                    |> UIObject.setSelectOptions
-                        { view =
-                            View.image
-                                { url = "Shadowgate/entrance-door.gif"
-                                , size = ( 63, 122 )
-                                , filter = Just Image.Invert
-                                }
-                        , selected = False
-                        }
-                    |> UIObject.setDragOptions
-                        { traveling =
-                            View.image
-                                { url = "Shadowgate/entrance-door.gif"
-                                , size = ( 63, 122 )
-                                , filter = Nothing
-                                }
-                        , preDragInPixels = objectPreDrag
-                        }
-            }
-      , Instruction.AttachObject
-            { objectId = "obj:entrance-door"
-            , parentId = "scene"
-            , rect = Rect.new ( 96, 33 ) ( 63, 122 )
-            }
-      , Instruction.CreateObject
-            { object =
-                UIObject.image
-                    { id = "obj:entrance-key"
-                    , url = "Shadowgate/entrance-key.gif"
-                    , filter = Nothing
-                    , size = ( 15, 8 )
-                    }
-                    |> UIObject.setSelectOptions
-                        { view =
-                            View.image
-                                { url = "Shadowgate/entrance-key.gif"
-                                , size = ( 15, 8 )
-                                , filter = Just Image.Invert
-                                }
-                        , selected = False
-                        }
-                    |> UIObject.setDragOptions
-                        { traveling =
-                            View.image
-                                { url = "Shadowgate/entrance-key.gif"
-                                , size = ( 15, 8 )
-                                , filter = Nothing
-                                }
-                        , preDragInPixels = objectPreDrag
-                        }
-            }
-      , Instruction.AttachObject
-            { objectId = "obj:entrance-key"
-            , parentId = "scene"
-            , rect = Rect.new ( 120, 25 ) ( 16, 8 )
-            }
-      , Instruction.CreateObject
-            { object =
-                UIObject.image
-                    { id = "obj:skull"
-                    , url = "Shadowgate/door-skull.gif"
-                    , filter = Nothing
-                    , size = ( 25, 18 )
-                    }
-                    |> UIObject.setSelectOptions
-                        { view =
-                            View.image
-                                { url = "Shadowgate/door-skull.gif"
-                                , size = ( 25, 18 )
-                                , filter = Just Image.Invert
-                                }
-                        , selected = False
-                        }
-                    |> UIObject.setDragOptions
-                        { traveling =
-                            View.image
-                                { url = "Shadowgate/door-skull.gif"
-                                , size = ( 25, 18 )
-                                , filter = Nothing
-                                }
-                        , preDragInPixels = objectPreDrag
-                        }
-            }
-      , Instruction.AttachObject
-            { objectId = "obj:skull"
-            , parentId = "scene"
-            , rect = Rect.new ( 116, 19 ) ( 25, 18 )
-            }
-      , Instruction.CreateObject
-            { object =
-                UIObject.image
-                    { id = "obj:torch"
-                    , url = "Shadowgate/torch.gif"
-                    , filter = Nothing
-                    , size = ( 35, 92 )
-                    }
-                    |> UIObject.setSelectOptions
-                        { view =
-                            View.image
-                                { url = "Shadowgate/torch.gif"
-                                , size = ( 35, 92 )
-                                , filter = Just Image.Invert
-                                }
-                        , selected = False
-                        }
-                    |> UIObject.setDragOptions
-                        { traveling =
-                            View.image
-                                { url = "Shadowgate/torch.gif"
-                                , size = ( 35, 92 )
-                                , filter = Nothing
-                                }
-                        , preDragInPixels = objectPreDrag
-                        }
-            }
-      , Instruction.AttachObject
-            { objectId = "obj:torch"
-            , parentId = "inventory"
-            , rect = Rect.new ( 8, 24 ) ( 35, 92 )
-            }
-      , print "Good evening. Welcome to Shadowgate."
-      ]
+        , [ print "Good evening. Welcome to Shadowgate." ]
+        ]
     )
 
 
@@ -230,21 +243,21 @@ update msg model =
                           ]
                         )
 
-                    else if droppedObjectInfo.droppedOnWindow == Just "scene" then
+                    else if droppedObjectInfo.droppedOnWindow == Just windowIds.scene then
                         ( model
                         , [ moveDroppedObjectToWindow droppedObjectInfo
                           , unselectObject droppedObjectInfo.objectId
                           ]
                         )
 
-                    else if droppedObjectInfo.droppedOnWindow == Just "inventory" then
+                    else if droppedObjectInfo.droppedOnWindow == Just windowIds.inventory then
                         ( model
                         , [ moveDroppedObjectToWindow droppedObjectInfo
                           , unselectObject droppedObjectInfo.objectId
                           ]
                         )
 
-                    else if droppedObjectInfo.droppedOnWindow == Just "narration" then
+                    else if droppedObjectInfo.droppedOnWindow == Just windowIds.narration then
                         ( model
                         , [ rejectDrop droppedObjectInfo
                           , unselectObject droppedObjectInfo.objectId
@@ -282,7 +295,7 @@ update msg model =
                                 "obj:entrance-key" ->
                                     Just "It's a small, brass key."
 
-                                "scene:entrance" ->
+                                "room:entrance" ->
                                     Just "You stand before a stone wall that has been carved out of the earth. The forest ends some twenty feet from the wall, as if sensing some great evil."
 
                                 _ ->
