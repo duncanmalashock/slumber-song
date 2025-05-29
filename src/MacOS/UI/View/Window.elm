@@ -81,9 +81,9 @@ viewWindowTitle config isActive =
         , span
             [ style "position" "relative"
             , style "background" "white"
-            , style "padding" "0 5px"
+            , style "padding" "0 5px 0 7px"
             , style "display" "inline-block"
-            , style "transform" "translateY(0.5px)"
+            , style "transform" "translate(0,0.0px)"
             , style "pointer-events" "none"
             , style "font-family" "Chicago"
             ]

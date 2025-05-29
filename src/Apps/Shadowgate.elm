@@ -231,7 +231,7 @@ init =
             , size = ( 35, 92 )
             , position = ( 8, 24 )
             }
-        , [ print "Good evening. Welcome to Shadowgate." ]
+        , [ print "of the Titans, from the depths of the earth.  You are the seed of prophecy, the last of the line of kings, and only you can stop the Warlock Lord from darkening our world FOREVER.  Fare thee well.\"" ]
         ]
     )
 
@@ -299,7 +299,7 @@ update msg model =
                                     Just "It's a common, wooden torch."
 
                                 "obj:entrance-skull" ->
-                                    Just "It's the skull of some creature. Whatever it is, its meaning is quite clear: Death lurks inside."
+                                    Just "It's the skull of some creature.  Whatever it is, its meaning is quite clear: Death lurks inside."
 
                                 "obj:entrance-door" ->
                                     Just "It's a heavy wooden door."
@@ -308,7 +308,7 @@ update msg model =
                                     Just "It's a small, brass key."
 
                                 "room:entrance" ->
-                                    Just "You stand before a stone wall that has been carved out of the earth. The forest ends some twenty feet from the wall, as if sensing some great evil."
+                                    Just "You stand before a stone wall that has been carved out of the earth.  The forest ends some twenty feet from the wall, as if sensing some great evil."
 
                                 _ ->
                                     Nothing

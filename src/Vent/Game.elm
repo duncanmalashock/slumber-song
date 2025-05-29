@@ -1,4 +1,4 @@
-module Vent.Game exposing (Game, Msg(..), currentRoom, encode, narration, new, objects, objectsInCurrentRoom, objectsInInventory, player, update)
+module Vent.Game exposing (Game, Msg(..), currentRoom, encode, new, objects, objectsInCurrentRoom, objectsInInventory, player, update)
 
 import Json.Encode as Encode
 import Vent.Command exposing (Command(..))
@@ -21,7 +21,6 @@ type alias Internals =
     , selectedCommand : Maybe Command
     , sourceObjectId : Maybe String
     , targetObjectId : Maybe String
-    , narration : String
     }
 
 
@@ -39,15 +38,9 @@ new objectList =
         , selectedCommand = Nothing
         , sourceObjectId = Nothing
         , targetObjectId = Nothing
-        , narration = ""
         }
     , []
     )
-
-
-narration : Game -> String
-narration (Game internals) =
-    internals.narration
 
 
 objects : Game -> ObjectStore

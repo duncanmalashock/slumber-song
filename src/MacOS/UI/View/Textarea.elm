@@ -75,6 +75,8 @@ textStyles config =
                     [ style "font-family" "Chicago"
                     , style "line-height" "16px"
                     , style "padding" "0 4px"
+                    , style "word-spacing" "-2px"
+                    , style "white-space" "break-spaces"
                     , style "transform" "translate(0,-0.5px)"
                     ]
 
