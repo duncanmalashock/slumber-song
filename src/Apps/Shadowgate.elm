@@ -1,4 +1,4 @@
-module Apps.Shadowgate exposing (Model, Msg(..), init, update)
+module Apps.Shadowgate exposing (Model, Msg(..), init, objectIds, update)
 
 import MacOS.Instruction as Instruction exposing (Instruction)
 import MacOS.Rect as Rect

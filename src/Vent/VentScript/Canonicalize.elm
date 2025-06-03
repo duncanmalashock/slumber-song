@@ -450,8 +450,7 @@ convertResultStatement localObject objectStore statement current =
                                 { script
                                     | effects =
                                         script.effects
-                                            ++ [ Effect.PrintText string
-                                               ]
+                                            ++ []
                                 }
 
         Err err ->

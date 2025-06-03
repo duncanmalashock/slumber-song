@@ -8,6 +8,7 @@ import Html exposing (..)
 import Html.Attributes as Attr exposing (..)
 import Html.Events as Events exposing (..)
 import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 import MacOS.Instruction as Instruction exposing (Instruction)
 import MacOS.MenuBar as MenuBar exposing (MenuBar)
@@ -23,9 +24,11 @@ import MacOS.UI.Object as UIObject exposing (Object)
 import MacOS.UI.View as View exposing (View)
 import MacOS.UI.View.Rectangle
 import MacOS.UI.View.Window as Window
+import Ports
 import Set
 import Task
 import Time
+import Vent.GameFile as GameFile exposing (GameFile)
 
 
 viewDebugger : Model -> Html Msg
@@ -43,7 +46,7 @@ viewDebugger model =
             , style "font-family" "Geneva"
             , style "padding" "0 6px"
             ]
-            [--     div [] [ text ("buttonJustPressed: " ++ Debug.toString (Mouse.buttonJustPressed model.mouse)) ]
+            [--   div [] [ text ("buttonJustPressed: " ++ Debug.toString (Mouse.buttonJustPressed model.mouse)) ]
              -- , div [] [ text ("lastMouseDown: " ++ Debug.toString model.lastMouseDown) ]
              -- , div [] [ text ("lastMouseUp: " ++ Debug.toString model.lastMouseUp) ]
              -- , div [] [ text ("lastClick: " ++ Debug.toString model.lastClick) ]
@@ -75,6 +78,7 @@ type alias Model =
 
     -- Program and OS operations
     , app : Shadowgate.Model
+    , gameFile : Result Decode.Error GameFile
     , instructions : List (Instruction Msg)
     , currentInstruction : Maybe { timeStarted : Time.Posix, instruction : Instruction Msg }
     }
@@ -95,6 +99,7 @@ type alias Flags =
     { browserDimensions : { x : Int, y : Int }
     , devicePixelRatio : Float
     , currentTimeInMS : Int
+    , gameFilename : String
     }
 
 
@@ -154,11 +159,12 @@ init flags =
       , debug = Nothing
       , dragging = Nothing
       , app = app
+      , gameFile = Err (Decode.Failure "no good" (Encode.int -1))
       , instructions = appInitInstructions
       , currentInstruction = Nothing
       , zoomRects = []
       }
-    , Cmd.none
+    , Ports.loadGame { filename = flags.gameFilename }
     )
 
 
@@ -168,6 +174,7 @@ type Msg
     | MouseUpdated { clientPos : ( Int, Int ), buttonPressed : Bool }
     | MouseEvent MouseEvent
     | ClickedCloseBoxForWindow String
+    | ReceivedDataFromJs Decode.Value
 
 
 handleInstruction : { timeStarted : Time.Posix, instruction : Instruction Msg } -> Model -> ( Model, Cmd Msg )
@@ -550,16 +557,15 @@ update msg model =
         ClickedCloseBoxForWindow windowId ->
             ( { model
                 | dragging = Nothing
-                , instructions =
-                    model.instructions
-                        ++ [ Instruction.RemoveWindow { withId = windowId }
-                           , Instruction.AnimateZoom
-                                { from = Rect.new ( 64, 64 ) ( 200, 200 )
-                                , to = Rect.new ( 450, 40 ) ( 32, 32 )
-                                , zoomingIn = False
-                                }
-                           ]
               }
+                |> addInstructions
+                    [ Instruction.RemoveWindow { withId = windowId }
+                    , Instruction.AnimateZoom
+                        { from = Rect.new ( 64, 64 ) ( 200, 200 )
+                        , to = Rect.new ( 450, 40 ) ( 32, 32 )
+                        , zoomingIn = False
+                        }
+                    ]
             , Cmd.none
             )
 
@@ -657,8 +663,8 @@ update msg model =
                         | dragging = Nothing
                         , lastMouseUp = Just { objectId = objectId, time = model.currentTime }
                         , app = updatedApp
-                        , instructions = model.instructions ++ fromAppInstructions
                       }
+                        |> addInstructions fromAppInstructions
                     , Cmd.none
                     )
 
@@ -684,8 +690,8 @@ update msg model =
                     ( { model
                         | lastDoubleClick = Just { objectId = objectId, time = model.currentTime }
                         , app = updatedApp
-                        , instructions = model.instructions ++ fromAppInstructions
                       }
+                        |> addInstructions fromAppInstructions
                     , Cmd.none
                     )
 
@@ -750,6 +756,57 @@ update msg model =
                     ( updatedModel
                     , Cmd.none
                     )
+
+        ReceivedDataFromJs value ->
+            let
+                fromJsDecoder : Decoder FromJs
+                fromJsDecoder =
+                    Decode.field "tag" Decode.string
+                        |> Decode.andThen decodeByTag
+
+                decodeByTag : String -> Decoder FromJs
+                decodeByTag tag =
+                    case tag of
+                        "GameDataLoaded" ->
+                            Decode.field "payload" GameFile.decoder
+                                |> Decode.map GameFile
+
+                        "OtherThing" ->
+                            Decode.field "payload" Decode.string
+                                |> Decode.map OtherThing
+
+                        _ ->
+                            Decode.fail ("Unknown tag: " ++ tag)
+
+                decodedValue : Result Decode.Error GameFile
+                decodedValue =
+                    case Decode.decodeValue fromJsDecoder value of
+                        Ok (GameFile gameFile) ->
+                            Ok gameFile
+
+                        Ok (OtherThing _) ->
+                            Err (Decode.Failure "No game file" value)
+
+                        Err error ->
+                            Err error
+            in
+            ( { model
+                | gameFile = decodedValue
+              }
+            , Cmd.none
+            )
+
+
+type FromJs
+    = GameFile GameFile
+    | OtherThing String
+
+
+addInstructions : List (Instruction Msg) -> Model -> Model
+addInstructions newInstructions model =
+    { model
+        | instructions = model.instructions ++ newInstructions
+    }
 
 
 detectMouseEvents :
@@ -1060,6 +1117,7 @@ subscriptions _ =
     Sub.batch
         [ Browser.Events.onResize BrowserResized
         , Time.every 10 Tick
+        , Ports.receive ReceivedDataFromJs
         ]
 
 

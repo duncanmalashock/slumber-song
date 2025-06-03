@@ -8,11 +8,6 @@ import Vent.Command exposing (Command)
 type Effect
     = LoadGameData String
     | PlaySound String
-    | HighlightCommand Command
-    | HighlightObject String
-    | PrintText String
-    | ReportError String
-    | SaveGameData Encode.Value
 
 
 encodeList : List Effect -> Encode.Value
@@ -35,36 +30,6 @@ encode effect =
                 , ( "file", Encode.string file )
                 ]
 
-        HighlightCommand command ->
-            Encode.object
-                [ ( "tag", Encode.string "HighlightCommand" )
-                , ( "command", Encode.string (Vent.Command.toString command) )
-                ]
-
-        HighlightObject objId ->
-            Encode.object
-                [ ( "tag", Encode.string "HighlightObject" )
-                , ( "objId", Encode.string objId )
-                ]
-
-        PrintText text ->
-            Encode.object
-                [ ( "tag", Encode.string "PrintText" )
-                , ( "text", Encode.string text )
-                ]
-
-        ReportError message ->
-            Encode.object
-                [ ( "tag", Encode.string "ReportError" )
-                , ( "message", Encode.string message )
-                ]
-
-        SaveGameData gameData ->
-            Encode.object
-                [ ( "tag", Encode.string "SaveGameData" )
-                , ( "gameData", gameData )
-                ]
-
 
 decoder : Decoder Effect
 decoder =
@@ -79,22 +44,6 @@ decoder =
                     "PlaySound" ->
                         Decode.field "file" Decode.string
                             |> Decode.map PlaySound
-
-                    "HighlightCommand" ->
-                        Decode.field "command" Vent.Command.decoder
-                            |> Decode.map HighlightCommand
-
-                    "HighlightObject" ->
-                        Decode.field "objId" Decode.string
-                            |> Decode.map HighlightObject
-
-                    "PrintText" ->
-                        Decode.field "text" Decode.string
-                            |> Decode.map PrintText
-
-                    "ReportError" ->
-                        Decode.field "message" Decode.string
-                            |> Decode.map ReportError
 
                     _ ->
                         Decode.fail ("Unknown effect tag: " ++ tag)
