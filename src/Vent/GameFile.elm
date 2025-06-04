@@ -1,4 +1,4 @@
-module Vent.GameFile exposing (GameFile, decoder)
+module Vent.GameFile exposing (GameFile, Object, Room, currentRoom, decoder)
 
 import Decode
 import Json.Decode as Decode exposing (Decoder)
@@ -27,6 +27,11 @@ type alias Internals =
     { rooms : List Room
     , inventory : List Object
     }
+
+
+currentRoom : GameFile -> Maybe Room
+currentRoom (GameFile internals) =
+    List.head internals.rooms
 
 
 type alias Room =
@@ -92,7 +97,7 @@ decodeRect =
 listToRectDecoder : List Int -> Decoder Rect
 listToRectDecoder intList =
     case intList of
-        x :: y :: w :: h :: _ ->
+        w :: h :: x :: y :: _ ->
             Decode.succeed
                 { x = x
                 , y = y

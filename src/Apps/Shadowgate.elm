@@ -201,33 +201,38 @@ createInventoryObject params =
 
 init : GameFile -> ( Model, List (Instruction msg) )
 init gameFile =
+    let
+        createCurrentRoom : List (Instruction msg)
+        createCurrentRoom =
+            case GameFile.currentRoom gameFile of
+                Just currentRoom ->
+                    List.concat
+                        [ createRoom
+                            { id = currentRoom.id
+                            , image = currentRoom.image
+                            }
+                        , List.concat
+                            (List.map createRoomObject currentRoom.objects)
+                        ]
+
+                Nothing ->
+                    []
+
+        createRoomObject : GameFile.Object -> List (Instruction msg)
+        createRoomObject object =
+            createSceneObject
+                { id = object.id
+                , image = object.image
+                , size = ( object.width, object.height )
+                , position = ( object.positionX, object.positionY )
+                }
+    in
     ( {}
     , List.concat
         [ createSceneWindow
         , createInventoryWindow
         , createNarrationWindow
-        , createRoom
-            { id = "room:entrance"
-            , image = "entrance"
-            }
-        , createSceneObject
-            { id = "obj:entrance-door"
-            , image = "entrance-door"
-            , size = ( 63, 122 )
-            , position = ( 96, 33 )
-            }
-        , createSceneObject
-            { id = "obj:entrance-key"
-            , image = "entrance-key"
-            , size = ( 15, 8 )
-            , position = ( 120, 25 )
-            }
-        , createSceneObject
-            { id = "obj:entrance-skull"
-            , image = "entrance-skull"
-            , size = ( 25, 18 )
-            , position = ( 116, 19 )
-            }
+        , createCurrentRoom
         , createInventoryObject
             { id = "obj:torch"
             , image = "torch"
