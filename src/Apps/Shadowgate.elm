@@ -9,6 +9,7 @@ import MacOS.UI.View as View
 import MacOS.UI.View.Image as Image
 import MacOS.UI.View.Textarea as Textarea
 import MacOS.UI.View.Window as Window
+import Vent.GameFile as GameFile exposing (GameFile)
 
 
 type alias Model =
@@ -31,9 +32,9 @@ objectIds =
     }
 
 
-createSceneWindow : Instruction msg
+createSceneWindow : List (Instruction msg)
 createSceneWindow =
-    Instruction.CreateWindow
+    [ Instruction.CreateWindow
         { withId = windowIds.scene
         , window =
             { title = "Entrance"
@@ -41,11 +42,12 @@ createSceneWindow =
             }
         , rect = Rect.new ( 128, 61 ) ( 256, 191 )
         }
+    ]
 
 
-createInventoryWindow : Instruction msg
+createInventoryWindow : List (Instruction msg)
 createInventoryWindow =
-    Instruction.CreateWindow
+    [ Instruction.CreateWindow
         { withId = windowIds.inventory
         , window =
             { title = "inventory"
@@ -53,6 +55,7 @@ createInventoryWindow =
             }
         , rect = Rect.new ( 3, 28 ) ( 121, 225 )
         }
+    ]
 
 
 createNarrationWindow : List (Instruction msg)
@@ -196,12 +199,12 @@ createInventoryObject params =
         }
 
 
-init : ( Model, List (Instruction msg) )
-init =
+init : GameFile -> ( Model, List (Instruction msg) )
+init gameFile =
     ( {}
     , List.concat
-        [ [ createSceneWindow ]
-        , [ createInventoryWindow ]
+        [ createSceneWindow
+        , createInventoryWindow
         , createNarrationWindow
         , createRoom
             { id = "room:entrance"

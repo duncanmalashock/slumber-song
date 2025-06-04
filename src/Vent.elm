@@ -7,6 +7,7 @@ import Html.Attributes as Html
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
 import Ports
+import RemoteData exposing (RemoteData)
 import Vent.Command as Command exposing (Command)
 import Vent.Effect as Effect exposing (Effect(..))
 import Vent.Game as Game exposing (Game)
@@ -33,13 +34,6 @@ flagsDecoder =
 type alias Model =
     { game : RemoteData Game.Game String
     }
-
-
-type RemoteData data err
-    = NotLoaded
-    | Loading
-    | LoadSuccessful data
-    | LoadFailed err
 
 
 type Msg

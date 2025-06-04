@@ -25,6 +25,7 @@ import MacOS.UI.View as View exposing (View)
 import MacOS.UI.View.Rectangle
 import MacOS.UI.View.Window as Window
 import Ports
+import RemoteData exposing (RemoteData)
 import Set
 import Task
 import Time
@@ -77,8 +78,7 @@ type alias Model =
     , zoomRects : List Rect
 
     -- Program and OS operations
-    , app : Shadowgate.Model
-    , gameFile : Result Decode.Error GameFile
+    , app : RemoteData String Shadowgate.Model
     , instructions : List (Instruction Msg)
     , currentInstruction : Maybe { timeStarted : Time.Posix, instruction : Instruction Msg }
     }
@@ -117,9 +117,6 @@ init flags =
                 , browser = flags.browserDimensions
                 , devicePixelRatio = flags.devicePixelRatio
                 }
-
-        ( app, appInitInstructions ) =
-            Shadowgate.init
     in
     ( { currentTime = Time.millisToPosix flags.currentTimeInMS
       , screen = screen
@@ -158,9 +155,8 @@ init flags =
       , pickedObjectId = Nothing
       , debug = Nothing
       , dragging = Nothing
-      , app = app
-      , gameFile = Err (Decode.Failure "no good" (Encode.int -1))
-      , instructions = appInitInstructions
+      , app = RemoteData.NotLoaded
+      , instructions = []
       , currentInstruction = Nothing
       , zoomRects = []
       }
@@ -641,17 +637,19 @@ update msg model =
                                                 Nothing ->
                                                     dropRect
                                     in
-                                    Shadowgate.update
-                                        (Shadowgate.ReceivedMsgFromOS
-                                            (ToAppMsg.DroppedObject
-                                                { objectId = dragging.objectId
-                                                , isWindow = isWindow
-                                                , droppedOnWindow = droppedOnWindow
-                                                , droppedOnObjects = droppedOnObjects
-                                                , dropRectAbsolute = dropRect
-                                                , dropRectInWindow = dropRectInWindow
-                                                , originRect = dragging.originRect
-                                                }
+                                    updateRemoteDataApp
+                                        (Shadowgate.update
+                                            (Shadowgate.ReceivedMsgFromOS
+                                                (ToAppMsg.DroppedObject
+                                                    { objectId = dragging.objectId
+                                                    , isWindow = isWindow
+                                                    , droppedOnWindow = droppedOnWindow
+                                                    , droppedOnObjects = droppedOnObjects
+                                                    , dropRectAbsolute = dropRect
+                                                    , dropRectInWindow = dropRectInWindow
+                                                    , originRect = dragging.originRect
+                                                    }
+                                                )
                                             )
                                         )
                                         model.app
@@ -678,11 +676,13 @@ update msg model =
                 MouseEvent.DoubleClick objectId ->
                     let
                         ( updatedApp, fromAppInstructions ) =
-                            Shadowgate.update
-                                (Shadowgate.ReceivedMsgFromOS
-                                    (ToAppMsg.DoubleClickedObject
-                                        { objectId = objectId
-                                        }
+                            updateRemoteDataApp
+                                (Shadowgate.update
+                                    (Shadowgate.ReceivedMsgFromOS
+                                        (ToAppMsg.DoubleClickedObject
+                                            { objectId = objectId
+                                            }
+                                        )
                                     )
                                 )
                                 model.app
@@ -777,29 +777,43 @@ update msg model =
 
                         _ ->
                             Decode.fail ("Unknown tag: " ++ tag)
-
-                decodedValue : Result Decode.Error GameFile
-                decodedValue =
-                    case Decode.decodeValue fromJsDecoder value of
-                        Ok (GameFile gameFile) ->
-                            Ok gameFile
-
-                        Ok (OtherThing _) ->
-                            Err (Decode.Failure "No game file" value)
-
-                        Err error ->
-                            Err error
             in
-            ( { model
-                | gameFile = decodedValue
-              }
-            , Cmd.none
-            )
+            case Decode.decodeValue fromJsDecoder value of
+                Ok (GameFile gameFile) ->
+                    let
+                        ( app, fromAppInstructions ) =
+                            Shadowgate.init gameFile
+                    in
+                    ( { model
+                        | app = RemoteData.LoadSuccessful app
+                      }
+                        |> addInstructions fromAppInstructions
+                    , Cmd.none
+                    )
+
+                Ok (OtherThing _) ->
+                    ( model, Cmd.none )
+
+                Err error ->
+                    ( model, Cmd.none )
 
 
 type FromJs
     = GameFile GameFile
     | OtherThing String
+
+
+updateRemoteDataApp :
+    (Shadowgate.Model -> ( Shadowgate.Model, List (Instruction Msg) ))
+    -> RemoteData String Shadowgate.Model
+    -> ( RemoteData String Shadowgate.Model, List (Instruction Msg) )
+updateRemoteDataApp fn remoteDataApp =
+    case RemoteData.map fn remoteDataApp of
+        RemoteData.LoadSuccessful ( app, instructions ) ->
+            ( RemoteData.LoadSuccessful app, instructions )
+
+        _ ->
+            ( remoteDataApp, [] )
 
 
 addInstructions : List (Instruction Msg) -> Model -> Model
