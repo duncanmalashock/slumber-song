@@ -142,7 +142,7 @@ update toAppMsg ((Game internals) as game) =
                     ]
                 )
 
-            else if ObjectStore.isImmovable droppedObjectInfo.objectId internals.objects |> Debug.log "isImmovable" then
+            else if ObjectStore.isImmovable droppedObjectInfo.objectId internals.objects then
                 let
                     objectName : Maybe String
                     objectName =
