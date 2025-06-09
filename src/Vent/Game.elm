@@ -113,20 +113,6 @@ update toAppMsg ((Game internals) as game) =
                   ]
                 )
 
-            else if droppedObjectInfo.droppedOnWindow == Just windowIds.scene then
-                ( game
-                , [ moveDroppedObjectToWindow droppedObjectInfo
-                  , unselectObject droppedObjectInfo.objectId
-                  ]
-                )
-
-            else if droppedObjectInfo.droppedOnWindow == Just windowIds.inventory then
-                ( game
-                , [ moveDroppedObjectToWindow droppedObjectInfo
-                  , unselectObject droppedObjectInfo.objectId
-                  ]
-                )
-
             else if droppedObjectInfo.droppedOnWindow == Just windowIds.narration then
                 ( game
                 , [ rejectDrop droppedObjectInfo
@@ -154,6 +140,41 @@ update toAppMsg ((Game internals) as game) =
                         )
                         objectName
                     ]
+                )
+
+            else if ObjectStore.isImmovable droppedObjectInfo.objectId internals.objects |> Debug.log "isImmovable" then
+                let
+                    objectName : Maybe String
+                    objectName =
+                        ObjectStore.get droppedObjectInfo.objectId internals.objects
+                            |> Maybe.map Object.name
+                in
+                ( game
+                , List.filterMap identity
+                    [ Just (rejectDrop droppedObjectInfo)
+                    , Just (unselectObject droppedObjectInfo.objectId)
+                    , Maybe.map2
+                        (\name response ->
+                            interpolateObjName name response
+                                |> print
+                        )
+                        objectName
+                        (List.head internals.responses.immovableObject)
+                    ]
+                )
+
+            else if droppedObjectInfo.droppedOnWindow == Just windowIds.scene then
+                ( game
+                , [ moveDroppedObjectToWindow droppedObjectInfo
+                  , unselectObject droppedObjectInfo.objectId
+                  ]
+                )
+
+            else if droppedObjectInfo.droppedOnWindow == Just windowIds.inventory then
+                ( game
+                , [ moveDroppedObjectToWindow droppedObjectInfo
+                  , unselectObject droppedObjectInfo.objectId
+                  ]
                 )
 
             else

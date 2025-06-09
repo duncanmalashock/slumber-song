@@ -86,6 +86,7 @@ objectToVentObject parentId object =
         , name = object.name
         , parent = parentId
         , description = object.description
+        , immovable = object.immovable
         , attributes = []
         , scripts = []
         }
@@ -98,6 +99,7 @@ roomToVentObject room =
         , name = room.name
         , parent = "world"
         , description = room.description
+        , immovable = True
         , attributes = []
         , scripts = []
         }
@@ -122,6 +124,7 @@ type alias Object =
     , name : String
     , image : String
     , description : String
+    , immovable : Bool
     , positionX : Int
     , positionY : Int
     , width : Int
@@ -147,24 +150,27 @@ objectDecoder =
             -> String
             -> String
             -> String
+            -> Bool
             -> Rect
             -> Object
-        constructObject myId myName myImage myDescription myRect =
+        constructObject myId myName myImage myDescription myImmovable myRect =
             { id = myId
             , name = myName
             , image = myImage
             , description = myDescription
+            , immovable = myImmovable
             , positionX = myRect.x
             , positionY = myRect.y
             , width = myRect.w
             , height = myRect.h
             }
     in
-    Decode.map5 constructObject
+    Decode.map6 constructObject
         (Decode.field "id" Decode.string)
         (Decode.field "name" Decode.string)
         (Decode.field "image" Decode.string)
         (Decode.field "description" Decode.string)
+        (Decode.field "immovable" Decode.bool)
         (Decode.field "rect" decodeRect)
 
 

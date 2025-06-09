@@ -1,4 +1,4 @@
-module Vent.ObjectStore exposing (ObjectStore, get, getAttribute, getNoFail, idExists, incrementAttributeBy, new, setBoolAttribute, setIntAttribute, setStringAttribute, toList, withParentId)
+module Vent.ObjectStore exposing (ObjectStore, get, getAttribute, getNoFail, idExists, incrementAttributeBy, isImmovable, new, setBoolAttribute, setIntAttribute, setStringAttribute, toList, withParentId)
 
 import Dict exposing (Dict)
 import Vent.Attribute exposing (Attribute(..))
@@ -66,6 +66,13 @@ withParentId id (ObjectStore internals) =
                 Object.parent obj == id
             )
         |> List.map (\( key, obj ) -> obj)
+
+
+isImmovable : String -> ObjectStore -> Bool
+isImmovable id (ObjectStore internals) =
+    Dict.get id internals.objects
+        |> Maybe.map Object.immovable
+        |> Maybe.withDefault True
 
 
 getAttribute : ObjectStore -> { objectId : String, attributeId : String } -> Maybe Attribute

@@ -1,4 +1,4 @@
-module Vent.Object exposing (Object, attribute, decoder, description, encode, id, name, new, null, parent, scripts, setBoolAttribute, setIntAttribute, setStringAttribute)
+module Vent.Object exposing (Object, attribute, decoder, description, encode, id, immovable, name, new, null, parent, scripts, setBoolAttribute, setIntAttribute, setStringAttribute)
 
 import Dict exposing (Dict)
 import Json.Decode as Decode exposing (Decoder)
@@ -17,6 +17,7 @@ type alias Internals =
     , name : String
     , parent : String
     , description : String
+    , immovable : Bool
     , attributes : AttributeStore
     , scripts : List Script
     }
@@ -30,15 +31,17 @@ decoder =
             -> String
             -> String
             -> String
+            -> Bool
             -> Dict String Attribute
             -> List Script
             -> Object
-        construct myId myName myParent myDescription myAttributes myScripts =
+        construct myId myName myParent myDescription myImmovable myAttributes myScripts =
             Object
                 { id = myId
                 , name = myName
                 , parent = myParent
                 , description = myDescription
+                , immovable = myImmovable
                 , attributes =
                     myAttributes
                         |> Dict.toList
@@ -46,11 +49,12 @@ decoder =
                 , scripts = myScripts
                 }
     in
-    Decode.map6 construct
+    Decode.map7 construct
         (Decode.field "id" Decode.string)
         (Decode.field "name" Decode.string)
         (Decode.field "parent" Decode.string)
         (Decode.field "description" Decode.string)
+        (Decode.field "immovable" Decode.bool)
         (Decode.field "attributes" (Decode.dict Attribute.decoder))
         (Decode.field "scripts" (Decode.list Script.decoder))
 
@@ -72,6 +76,7 @@ new :
     , name : String
     , parent : String
     , description : String
+    , immovable : Bool
     , attributes : List ( String, Attribute )
     , scripts : List Script
     }
@@ -82,6 +87,7 @@ new params =
         , name = params.name
         , parent = params.parent
         , description = params.description
+        , immovable = params.immovable
         , attributes = AttributeStore.new params.attributes
         , scripts = params.scripts
         }
@@ -94,6 +100,7 @@ null =
         , name = ""
         , parent = ""
         , description = ""
+        , immovable = False
         , attributes = AttributeStore.new []
         , scripts = []
         }
@@ -117,6 +124,11 @@ parent (Object internals) =
 description : Object -> String
 description (Object internals) =
     internals.description
+
+
+immovable : Object -> Bool
+immovable (Object internals) =
+    internals.immovable
 
 
 attribute : String -> Object -> Maybe Attribute

@@ -20,6 +20,7 @@
           "name": "door",
           "image": "entrance-door",
           "description": "It's a heavy wooden door.",
+          "immovable": true,
           "rect": [
             63,
             122,
@@ -32,6 +33,7 @@
           "name": "key",
           "image": "entrance-key",
           "description": "It's a small, brass key.",
+          "immovable": false,
           "rect": [
             15,
             8,
@@ -44,6 +46,7 @@
           "name": "skull",
           "image": "entrance-skull",
           "description": "It's the skull of some creature.  Whatever it is, its meaning is quite clear: Death lurks inside.",
+          "immovable": true,
           "rect": [
             25,
             18,
@@ -60,6 +63,7 @@
       "name": "torch",
       "image": "torch",
       "description": "It's a common, wooden torch.",
+      "immovable": false,
       "rect": [
         35,
         92,
