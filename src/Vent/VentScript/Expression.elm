@@ -1,4 +1,4 @@
-module Vent.Expression exposing (ExpressionBool(..), ExpressionInt(..), ExpressionString(..), decoder, encode, encodeInt, encodeString, evaluate, evaluateInt, evaluateString)
+module Vent.VentScript.Expression exposing (ExpressionBool(..), ExpressionInt(..), ExpressionString(..), decoder, encode, encodeInt, encodeString, evaluate, evaluateInt, evaluateString)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode

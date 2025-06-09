@@ -3,14 +3,13 @@ module Vent.VentScript.Canonicalize exposing (Error(..), execute)
 import Result.Extra as Result
 import Vent.Attribute as Attribute exposing (Attribute(..))
 import Vent.Command as Command exposing (Command)
-import Vent.Effect as Effect exposing (Effect)
-import Vent.Expression as Expression exposing (ExpressionBool(..))
 import Vent.Interaction exposing (Interaction(..))
 import Vent.ObjectStore as ObjectStore exposing (ObjectStore)
-import Vent.Script exposing (Script)
-import Vent.Trigger as Trigger exposing (Trigger)
-import Vent.Update as Update exposing (Update)
+import Vent.VentScript.Expression as Expression exposing (ExpressionBool(..))
 import Vent.VentScript.Parse as Parse
+import Vent.VentScript.Script exposing (Script)
+import Vent.VentScript.Statement as Statement exposing (Statement)
+import Vent.VentScript.Trigger as Trigger exposing (Trigger)
 
 
 type Error
@@ -408,7 +407,7 @@ convertResults localObject objectStore result =
                 |> List.concatMap unwrapStatements
                 |> List.foldl
                     (convertResultStatement localObject objectStore)
-                    (Ok { trigger = trigger, condition = condition, updates = [], effects = [] })
+                    (Ok { trigger = trigger, condition = condition, statements = [] })
 
         Err err ->
             Err err
@@ -448,8 +447,8 @@ convertResultStatement localObject objectStore statement current =
                         Parse.PrintText string ->
                             Ok
                                 { script
-                                    | effects =
-                                        script.effects
+                                    | statements =
+                                        script.statements
                                             ++ []
                                 }
 
@@ -469,9 +468,9 @@ updateFromReference script expr objectStore localObject attrKey =
                 Ok expression ->
                     Ok
                         { script
-                            | updates =
-                                script.updates
-                                    ++ [ Update.SetBoolAttribute { objId = localObject, attributeKey = attrKey, value = expression }
+                            | statements =
+                                script.statements
+                                    ++ [ Statement.SetBoolAttribute { objId = localObject, attributeKey = attrKey, value = expression }
                                        ]
                         }
 
@@ -483,9 +482,9 @@ updateFromReference script expr objectStore localObject attrKey =
                 Ok expression ->
                     Ok
                         { script
-                            | updates =
-                                script.updates
-                                    ++ [ Update.SetIntAttribute { objId = localObject, attributeKey = attrKey, value = expression }
+                            | statements =
+                                script.statements
+                                    ++ [ Statement.SetIntAttribute { objId = localObject, attributeKey = attrKey, value = expression }
                                        ]
                         }
 
@@ -497,9 +496,9 @@ updateFromReference script expr objectStore localObject attrKey =
                 Ok expression ->
                     Ok
                         { script
-                            | updates =
-                                script.updates
-                                    ++ [ Update.SetStringAttribute { objId = localObject, attributeKey = attrKey, value = expression }
+                            | statements =
+                                script.statements
+                                    ++ [ Statement.SetStringAttribute { objId = localObject, attributeKey = attrKey, value = expression }
                                        ]
                         }
 

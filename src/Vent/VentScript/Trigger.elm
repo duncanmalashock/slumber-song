@@ -1,4 +1,4 @@
-module Vent.Trigger exposing (Trigger(..), decoder, encode, fromString, shouldRun)
+module Vent.VentScript.Trigger exposing (Trigger(..), decoder, encode, fromString, shouldRun)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode

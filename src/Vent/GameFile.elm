@@ -1,7 +1,8 @@
-module Vent.GameFile exposing (GameFile, Object, Room, currentRoom, decoder)
+module Vent.GameFile exposing (GameFile, Object, Room, currentRoom, decoder, toObjectList)
 
 import Decode
 import Json.Decode as Decode exposing (Decoder)
+import Vent.Object
 
 
 decoder : Decoder GameFile
@@ -27,6 +28,11 @@ type alias Internals =
     { rooms : List Room
     , inventory : List Object
     }
+
+
+toObjectList : GameFile -> List Vent.Object.Object
+toObjectList (GameFile internals) =
+    []
 
 
 currentRoom : GameFile -> Maybe Room

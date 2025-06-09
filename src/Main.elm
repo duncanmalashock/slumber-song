@@ -1,6 +1,5 @@
 module Main exposing (main)
 
-import Apps.Shadowgate as Shadowgate
 import Browser
 import Browser.Events
 import Dict exposing (Dict)
@@ -29,6 +28,7 @@ import RemoteData exposing (RemoteData)
 import Set
 import Task
 import Time
+import Vent.Game as Game exposing (Game)
 import Vent.GameFile as GameFile exposing (GameFile)
 
 
@@ -78,7 +78,7 @@ type alias Model =
     , zoomRects : List Rect
 
     -- Program and OS operations
-    , app : RemoteData String Shadowgate.Model
+    , app : RemoteData String Game
     , instructions : List (Instruction Msg)
     , currentInstruction : Maybe { timeStarted : Time.Posix, instruction : Instruction Msg }
     }
@@ -117,18 +117,9 @@ init flags =
                 , browser = flags.browserDimensions
                 , devicePixelRatio = flags.devicePixelRatio
                 }
-    in
-    ( { currentTime = Time.millisToPosix flags.currentTimeInMS
-      , screen = screen
-      , menuBar = MenuBar.new []
-      , mouse = Mouse.new
-      , lastMouseDown = Nothing
-      , lastMouseDownObject = Nothing
-      , lastMouseUp = Nothing
-      , lastClick = Nothing
-      , lastDoubleClick = Nothing
-      , maxTimeBetweenDoubleClicks = 500
-      , ui =
+
+        ui : UI Msg
+        ui =
             UI.new screen
                 |> UI.createObject
                     (UIObject.new
@@ -152,6 +143,18 @@ init flags =
                     , parentId = domIds.desktop
                     , rect = Screen.logical screen
                     }
+    in
+    ( { currentTime = Time.millisToPosix flags.currentTimeInMS
+      , screen = screen
+      , menuBar = MenuBar.new []
+      , mouse = Mouse.new
+      , lastMouseDown = Nothing
+      , lastMouseDownObject = Nothing
+      , lastMouseUp = Nothing
+      , lastClick = Nothing
+      , lastDoubleClick = Nothing
+      , maxTimeBetweenDoubleClicks = 500
+      , ui = ui
       , pickedObjectId = Nothing
       , debug = Nothing
       , dragging = Nothing
@@ -160,7 +163,9 @@ init flags =
       , currentInstruction = Nothing
       , zoomRects = []
       }
-    , Ports.loadGame { filename = flags.gameFilename }
+    , Ports.loadGame
+        { filename = flags.gameFilename
+        }
     )
 
 
@@ -638,8 +643,8 @@ update msg model =
                                                     dropRect
                                     in
                                     updateRemoteDataApp
-                                        (Shadowgate.update
-                                            (Shadowgate.ReceivedMsgFromOS
+                                        (Game.update
+                                            (Game.ReceivedMsgFromOS
                                                 (ToAppMsg.DroppedObject
                                                     { objectId = dragging.objectId
                                                     , isWindow = isWindow
@@ -677,8 +682,8 @@ update msg model =
                     let
                         ( updatedApp, fromAppInstructions ) =
                             updateRemoteDataApp
-                                (Shadowgate.update
-                                    (Shadowgate.ReceivedMsgFromOS
+                                (Game.update
+                                    (Game.ReceivedMsgFromOS
                                         (ToAppMsg.DoubleClickedObject
                                             { objectId = objectId
                                             }
@@ -782,7 +787,7 @@ update msg model =
                 Ok (GameFile gameFile) ->
                     let
                         ( app, fromAppInstructions ) =
-                            Shadowgate.init gameFile
+                            Game.new gameFile
                     in
                     ( { model
                         | app = RemoteData.LoadSuccessful app
@@ -804,9 +809,9 @@ type FromJs
 
 
 updateRemoteDataApp :
-    (Shadowgate.Model -> ( Shadowgate.Model, List (Instruction Msg) ))
-    -> RemoteData String Shadowgate.Model
-    -> ( RemoteData String Shadowgate.Model, List (Instruction Msg) )
+    (Game -> ( Game, List (Instruction Msg) ))
+    -> RemoteData String Game
+    -> ( RemoteData String Game, List (Instruction Msg) )
 updateRemoteDataApp fn remoteDataApp =
     case RemoteData.map fn remoteDataApp of
         RemoteData.LoadSuccessful ( app, instructions ) ->

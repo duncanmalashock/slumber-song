@@ -3,9 +3,9 @@ module Vent.VentScript exposing (Error(..), compile)
 import Parser.Advanced as Parser
 import Result exposing (Result(..))
 import Vent.ObjectStore exposing (ObjectStore)
-import Vent.Script exposing (Script)
 import Vent.VentScript.Canonicalize as Canonicalize
 import Vent.VentScript.Parse as Parse
+import Vent.VentScript.Script as Script exposing (Script)
 
 
 compile : String -> ObjectStore -> String -> Result Error Script

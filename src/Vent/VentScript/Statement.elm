@@ -1,19 +1,22 @@
-module Vent.Update exposing (Update(..), decoder, encode)
+module Vent.VentScript.Statement exposing (Statement(..), decoder, encode)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
-import Vent.Expression as Expression
+import Vent.VentScript.Expression as Expression
 
 
-type Update
+type Statement
     = ClearSelections
     | IncrementAttribute { objId : String, attributeKey : String, value : Int }
     | SetBoolAttribute { objId : String, attributeKey : String, value : Expression.ExpressionBool }
     | SetIntAttribute { objId : String, attributeKey : String, value : Expression.ExpressionInt }
     | SetStringAttribute { objId : String, attributeKey : String, value : Expression.ExpressionString }
+    | LoadGameData String
+    | PlaySound String
+    | PrintText String
 
 
-decoder : Decoder Update
+decoder : Decoder Statement
 decoder =
     Decode.field "tag" Decode.string
         |> Decode.andThen
@@ -45,7 +48,7 @@ decoder =
             )
 
 
-encode : Update -> Encode.Value
+encode : Statement -> Encode.Value
 encode update =
     case update of
         ClearSelections ->
@@ -83,4 +86,22 @@ encode update =
                 , ( "objId", Encode.string objId )
                 , ( "attributeKey", Encode.string attributeKey )
                 , ( "value", Expression.encodeString value )
+                ]
+
+        LoadGameData file ->
+            Encode.object
+                [ ( "tag", Encode.string "LoadGameData" )
+                , ( "file", Encode.string file )
+                ]
+
+        PlaySound file ->
+            Encode.object
+                [ ( "tag", Encode.string "PlaySound" )
+                , ( "file", Encode.string file )
+                ]
+
+        PrintText text ->
+            Encode.object
+                [ ( "tag", Encode.string "PrintText" )
+                , ( "text", Encode.string text )
                 ]

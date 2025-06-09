@@ -5,7 +5,7 @@ import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
 import Vent.Attribute as Attribute exposing (Attribute)
 import Vent.AttributeStore as AttributeStore exposing (AttributeStore)
-import Vent.Script as Script exposing (Script)
+import Vent.VentScript.Script as Script exposing (Script)
 
 
 type Object
