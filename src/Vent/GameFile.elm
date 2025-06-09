@@ -32,7 +32,42 @@ type alias Internals =
 
 toObjectList : GameFile -> List Vent.Object.Object
 toObjectList (GameFile internals) =
-    []
+    List.concat
+        [ internals.rooms
+            |> List.concatMap
+                (\room ->
+                    room.objects
+                        |> List.map (objectToVentObject room.id)
+                )
+        , internals.inventory
+            |> List.map (objectToVentObject "inventory")
+        , internals.rooms
+            |> List.map roomToVentObject
+        ]
+
+
+objectToVentObject : String -> Object -> Vent.Object.Object
+objectToVentObject parentId object =
+    Vent.Object.new
+        { id = object.id
+        , name = object.name
+        , parent = parentId
+        , description = object.description
+        , attributes = []
+        , scripts = []
+        }
+
+
+roomToVentObject : Room -> Vent.Object.Object
+roomToVentObject room =
+    Vent.Object.new
+        { id = room.id
+        , name = room.name
+        , parent = "world"
+        , description = room.description
+        , attributes = []
+        , scripts = []
+        }
 
 
 currentRoom : GameFile -> Maybe Room
@@ -42,6 +77,7 @@ currentRoom (GameFile internals) =
 
 type alias Room =
     { id : String
+    , name : String
     , image : String
     , description : String
     , objects : List Object
@@ -50,6 +86,7 @@ type alias Room =
 
 type alias Object =
     { id : String
+    , name : String
     , image : String
     , description : String
     , positionX : Int
@@ -61,8 +98,9 @@ type alias Object =
 
 roomDecoder : Decoder Room
 roomDecoder =
-    Decode.map4 Room
+    Decode.map5 Room
         (Decode.field "id" Decode.string)
+        (Decode.field "name" Decode.string)
         (Decode.field "image" Decode.string)
         (Decode.field "description" Decode.string)
         (Decode.field "objects" (Decode.list objectDecoder))
@@ -75,10 +113,12 @@ objectDecoder =
             String
             -> String
             -> String
+            -> String
             -> Rect
             -> Object
-        constructObject myId myImage myDescription myRect =
+        constructObject myId myName myImage myDescription myRect =
             { id = myId
+            , name = myName
             , image = myImage
             , description = myDescription
             , positionX = myRect.x
@@ -87,8 +127,9 @@ objectDecoder =
             , height = myRect.h
             }
     in
-    Decode.map4 constructObject
+    Decode.map5 constructObject
         (Decode.field "id" Decode.string)
+        (Decode.field "name" Decode.string)
         (Decode.field "image" Decode.string)
         (Decode.field "description" Decode.string)
         (Decode.field "rect" decodeRect)

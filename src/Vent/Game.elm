@@ -1,4 +1,4 @@
-module Vent.Game exposing (Game, Msg(..), currentRoom, encode, new, objects, objectsInCurrentRoom, objectsInInventory, player, update)
+module Vent.Game exposing (Game, currentRoom, encode, new, objects, objectsInCurrentRoom, objectsInInventory, player, update)
 
 import Json.Encode as Encode
 import MacOS.Instruction as Instruction exposing (Instruction)
@@ -89,121 +89,78 @@ new gameFile =
     )
 
 
-type Msg
-    = ReceivedMsgFromOS ToAppMsg
-    | UserClickedCommandButton Command
-    | UserClickedObject String
-
-
-update : Msg -> Game -> ( Game, List (Instruction msg) )
-update msg ((Game internals) as game) =
-    case msg of
-        UserClickedCommandButton command ->
-            let
-                updatedGame : Game
-                updatedGame =
-                    Game
-                        { internals
-                            | selectedCommand = Just command
+update : ToAppMsg -> Game -> ( Game, List (Instruction msg) )
+update toAppMsg ((Game internals) as game) =
+    case toAppMsg of
+        DroppedObject droppedObjectInfo ->
+            if droppedObjectInfo.isWindow then
+                ( game
+                , [ Instruction.UpdateWindowRect
+                        { objectId = droppedObjectInfo.objectId
+                        , rect = droppedObjectInfo.dropRectAbsolute
                         }
-            in
-            respondToInput updatedGame
+                  ]
+                )
 
-        UserClickedObject objectId ->
+            else if droppedObjectInfo.droppedOnWindow == Just windowIds.scene then
+                ( game
+                , [ moveDroppedObjectToWindow droppedObjectInfo
+                  , unselectObject droppedObjectInfo.objectId
+                  ]
+                )
+
+            else if droppedObjectInfo.droppedOnWindow == Just windowIds.inventory then
+                ( game
+                , [ moveDroppedObjectToWindow droppedObjectInfo
+                  , unselectObject droppedObjectInfo.objectId
+                  ]
+                )
+
+            else if droppedObjectInfo.droppedOnWindow == Just windowIds.narration then
+                ( game
+                , [ rejectDrop droppedObjectInfo
+                  , unselectObject droppedObjectInfo.objectId
+                  , print "Objects aren't allowed in the text window!"
+                  ]
+                )
+
+            else if droppedObjectInfo.droppedOnWindow == Nothing then
+                let
+                    objectName : Maybe String
+                    objectName =
+                        ObjectStore.get droppedObjectInfo.objectId internals.objects
+                            |> Maybe.map Object.name
+                in
+                ( game
+                , List.filterMap identity
+                    [ Just (rejectDrop droppedObjectInfo)
+                    , Just (unselectObject droppedObjectInfo.objectId)
+                    , Maybe.map
+                        (\name ->
+                            print <| "The " ++ name ++ " would get lost if it was put on the desktop."
+                        )
+                        objectName
+                    ]
+                )
+
+            else
+                ( game
+                , []
+                )
+
+        DoubleClickedObject doubleClickedObjectInfo ->
             let
-                updatedGame : Game
-                updatedGame =
-                    case ( internals.selectedCommand, internals.sourceObjectId ) of
-                        ( Just Operate, Just _ ) ->
-                            Game
-                                { internals
-                                    | targetObjectId = Just objectId
-                                }
-
-                        _ ->
-                            Game
-                                { internals
-                                    | sourceObjectId = Just objectId
-                                }
+                descriptionText : Maybe String
+                descriptionText =
+                    ObjectStore.get doubleClickedObjectInfo.objectId internals.objects
+                        |> Maybe.map Object.description
             in
-            respondToInput updatedGame
-
-        ReceivedMsgFromOS toAppMsg ->
-            case toAppMsg of
-                DroppedObject droppedObjectInfo ->
-                    if droppedObjectInfo.isWindow then
-                        ( game
-                        , [ Instruction.UpdateWindowRect
-                                { objectId = droppedObjectInfo.objectId
-                                , rect = droppedObjectInfo.dropRectAbsolute
-                                }
-                          ]
-                        )
-
-                    else if droppedObjectInfo.droppedOnWindow == Just windowIds.scene then
-                        ( game
-                        , [ moveDroppedObjectToWindow droppedObjectInfo
-                          , unselectObject droppedObjectInfo.objectId
-                          ]
-                        )
-
-                    else if droppedObjectInfo.droppedOnWindow == Just windowIds.inventory then
-                        ( game
-                        , [ moveDroppedObjectToWindow droppedObjectInfo
-                          , unselectObject droppedObjectInfo.objectId
-                          ]
-                        )
-
-                    else if droppedObjectInfo.droppedOnWindow == Just windowIds.narration then
-                        ( game
-                        , [ rejectDrop droppedObjectInfo
-                          , unselectObject droppedObjectInfo.objectId
-                          , print "Objects aren't allowed in the text window!"
-                          ]
-                        )
-
-                    else if droppedObjectInfo.droppedOnWindow == Nothing then
-                        ( game
-                        , [ rejectDrop droppedObjectInfo
-                          , unselectObject droppedObjectInfo.objectId
-                          , print "The skull would get lost if it was put on the desktop."
-                          ]
-                        )
-
-                    else
-                        ( game
-                        , []
-                        )
-
-                DoubleClickedObject doubleClickedObjectInfo ->
-                    let
-                        descriptionText : Maybe String
-                        descriptionText =
-                            case doubleClickedObjectInfo.objectId of
-                                "obj:torch" ->
-                                    Just "It's a common, wooden torch."
-
-                                "obj:entrance-skull" ->
-                                    Just "It's the skull of some creature.  Whatever it is, its meaning is quite clear: Death lurks inside."
-
-                                "obj:entrance-door" ->
-                                    Just "It's a heavy wooden door."
-
-                                "obj:entrance-key" ->
-                                    Just "It's a small, brass key."
-
-                                "room:entrance" ->
-                                    Just "You stand before a stone wall that has been carved out of the earth.  The forest ends some twenty feet from the wall, as if sensing some great evil."
-
-                                _ ->
-                                    Nothing
-                    in
-                    ( game
-                    , List.filterMap identity
-                        [ Just (unselectObject doubleClickedObjectInfo.objectId)
-                        , Maybe.map print descriptionText
-                        ]
-                    )
+            ( game
+            , List.filterMap identity
+                [ Just (unselectObject doubleClickedObjectInfo.objectId)
+                , Maybe.map print descriptionText
+                ]
+            )
 
 
 moveDroppedObjectToWindow : ToAppMsg.DroppedObjectInfo -> Instruction msg

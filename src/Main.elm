@@ -644,17 +644,15 @@ update msg model =
                                     in
                                     updateRemoteDataApp
                                         (Game.update
-                                            (Game.ReceivedMsgFromOS
-                                                (ToAppMsg.DroppedObject
-                                                    { objectId = dragging.objectId
-                                                    , isWindow = isWindow
-                                                    , droppedOnWindow = droppedOnWindow
-                                                    , droppedOnObjects = droppedOnObjects
-                                                    , dropRectAbsolute = dropRect
-                                                    , dropRectInWindow = dropRectInWindow
-                                                    , originRect = dragging.originRect
-                                                    }
-                                                )
+                                            (ToAppMsg.DroppedObject
+                                                { objectId = dragging.objectId
+                                                , isWindow = isWindow
+                                                , droppedOnWindow = droppedOnWindow
+                                                , droppedOnObjects = droppedOnObjects
+                                                , dropRectAbsolute = dropRect
+                                                , dropRectInWindow = dropRectInWindow
+                                                , originRect = dragging.originRect
+                                                }
                                             )
                                         )
                                         model.app
@@ -683,11 +681,9 @@ update msg model =
                         ( updatedApp, fromAppInstructions ) =
                             updateRemoteDataApp
                                 (Game.update
-                                    (Game.ReceivedMsgFromOS
-                                        (ToAppMsg.DoubleClickedObject
-                                            { objectId = objectId
-                                            }
-                                        )
+                                    (ToAppMsg.DoubleClickedObject
+                                        { objectId = objectId
+                                        }
                                     )
                                 )
                                 model.app

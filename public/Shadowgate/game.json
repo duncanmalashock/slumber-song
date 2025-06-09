@@ -2,11 +2,13 @@
   "rooms": [
     {
       "id": "room:entrance",
+      "name": "Entrance",
       "image": "entrance",
       "description": "You stand before a stone wall that has been carved out of the earth.  The forest ends some twenty feet from the wall, as if sensing some great evil.",
       "objects": [
         {
           "id": "obj:entrance-door",
+          "name": "door",
           "image": "entrance-door",
           "description": "It's a heavy wooden door.",
           "rect": [
@@ -18,6 +20,7 @@
         },
         {
           "id": "obj:entrance-key",
+          "name": "key",
           "image": "entrance-key",
           "description": "It's a small, brass key.",
           "rect": [
@@ -29,6 +32,7 @@
         },
         {
           "id": "obj:entrance-skull",
+          "name": "skull",
           "image": "entrance-skull",
           "description": "It's the skull of some creature.  Whatever it is, its meaning is quite clear: Death lurks inside.",
           "rect": [
@@ -44,6 +48,7 @@
   "inventory": [
     {
       "id": "obj:torch",
+      "name": "torch",
       "image": "torch",
       "description": "It's a common, wooden torch.",
       "rect": [
