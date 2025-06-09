@@ -30,7 +30,6 @@ app.ports.toJs.subscribe((data) => {
       fetch(data.file)
         .then(res => res.json())
         .then(data => {
-          console.log("Loaded game data:", data);
           sendToElm("GameDataLoaded", data);
         });
       break;
