@@ -1,4 +1,13 @@
 {
+  "responses": {
+    "immovableObject": [
+      "The $obj can't be moved."
+    ],
+    "illegalDrop": {
+      "onDesktop": "The $obj would get lost if it was put on the desktop.",
+      "onTextWindow": "Objects aren't allowed in the text window!"
+    }
+  },
   "rooms": [
     {
       "id": "room:entrance",

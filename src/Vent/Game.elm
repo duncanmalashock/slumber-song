@@ -25,10 +25,20 @@ type Game
 
 
 type alias Internals =
-    { objects : ObjectStore
+    { responses : Responses
+    , objects : ObjectStore
     , selectedCommand : Maybe Command
     , sourceObjectId : Maybe String
     , targetObjectId : Maybe String
+    }
+
+
+type alias Responses =
+    { immovableObject : List String
+    , illegalDrop :
+        { onDesktop : String
+        , onTextWindow : String
+        }
     }
 
 
@@ -68,7 +78,8 @@ new gameFile =
                 }
     in
     ( Game
-        { objects = ObjectStore.new (GameFile.toObjectList gameFile)
+        { responses = GameFile.responses gameFile
+        , objects = ObjectStore.new (GameFile.toObjectList gameFile)
         , selectedCommand = Nothing
         , sourceObjectId = Nothing
         , targetObjectId = Nothing
@@ -120,7 +131,7 @@ update toAppMsg ((Game internals) as game) =
                 ( game
                 , [ rejectDrop droppedObjectInfo
                   , unselectObject droppedObjectInfo.objectId
-                  , print "Objects aren't allowed in the text window!"
+                  , print internals.responses.illegalDrop.onTextWindow
                   ]
                 )
 
@@ -137,7 +148,9 @@ update toAppMsg ((Game internals) as game) =
                     , Just (unselectObject droppedObjectInfo.objectId)
                     , Maybe.map
                         (\name ->
-                            print <| "The " ++ name ++ " would get lost if it was put on the desktop."
+                            internals.responses.illegalDrop.onDesktop
+                                |> interpolateObjName name
+                                |> print
                         )
                         objectName
                     ]
@@ -161,6 +174,11 @@ update toAppMsg ((Game internals) as game) =
                 , Maybe.map print descriptionText
                 ]
             )
+
+
+interpolateObjName : String -> String -> String
+interpolateObjName replaceWith containingKeyword =
+    String.replace "$obj" replaceWith containingKeyword
 
 
 moveDroppedObjectToWindow : ToAppMsg.DroppedObjectInfo -> Instruction msg

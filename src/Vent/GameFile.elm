@@ -1,4 +1,4 @@
-module Vent.GameFile exposing (GameFile, Object, Room, currentRoom, decoder, toObjectList)
+module Vent.GameFile exposing (GameFile, Object, Room, currentRoom, decoder, responses, toObjectList)
 
 import Json.Decode as Decode exposing (Decoder)
 import Vent.Object
@@ -7,14 +7,16 @@ import Vent.Object
 decoder : Decoder GameFile
 decoder =
     let
-        constructGameFile : List Room -> List Object -> GameFile
-        constructGameFile myRooms myInventory =
+        constructGameFile : Responses -> List Room -> List Object -> GameFile
+        constructGameFile myResponses myRooms myInventory =
             GameFile
-                { rooms = myRooms
+                { responses = myResponses
+                , rooms = myRooms
                 , inventory = myInventory
                 }
     in
-    Decode.map2 constructGameFile
+    Decode.map3 constructGameFile
+        (Decode.field "responses" responsesDecoder)
         (Decode.field "rooms" (Decode.list roomDecoder))
         (Decode.field "inventory" (Decode.list objectDecoder))
 
@@ -24,9 +26,41 @@ type GameFile
 
 
 type alias Internals =
-    { rooms : List Room
+    { responses : Responses
+    , rooms : List Room
     , inventory : List Object
     }
+
+
+responses : GameFile -> Responses
+responses (GameFile internals) =
+    internals.responses
+
+
+type alias Responses =
+    { immovableObject : List String
+    , illegalDrop : IllegalDropResponses
+    }
+
+
+type alias IllegalDropResponses =
+    { onDesktop : String
+    , onTextWindow : String
+    }
+
+
+responsesDecoder : Decoder Responses
+responsesDecoder =
+    Decode.map2 Responses
+        (Decode.field "immovableObject" (Decode.list Decode.string))
+        (Decode.field "illegalDrop" illegalDropDecoder)
+
+
+illegalDropDecoder : Decoder IllegalDropResponses
+illegalDropDecoder =
+    Decode.map2 IllegalDropResponses
+        (Decode.field "onDesktop" Decode.string)
+        (Decode.field "onTextWindow" Decode.string)
 
 
 toObjectList : GameFile -> List Vent.Object.Object
