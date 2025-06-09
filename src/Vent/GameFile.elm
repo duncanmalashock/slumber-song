@@ -1,6 +1,5 @@
 module Vent.GameFile exposing (GameFile, Object, Room, currentRoom, decoder, toObjectList)
 
-import Decode
 import Json.Decode as Decode exposing (Decoder)
 import Vent.Object
 
