@@ -29,7 +29,6 @@ import Set
 import Task
 import Time
 import Vent.Game as Game exposing (Game)
-import Vent.GameFile as GameFile exposing (GameFile)
 
 
 viewDebugger : Model -> Html Msg
@@ -769,7 +768,7 @@ update msg model =
                 decodeByTag tag =
                     case tag of
                         "GameDataLoaded" ->
-                            Decode.field "payload" GameFile.decoder
+                            Decode.field "payload" Game.decoder
                                 |> Decode.map GameFile
 
                         "OtherThing" ->
@@ -779,7 +778,7 @@ update msg model =
                         _ ->
                             Decode.fail ("Unknown tag: " ++ tag)
             in
-            case Decode.decodeValue fromJsDecoder value of
+            case Decode.decodeValue fromJsDecoder value |> Debug.log "decoded" of
                 Ok (GameFile gameFile) ->
                     let
                         ( app, fromAppInstructions ) =
@@ -800,7 +799,7 @@ update msg model =
 
 
 type FromJs
-    = GameFile GameFile
+    = GameFile Game
     | OtherThing String
 
 

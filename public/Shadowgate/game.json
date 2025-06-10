@@ -1,75 +1,109 @@
 {
   "responses": {
     "immovableObject": [
-      "The $obj can't be moved."
+      "The $obj won't move.",
+      "The $obj cannot be moved.",
+      "The $obj can't be moved around.",
+      "You cannot move the $obj.",
+      "You can't move the $obj."
     ],
     "illegalDrop": {
       "onDesktop": "The $obj would get lost if it was put on the desktop.",
       "onTextWindow": "Objects aren't allowed in the text window!"
     }
   },
-  "rooms": [
+  "objects": [
+    {
+      "id": "player",
+      "type": "player",
+      "parent": "room:entrance",
+      "name": "yourself",
+      "image": "yourself",
+      "description": "You are indeed a brave knight!",
+      "immovable": true,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0
+      }
+    },
     {
       "id": "room:entrance",
+      "type": "room",
+      "parent": "world",
       "name": "Entrance",
       "image": "entrance",
       "description": "You stand before a stone wall that has been carved out of the earth.  The forest ends some twenty feet from the wall, as if sensing some great evil.",
-      "objects": [
-        {
-          "id": "obj:entrance-door",
-          "name": "door",
-          "image": "entrance-door",
-          "description": "It's a heavy wooden door.",
-          "immovable": true,
-          "rect": [
-            63,
-            122,
-            96,
-            33
-          ]
-        },
-        {
-          "id": "obj:entrance-key",
-          "name": "key",
-          "image": "entrance-key",
-          "description": "It's a small, brass key.",
-          "immovable": false,
-          "rect": [
-            15,
-            8,
-            120,
-            25
-          ]
-        },
-        {
-          "id": "obj:entrance-skull",
-          "name": "skull",
-          "image": "entrance-skull",
-          "description": "It's the skull of some creature.  Whatever it is, its meaning is quite clear: Death lurks inside.",
-          "immovable": true,
-          "rect": [
-            25,
-            18,
-            116,
-            19
-          ]
-        }
-      ]
-    }
-  ],
-  "inventory": [
+      "immovable": true,
+      "rect": {
+        "x": 0,
+        "y": 18,
+        "w": 256,
+        "h": 171
+      }
+    },
+    {
+      "id": "obj:entrance-door",
+      "parent": "room:entrance",
+      "type": "door",
+      "open": false,
+      "locked": false,
+      "name": "door",
+      "image": "entrance-door",
+      "description": "It's a heavy wooden door.",
+      "immovable": true,
+      "rect": {
+        "w": 63,
+        "h": 122,
+        "x": 96,
+        "y": 33
+      }
+    },
+    {
+      "id": "obj:entrance-key",
+      "parent": "room:entrance",
+      "type": "object",
+      "name": "key",
+      "image": "entrance-key",
+      "description": "It's a small, brass key.",
+      "immovable": false,
+      "rect": {
+        "w": 15,
+        "h": 8,
+        "x": 120,
+        "y": 25
+      }
+    },
+    {
+      "id": "obj:entrance-skull",
+      "parent": "room:entrance",
+      "type": "object",
+      "name": "skull",
+      "image": "entrance-skull",
+      "description": "It's the skull of some creature.  Whatever it is, its meaning is quite clear: Death lurks inside.",
+      "immovable": true,
+      "rect": {
+        "w": 25,
+        "h": 18,
+        "x": 116,
+        "y": 19
+      }
+    },
     {
       "id": "obj:torch",
+      "parent": "inventory",
+      "type": "object",
       "name": "torch",
       "image": "torch",
       "description": "It's a common, wooden torch.",
       "immovable": false,
-      "rect": [
-        35,
-        92,
-        8,
-        24
-      ]
+      "rect": {
+        "w": 35,
+        "h": 92,
+        "x": 8,
+        "y": 24
+      }
     }
   ]
 }

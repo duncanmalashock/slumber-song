@@ -1,8 +1,11 @@
-module Vent.Game exposing (Game, currentRoom, encode, new, objects, objectsInCurrentRoom, objectsInInventory, player, update)
+module Vent.Game exposing (Game, currentRoom, decoder, new, objects, objectsInCurrentRoom, objectsInInventory, player, update)
 
+import Decode
+import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
+import MacOS.Coordinate as Coordinate
 import MacOS.Instruction as Instruction exposing (Instruction)
-import MacOS.Rect as Rect
+import MacOS.Rect as Rect exposing (Rect)
 import MacOS.ToAppMsg as ToAppMsg exposing (ToAppMsg(..))
 import MacOS.UI.Object as UIObject
 import MacOS.UI.View as View
@@ -10,7 +13,6 @@ import MacOS.UI.View.Image as Image
 import MacOS.UI.View.Textarea as Textarea
 import Vent.Command exposing (Command(..))
 import Vent.Effect as Effect exposing (Effect(..))
-import Vent.GameFile as GameFile exposing (GameFile)
 import Vent.Interaction as Interaction exposing (Interaction(..))
 import Vent.Object as Object exposing (Object)
 import Vent.ObjectStore as ObjectStore exposing (ObjectStore)
@@ -35,10 +37,13 @@ type alias Internals =
 
 type alias Responses =
     { immovableObject : List String
-    , illegalDrop :
-        { onDesktop : String
-        , onTextWindow : String
-        }
+    , illegalDrop : IllegalDropResponses
+    }
+
+
+type alias IllegalDropResponses =
+    { onDesktop : String
+    , onTextWindow : String
     }
 
 
@@ -49,41 +54,33 @@ type alias ObjectLocation =
     }
 
 
-new : GameFile -> ( Game, List (Instruction msg) )
-new gameFile =
+new : Game -> ( Game, List (Instruction msg) )
+new ((Game internals) as game) =
     let
+        roomContainingPlayer : Object
+        roomContainingPlayer =
+            currentRoom game
+
         createCurrentRoom : List (Instruction msg)
         createCurrentRoom =
-            case GameFile.currentRoom gameFile of
-                Just room ->
-                    List.concat
-                        [ createRoom
-                            { id = room.id
-                            , image = room.image
-                            }
-                        , List.concat
-                            (List.map createRoomObject room.objects)
-                        ]
+            List.concat
+                [ createRoom
+                    { id = Object.id roomContainingPlayer
+                    , image = Object.image roomContainingPlayer
+                    }
+                , List.concat
+                    (List.map createRoomObject (ObjectStore.withParentId (Object.id roomContainingPlayer) internals.objects))
+                ]
 
-                Nothing ->
-                    []
-
-        createRoomObject : GameFile.Object -> List (Instruction msg)
+        createRoomObject : Object -> List (Instruction msg)
         createRoomObject object =
             createSceneObject
-                { id = object.id
-                , image = object.image
-                , size = ( object.width, object.height )
-                , position = ( object.positionX, object.positionY )
+                { id = Object.id object
+                , image = Object.image object
+                , rect = Object.rect object
                 }
     in
-    ( Game
-        { responses = GameFile.responses gameFile
-        , objects = ObjectStore.new (GameFile.toObjectList gameFile)
-        , selectedCommand = Nothing
-        , sourceObjectId = Nothing
-        , targetObjectId = Nothing
-        }
+    ( game
     , List.concat
         [ createSceneWindow
         , createInventoryWindow
@@ -92,10 +89,8 @@ new gameFile =
         , createInventoryObject
             { id = "obj:torch"
             , image = "torch"
-            , size = ( 35, 92 )
-            , position = ( 8, 24 )
+            , rect = Rect.new ( 8, 24 ) ( 35, 92 )
             }
-        , [ print "of the Titans, from the depths of the earth.  You are the seed of prophecy, the last of the line of kings, and only you can stop the Warlock Lord from darkening our world FOREVER.  Fare thee well.\"" ]
         ]
     )
 
@@ -321,7 +316,7 @@ createRoom params =
                 { id = params.id
                 , url = imageUrl
                 , filter = Nothing
-                , size = ( 256, 171 )
+                , size = Coordinate.new ( 256, 171 )
                 }
         }
     , Instruction.AttachObject
@@ -335,8 +330,7 @@ createRoom params =
 createObject :
     { id : String
     , image : String
-    , size : ( Int, Int )
-    , position : ( Int, Int )
+    , rect : Rect
     , parentId : String
     }
     -> List (Instruction msg)
@@ -356,13 +350,13 @@ createObject params =
                 { id = params.id
                 , url = imageUrl
                 , filter = Nothing
-                , size = params.size
+                , size = Rect.size params.rect
                 }
                 |> UIObject.setSelectOptions
                     { view =
                         View.image
                             { url = imageUrl
-                            , size = params.size
+                            , size = Rect.size params.rect
                             , filter = Just Image.Invert
                             }
                     , selected = False
@@ -371,7 +365,7 @@ createObject params =
                     { traveling =
                         View.image
                             { url = imageUrl
-                            , size = params.size
+                            , size = Rect.size params.rect
                             , filter = Nothing
                             }
                     , preDragInPixels = objectPreDrag
@@ -380,7 +374,7 @@ createObject params =
     , Instruction.AttachObject
         { objectId = params.id
         , parentId = params.parentId
-        , rect = Rect.new params.position params.size
+        , rect = params.rect
         }
     ]
 
@@ -388,16 +382,14 @@ createObject params =
 createSceneObject :
     { id : String
     , image : String
-    , size : ( Int, Int )
-    , position : ( Int, Int )
+    , rect : Rect
     }
     -> List (Instruction msg)
 createSceneObject params =
     createObject
         { id = params.id
         , image = params.image
-        , size = params.size
-        , position = params.position
+        , rect = params.rect
         , parentId = windowIds.scene
         }
 
@@ -405,16 +397,14 @@ createSceneObject params =
 createInventoryObject :
     { id : String
     , image : String
-    , size : ( Int, Int )
-    , position : ( Int, Int )
+    , rect : Rect
     }
     -> List (Instruction msg)
 createInventoryObject params =
     createObject
         { id = params.id
         , image = params.image
-        , size = params.size
-        , position = params.position
+        , rect = params.rect
         , parentId = windowIds.inventory
         }
 
@@ -785,6 +775,69 @@ applyStatement statementToApply ( (Game internals) as game, effects ) =
             )
 
 
-encode : Game -> Encode.Value
-encode (Game internals) =
-    Encode.list Object.encode (ObjectStore.toList internals.objects)
+responsesDecoder : Decoder Responses
+responsesDecoder =
+    Decode.map2 Responses
+        (Decode.field "immovableObject" (Decode.list Decode.string))
+        (Decode.field "illegalDrop" illegalDropDecoder)
+
+
+illegalDropDecoder : Decoder IllegalDropResponses
+illegalDropDecoder =
+    Decode.map2 IllegalDropResponses
+        (Decode.field "onDesktop" Decode.string)
+        (Decode.field "onTextWindow" Decode.string)
+
+
+objectDecoder : Decoder Object
+objectDecoder =
+    let
+        constructObject :
+            String
+            -> String
+            -> String
+            -> String
+            -> String
+            -> Bool
+            -> Rect
+            -> Object
+        constructObject myId myParent myName myImage myDescription myImmovable myRect =
+            Object.new
+                { id = myId
+                , parent = myParent
+                , name = myName
+                , image = myImage
+                , description = myDescription
+                , immovable = myImmovable
+                , rect = myRect
+                , attributes = []
+                , scripts = []
+                }
+    in
+    Decode.map7 constructObject
+        (Decode.field "id" Decode.string)
+        (Decode.field "parent" Decode.string)
+        (Decode.field "name" Decode.string)
+        (Decode.field "image" Decode.string)
+        (Decode.field "description" Decode.string)
+        (Decode.field "immovable" Decode.bool)
+        (Decode.field "rect" Rect.decoder)
+
+
+decoder : Decoder Game
+decoder =
+    let
+        constructGame : Responses -> List Object -> Game
+        constructGame myResponses myObjects =
+            Game
+                { responses = myResponses
+                , objects = ObjectStore.new myObjects
+                , selectedCommand = Nothing
+                , sourceObjectId = Nothing
+                , targetObjectId = Nothing
+                }
+    in
+    Decode.map2 constructGame
+        (Decode.field "responses" responsesDecoder)
+        (Decode.field "objects" (Decode.list objectDecoder))
+        |> Decode.log "Game Decoder"

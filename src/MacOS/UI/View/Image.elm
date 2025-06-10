@@ -28,7 +28,7 @@ import MacOS.UI.Helpers exposing (imgURL, px)
 
 type alias Config =
     { url : String
-    , size : ( Int, Int )
+    , size : Coordinate
     , filter : Maybe Filter
     }
 

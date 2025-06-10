@@ -3,6 +3,7 @@ module MacOS.Coordinate exposing
     , x, y
     , plus, minus
     , cityBlockDistance
+    , toTuple
     )
 
 {-| A point in screen space.
@@ -22,6 +23,11 @@ module MacOS.Coordinate exposing
 
 @docs plus, minus
 @docs cityBlockDistance
+
+
+# Convert
+
+@docs toTuple
 
 -}
 
@@ -58,3 +64,8 @@ minus (Coordinate p1) (Coordinate p2) =
 cityBlockDistance : Coordinate -> Coordinate -> Int
 cityBlockDistance (Coordinate p1) (Coordinate p2) =
     Basics.abs (p1.x - p2.x) + Basics.abs (p1.y - p2.y)
+
+
+toTuple : Coordinate -> ( Int, Int )
+toTuple (Coordinate p) =
+    ( p.x, p.y )

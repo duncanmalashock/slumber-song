@@ -6,6 +6,7 @@ module MacOS.Rect exposing
     , hitTest
     , plus, minus, interpolate
     , setPosition, setSize
+    , decoder
     )
 
 {-| An area of the screen with a position, width, and height.
@@ -37,8 +38,14 @@ module MacOS.Rect exposing
 
 @docs setPosition, setSize
 
+
+# JSON
+
+@docs encode, decoder
+
 -}
 
+import Json.Decode as Decode exposing (Decoder)
 import MacOS.Coordinate as Coordinate exposing (Coordinate)
 
 
@@ -190,3 +197,22 @@ right : Rect -> Int
 right (Rect internals) =
     Coordinate.x internals.position
         + Coordinate.x internals.size
+
+
+
+-- encode : Rect -> Encode.Value
+-- encode (Rect internals) =
+
+
+decoder : Decoder Rect
+decoder =
+    let
+        construct : Int -> Int -> Int -> Int -> Rect
+        construct x y w h =
+            new ( x, y ) ( w, h )
+    in
+    Decode.map4 construct
+        (Decode.field "x" Decode.int)
+        (Decode.field "y" Decode.int)
+        (Decode.field "w" Decode.int)
+        (Decode.field "h" Decode.int)

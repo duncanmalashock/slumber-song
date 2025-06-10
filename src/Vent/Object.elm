@@ -1,8 +1,10 @@
-module Vent.Object exposing (Object, attribute, decoder, description, encode, id, immovable, name, new, null, parent, scripts, setBoolAttribute, setIntAttribute, setStringAttribute)
+module Vent.Object exposing (Object, attribute, decoder, description, encode, id, image, immovable, name, new, null, parent, rect, scripts, setBoolAttribute, setIntAttribute, setStringAttribute)
 
 import Dict exposing (Dict)
 import Json.Decode as Decode exposing (Decoder)
+import Json.Decode.Pipeline
 import Json.Encode as Encode
+import MacOS.Rect as Rect exposing (Rect)
 import Vent.Attribute as Attribute exposing (Attribute)
 import Vent.AttributeStore as AttributeStore exposing (AttributeStore)
 import Vent.VentScript.Script as Script exposing (Script)
@@ -16,6 +18,8 @@ type alias Internals =
     { id : String
     , name : String
     , parent : String
+    , rect : Rect
+    , image : String
     , description : String
     , immovable : Bool
     , attributes : AttributeStore
@@ -30,16 +34,20 @@ decoder =
             String
             -> String
             -> String
+            -> Rect
+            -> String
             -> String
             -> Bool
             -> Dict String Attribute
             -> List Script
             -> Object
-        construct myId myName myParent myDescription myImmovable myAttributes myScripts =
+        construct myId myName myParent myRect myImage myDescription myImmovable myAttributes myScripts =
             Object
                 { id = myId
                 , name = myName
                 , parent = myParent
+                , rect = myRect
+                , image = myImage
                 , description = myDescription
                 , immovable = myImmovable
                 , attributes =
@@ -49,14 +57,16 @@ decoder =
                 , scripts = myScripts
                 }
     in
-    Decode.map7 construct
-        (Decode.field "id" Decode.string)
-        (Decode.field "name" Decode.string)
-        (Decode.field "parent" Decode.string)
-        (Decode.field "description" Decode.string)
-        (Decode.field "immovable" Decode.bool)
-        (Decode.field "attributes" (Decode.dict Attribute.decoder))
-        (Decode.field "scripts" (Decode.list Script.decoder))
+    Decode.succeed construct
+        |> Json.Decode.Pipeline.required "id" Decode.string
+        |> Json.Decode.Pipeline.required "name" Decode.string
+        |> Json.Decode.Pipeline.required "parent" Decode.string
+        |> Json.Decode.Pipeline.required "rect" Rect.decoder
+        |> Json.Decode.Pipeline.required "image" Decode.string
+        |> Json.Decode.Pipeline.required "description" Decode.string
+        |> Json.Decode.Pipeline.required "immovable" Decode.bool
+        |> Json.Decode.Pipeline.required "attributes" (Decode.dict Attribute.decoder)
+        |> Json.Decode.Pipeline.required "scripts" (Decode.list Script.decoder)
 
 
 encode : Object -> Encode.Value
@@ -75,6 +85,8 @@ new :
     { id : String
     , name : String
     , parent : String
+    , rect : Rect
+    , image : String
     , description : String
     , immovable : Bool
     , attributes : List ( String, Attribute )
@@ -86,6 +98,8 @@ new params =
         { id = params.id
         , name = params.name
         , parent = params.parent
+        , rect = params.rect
+        , image = params.image
         , description = params.description
         , immovable = params.immovable
         , attributes = AttributeStore.new params.attributes
@@ -99,6 +113,8 @@ null =
         { id = ""
         , name = ""
         , parent = ""
+        , rect = Rect.new ( 0, 0 ) ( 0, 0 )
+        , image = ""
         , description = ""
         , immovable = False
         , attributes = AttributeStore.new []
@@ -124,6 +140,16 @@ parent (Object internals) =
 description : Object -> String
 description (Object internals) =
     internals.description
+
+
+image : Object -> String
+image (Object internals) =
+    internals.image
+
+
+rect : Object -> Rect
+rect (Object internals) =
+    internals.rect
 
 
 immovable : Object -> Bool

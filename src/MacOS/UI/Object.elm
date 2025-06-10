@@ -106,11 +106,11 @@ new params =
         }
 
 
-image : { id : String, url : String, filter : Maybe Image.Filter, size : ( Int, Int ) } -> Object msg
+image : { id : String, url : String, filter : Maybe Image.Filter, size : Coordinate } -> Object msg
 image params =
     Object
         { id = params.id
-        , rect = Rect.new ( 0, 0 ) params.size
+        , rect = Rect.new ( 0, 0 ) (Coordinate.toTuple params.size)
         , text = ""
         , view = Just (View.image { url = params.url, filter = params.filter, size = params.size })
         , selectOptions = Nothing
