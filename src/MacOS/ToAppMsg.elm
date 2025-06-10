@@ -1,18 +1,18 @@
-module MacOS.ToAppMsg exposing (DroppedObjectInfo, ToAppMsg(..))
+module MacOS.ToAppMsg exposing (DroppedUIObjectInfo, ToAppMsg(..))
 
 import MacOS.Rect as Rect exposing (Rect)
 
 
 type ToAppMsg
-    = DroppedObject DroppedObjectInfo
-    | DoubleClickedObject DoubleClickedObjectInfo
+    = DroppedUIObject DroppedUIObjectInfo
+    | DoubleClickedUIObject DoubleClickedUIObjectInfo
 
 
 type alias ObjectId =
     String
 
 
-type alias DroppedObjectInfo =
+type alias DroppedUIObjectInfo =
     { objectId : ObjectId
     , isWindow : Bool
     , droppedOnWindow : Maybe ObjectId
@@ -23,6 +23,6 @@ type alias DroppedObjectInfo =
     }
 
 
-type alias DoubleClickedObjectInfo =
+type alias DoubleClickedUIObjectInfo =
     { objectId : ObjectId
     }

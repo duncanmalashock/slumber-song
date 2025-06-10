@@ -1,4 +1,4 @@
-module Vent.Object exposing (Object, attribute, decoder, description, encode, id, image, immovable, name, new, null, parent, rect, scripts, setBoolAttribute, setIntAttribute, setStringAttribute)
+module Vent.Object exposing (Object, attribute, decoder, description, encode, id, image, immovable, name, null, parent, rect, scripts, setBoolAttribute, setIntAttribute, setStringAttribute)
 
 import Dict exposing (Dict)
 import Json.Decode as Decode exposing (Decoder)
@@ -16,6 +16,7 @@ type Object
 
 type alias Internals =
     { id : String
+    , objectType : ObjectType
     , name : String
     , parent : String
     , rect : Rect
@@ -27,11 +28,20 @@ type alias Internals =
     }
 
 
+type ObjectType
+    = World
+    | Player
+    | Room
+    | Door
+    | Generic
+
+
 decoder : Decoder Object
 decoder =
     let
         construct :
             String
+            -> ObjectType
             -> String
             -> String
             -> Rect
@@ -41,9 +51,10 @@ decoder =
             -> Dict String Attribute
             -> List Script
             -> Object
-        construct myId myName myParent myRect myImage myDescription myImmovable myAttributes myScripts =
+        construct myId myType myName myParent myRect myImage myDescription myImmovable myAttributes myScripts =
             Object
                 { id = myId
+                , objectType = myType
                 , name = myName
                 , parent = myParent
                 , rect = myRect
@@ -52,13 +63,13 @@ decoder =
                 , immovable = myImmovable
                 , attributes =
                     myAttributes
-                        |> Dict.toList
                         |> AttributeStore.new
                 , scripts = myScripts
                 }
     in
     Decode.succeed construct
         |> Json.Decode.Pipeline.required "id" Decode.string
+        |> Json.Decode.Pipeline.required "type" objectTypeDecoder
         |> Json.Decode.Pipeline.required "name" Decode.string
         |> Json.Decode.Pipeline.required "parent" Decode.string
         |> Json.Decode.Pipeline.required "rect" Rect.decoder
@@ -67,6 +78,32 @@ decoder =
         |> Json.Decode.Pipeline.required "immovable" Decode.bool
         |> Json.Decode.Pipeline.required "attributes" (Decode.dict Attribute.decoder)
         |> Json.Decode.Pipeline.required "scripts" (Decode.list Script.decoder)
+
+
+objectTypeDecoder : Decoder ObjectType
+objectTypeDecoder =
+    Decode.string
+        |> Decode.andThen
+            (\string ->
+                case string of
+                    "world" ->
+                        Decode.succeed World
+
+                    "player" ->
+                        Decode.succeed Player
+
+                    "room" ->
+                        Decode.succeed Room
+
+                    "door" ->
+                        Decode.succeed Door
+
+                    "generic" ->
+                        Decode.succeed Generic
+
+                    otherValue ->
+                        Decode.fail ("Couldn't decode objectType: " ++ otherValue)
+            )
 
 
 encode : Object -> Encode.Value
@@ -83,19 +120,21 @@ encode (Object internals) =
 
 new :
     { id : String
+    , objectType : ObjectType
     , name : String
     , parent : String
     , rect : Rect
     , image : String
     , description : String
     , immovable : Bool
-    , attributes : List ( String, Attribute )
+    , attributes : Dict String Attribute
     , scripts : List Script
     }
     -> Object
 new params =
     Object
         { id = params.id
+        , objectType = params.objectType
         , name = params.name
         , parent = params.parent
         , rect = params.rect
@@ -111,13 +150,14 @@ null : Object
 null =
     Object
         { id = ""
+        , objectType = Generic
         , name = ""
         , parent = ""
         , rect = Rect.new ( 0, 0 ) ( 0, 0 )
         , image = ""
         , description = ""
         , immovable = False
-        , attributes = AttributeStore.new []
+        , attributes = AttributeStore.new Dict.empty
         , scripts = []
         }
 

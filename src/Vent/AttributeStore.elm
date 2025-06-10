@@ -15,16 +15,10 @@ type alias Internals =
     }
 
 
-new : List ( String, Attribute ) -> AttributeStore
+new : Dict String Attribute -> AttributeStore
 new attributesForInit =
-    let
-        attributes : Dict String Attribute
-        attributes =
-            attributesForInit
-                |> Dict.fromList
-    in
     AttributeStore
-        { attributes = attributes
+        { attributes = attributesForInit
         }
 
 

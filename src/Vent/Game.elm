@@ -2,6 +2,7 @@ module Vent.Game exposing (Game, currentRoom, decoder, new, objects, objectsInCu
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
+import List.Extra
 import MacOS.Coordinate as Coordinate
 import MacOS.Instruction as Instruction exposing (Instruction)
 import MacOS.Rect as Rect exposing (Rect)
@@ -10,6 +11,7 @@ import MacOS.UI.Object as UIObject
 import MacOS.UI.View as View
 import MacOS.UI.View.Image as Image
 import MacOS.UI.View.Textarea as Textarea
+import Random
 import Vent.Command exposing (Command(..))
 import Vent.Effect as Effect exposing (Effect(..))
 import Vent.Interaction as Interaction exposing (Interaction(..))
@@ -28,6 +30,7 @@ type Game
 type alias Internals =
     { responses : Responses
     , objects : ObjectStore
+    , randomSeed : Random.Seed
     , selectedCommand : Maybe Command
     , sourceObjectId : Maybe String
     , targetObjectId : Maybe String
@@ -97,7 +100,7 @@ new ((Game internals) as game) =
 update : ToAppMsg -> Game -> ( Game, List (Instruction msg) )
 update toAppMsg ((Game internals) as game) =
     case toAppMsg of
-        DroppedObject droppedObjectInfo ->
+        DroppedUIObject droppedObjectInfo ->
             if droppedObjectInfo.isWindow then
                 ( game
                 , [ Instruction.UpdateWindowRect
@@ -138,22 +141,34 @@ update toAppMsg ((Game internals) as game) =
 
             else if ObjectStore.isImmovable droppedObjectInfo.objectId internals.objects then
                 let
+                    ( responseIndex, newRandomSeed ) =
+                        Random.step
+                            (Random.int 0 (List.length internals.responses.immovableObject - 1))
+                            internals.randomSeed
+
+                    response : String
+                    response =
+                        List.Extra.getAt responseIndex internals.responses.immovableObject
+                            |> Maybe.withDefault ""
+
                     objectName : Maybe String
                     objectName =
                         ObjectStore.get droppedObjectInfo.objectId internals.objects
                             |> Maybe.map Object.name
                 in
-                ( game
+                ( Game
+                    { internals
+                        | randomSeed = newRandomSeed
+                    }
                 , List.filterMap identity
                     [ Just (rejectDrop droppedObjectInfo)
                     , Just (unselectObject droppedObjectInfo.objectId)
-                    , Maybe.map2
-                        (\name response ->
+                    , Maybe.map
+                        (\name ->
                             interpolateObjName name response
                                 |> print
                         )
                         objectName
-                        (List.head internals.responses.immovableObject)
                     ]
                 )
 
@@ -176,7 +191,7 @@ update toAppMsg ((Game internals) as game) =
                 , []
                 )
 
-        DoubleClickedObject doubleClickedObjectInfo ->
+        DoubleClickedUIObject doubleClickedObjectInfo ->
             let
                 descriptionText : Maybe String
                 descriptionText =
@@ -196,7 +211,7 @@ interpolateObjName replaceWith containingKeyword =
     String.replace "$obj" replaceWith containingKeyword
 
 
-moveDroppedObjectToWindow : ToAppMsg.DroppedObjectInfo -> Instruction msg
+moveDroppedObjectToWindow : ToAppMsg.DroppedUIObjectInfo -> Instruction msg
 moveDroppedObjectToWindow droppedObjectInfo =
     Instruction.ReparentObjectToWindow
         { objectId = droppedObjectInfo.objectId
@@ -221,7 +236,7 @@ print textToPrint =
         }
 
 
-rejectDrop : ToAppMsg.DroppedObjectInfo -> Instruction msg
+rejectDrop : ToAppMsg.DroppedUIObjectInfo -> Instruction msg
 rejectDrop droppedObjectInfo =
     Instruction.AnimateZoom
         { from = droppedObjectInfo.dropRectAbsolute
@@ -763,7 +778,7 @@ applyStatement statementToApply ( (Game internals) as game, effects ) =
             , []
             )
 
-        PlaySound filenams ->
+        PlaySound filename ->
             ( game
             , []
             )
@@ -788,49 +803,15 @@ illegalDropDecoder =
         (Decode.field "onTextWindow" Decode.string)
 
 
-objectDecoder : Decoder Object
-objectDecoder =
-    let
-        constructObject :
-            String
-            -> String
-            -> String
-            -> String
-            -> String
-            -> Bool
-            -> Rect
-            -> Object
-        constructObject myId myParent myName myImage myDescription myImmovable myRect =
-            Object.new
-                { id = myId
-                , parent = myParent
-                , name = myName
-                , image = myImage
-                , description = myDescription
-                , immovable = myImmovable
-                , rect = myRect
-                , attributes = []
-                , scripts = []
-                }
-    in
-    Decode.map7 constructObject
-        (Decode.field "id" Decode.string)
-        (Decode.field "parent" Decode.string)
-        (Decode.field "name" Decode.string)
-        (Decode.field "image" Decode.string)
-        (Decode.field "description" Decode.string)
-        (Decode.field "immovable" Decode.bool)
-        (Decode.field "rect" Rect.decoder)
-
-
-decoder : Decoder Game
-decoder =
+decoder : Int -> Decoder Game
+decoder initialSeed =
     let
         constructGame : Responses -> List Object -> Game
         constructGame myResponses myObjects =
             Game
                 { responses = myResponses
                 , objects = ObjectStore.new myObjects
+                , randomSeed = Random.initialSeed initialSeed
                 , selectedCommand = Nothing
                 , sourceObjectId = Nothing
                 , targetObjectId = Nothing
@@ -838,4 +819,4 @@ decoder =
     in
     Decode.map2 constructGame
         (Decode.field "responses" responsesDecoder)
-        (Decode.field "objects" (Decode.list objectDecoder))
+        (Decode.field "objects" (Decode.list Object.decoder))

@@ -184,7 +184,7 @@ handleInstruction { timeStarted, instruction } model =
             let
                 animationDuration : number
                 animationDuration =
-                    250
+                    150
 
                 animationPhase : Int
                 animationPhase =
@@ -643,7 +643,7 @@ update msg model =
                                     in
                                     updateRemoteDataApp
                                         (Game.update
-                                            (ToAppMsg.DroppedObject
+                                            (ToAppMsg.DroppedUIObject
                                                 { objectId = dragging.objectId
                                                 , isWindow = isWindow
                                                 , droppedOnWindow = droppedOnWindow
@@ -680,7 +680,7 @@ update msg model =
                         ( updatedApp, fromAppInstructions ) =
                             updateRemoteDataApp
                                 (Game.update
-                                    (ToAppMsg.DoubleClickedObject
+                                    (ToAppMsg.DoubleClickedUIObject
                                         { objectId = objectId
                                         }
                                     )
@@ -768,7 +768,7 @@ update msg model =
                 decodeByTag tag =
                     case tag of
                         "GameDataLoaded" ->
-                            Decode.field "payload" Game.decoder
+                            Decode.field "payload" (Game.decoder (Time.posixToMillis model.currentTime))
                                 |> Decode.map GameFile
 
                         "OtherThing" ->

@@ -14,6 +14,23 @@
   },
   "objects": [
     {
+      "id": "world",
+      "type": "world",
+      "parent": "",
+      "name": "world",
+      "image": "",
+      "description": "",
+      "immovable": true,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0
+      },
+      "attributes": {},
+      "scripts": []
+    },
+    {
       "id": "player",
       "type": "player",
       "parent": "room:entrance",
@@ -26,7 +43,9 @@
         "y": 0,
         "w": 0,
         "h": 0
-      }
+      },
+      "attributes": {},
+      "scripts": []
     },
     {
       "id": "room:entrance",
@@ -41,7 +60,9 @@
         "y": 18,
         "w": 256,
         "h": 171
-      }
+      },
+      "attributes": {},
+      "scripts": []
     },
     {
       "id": "obj:entrance-door",
@@ -58,12 +79,14 @@
         "h": 122,
         "x": 96,
         "y": 33
-      }
+      },
+      "attributes": {},
+      "scripts": []
     },
     {
       "id": "obj:entrance-key",
       "parent": "room:entrance",
-      "type": "object",
+      "type": "generic",
       "name": "key",
       "image": "entrance-key",
       "description": "It's a small, brass key.",
@@ -73,12 +96,14 @@
         "h": 8,
         "x": 120,
         "y": 25
-      }
+      },
+      "attributes": {},
+      "scripts": []
     },
     {
       "id": "obj:entrance-skull",
       "parent": "room:entrance",
-      "type": "object",
+      "type": "generic",
       "name": "skull",
       "image": "entrance-skull",
       "description": "It's the skull of some creature.  Whatever it is, its meaning is quite clear: Death lurks inside.",
@@ -88,12 +113,14 @@
         "h": 18,
         "x": 116,
         "y": 19
-      }
+      },
+      "attributes": {},
+      "scripts": []
     },
     {
       "id": "obj:torch",
       "parent": "inventory",
-      "type": "object",
+      "type": "generic",
       "name": "torch",
       "image": "torch",
       "description": "It's a common, wooden torch.",
@@ -103,7 +130,9 @@
         "h": 92,
         "x": 8,
         "y": 24
-      }
+      },
+      "attributes": {},
+      "scripts": []
     }
   ]
 }
