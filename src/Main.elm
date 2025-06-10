@@ -778,7 +778,7 @@ update msg model =
                         _ ->
                             Decode.fail ("Unknown tag: " ++ tag)
             in
-            case Decode.decodeValue fromJsDecoder value |> Debug.log "decoded" of
+            case Decode.decodeValue fromJsDecoder value of
                 Ok (GameFile gameFile) ->
                     let
                         ( app, fromAppInstructions ) =
