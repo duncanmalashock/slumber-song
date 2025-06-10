@@ -1,6 +1,5 @@
 module Vent.Game exposing (Game, currentRoom, decoder, new, objects, objectsInCurrentRoom, objectsInInventory, player, update)
 
-import Decode
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
 import MacOS.Coordinate as Coordinate
@@ -840,4 +839,3 @@ decoder =
     Decode.map2 constructGame
         (Decode.field "responses" responsesDecoder)
         (Decode.field "objects" (Decode.list objectDecoder))
-        |> Decode.log "Game Decoder"
