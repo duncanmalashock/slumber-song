@@ -67,9 +67,12 @@
     {
       "id": "obj:entrance-door",
       "parent": "room:entrance",
-      "type": "door",
-      "open": false,
-      "locked": false,
+      "type": {
+        "locked": false,
+        "open": false,
+        "otherDoor": "",
+        "toRoom": ""
+      },
       "name": "door",
       "image": "entrance-door",
       "description": "It's a heavy wooden door.",

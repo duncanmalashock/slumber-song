@@ -2,9 +2,8 @@ module MacOS.UI.Object exposing
     ( Object, new
     , image, textarea
     , setView, setSelectOptions, setDragOptions
-    , onClick, onDoubleClick, onDragStart, onMouseDown
     , id, position, size, text, rect, selected
-    , getDragOptions, getMouseEventHandler
+    , getDragOptions
     , setPosition, setRect, setText, setSelected
     , addPosition
     , view
@@ -26,13 +25,12 @@ module MacOS.UI.Object exposing
 # Define interactions
 
 @docs setView, setSelectOptions, setDragOptions
-@docs onClick, onDoubleClick, onDragStart, onMouseDown
 
 
 # Query
 
 @docs id, position, size, text, rect, selected
-@docs getDragOptions, getMouseEventHandler
+@docs getDragOptions
 
 
 # Update
@@ -71,10 +69,6 @@ type alias Internals msg =
     , view : Maybe (View msg)
     , selectOptions : Maybe (SelectOptions msg)
     , dragOptions : Maybe (DragOptions msg)
-    , onMouseDown : Maybe msg
-    , onClick : Maybe msg
-    , onDoubleClick : Maybe msg
-    , onDragStart : Maybe msg
     }
 
 
@@ -99,10 +93,6 @@ new params =
         , view = Nothing
         , selectOptions = Nothing
         , dragOptions = Nothing
-        , onMouseDown = Nothing
-        , onClick = Nothing
-        , onDoubleClick = Nothing
-        , onDragStart = Nothing
         }
 
 
@@ -115,10 +105,6 @@ image params =
         , view = Just (View.image { url = params.url, filter = params.filter, size = params.size })
         , selectOptions = Nothing
         , dragOptions = Nothing
-        , onMouseDown = Nothing
-        , onClick = Nothing
-        , onDoubleClick = Nothing
-        , onDragStart = Nothing
         }
 
 
@@ -131,67 +117,12 @@ textarea params =
         , view = Just (View.textarea { color = params.color, font = params.font })
         , selectOptions = Nothing
         , dragOptions = Nothing
-        , onMouseDown = Nothing
-        , onClick = Nothing
-        , onDoubleClick = Nothing
-        , onDragStart = Nothing
         }
 
 
 id : Object msg -> String
 id (Object internals) =
     internals.id
-
-
-onMouseDown : msg -> Object msg -> Object msg
-onMouseDown msg (Object internals) =
-    Object
-        { internals
-            | onMouseDown = Just msg
-        }
-
-
-onClick : msg -> Object msg -> Object msg
-onClick msg (Object internals) =
-    Object
-        { internals
-            | onClick = Just msg
-        }
-
-
-onDoubleClick : msg -> Object msg -> Object msg
-onDoubleClick msg (Object internals) =
-    Object
-        { internals
-            | onDoubleClick = Just msg
-        }
-
-
-onDragStart : msg -> Object msg -> Object msg
-onDragStart msg (Object internals) =
-    Object
-        { internals
-            | onDragStart = Just msg
-        }
-
-
-getMouseEventHandler : MouseEvent -> Object msg -> Maybe msg
-getMouseEventHandler mouseEvent (Object internals) =
-    case mouseEvent of
-        MouseEvent.MouseDown _ ->
-            internals.onMouseDown
-
-        MouseEvent.MouseUp _ ->
-            Nothing
-
-        MouseEvent.Click _ ->
-            internals.onClick
-
-        MouseEvent.DoubleClick _ ->
-            internals.onDoubleClick
-
-        MouseEvent.DragStart _ ->
-            internals.onDragStart
 
 
 setView : View msg -> Object msg -> Object msg

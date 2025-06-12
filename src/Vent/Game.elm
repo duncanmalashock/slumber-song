@@ -84,7 +84,7 @@ new ((Game internals) as game) =
     in
     ( game
     , List.concat
-        [ createSceneWindow
+        [ createSceneWindow roomContainingPlayer
         , createInventoryWindow
         , createNarrationWindow
         , createCurrentRoom
@@ -192,18 +192,28 @@ update toAppMsg ((Game internals) as game) =
                 )
 
         DoubleClickedUIObject doubleClickedObjectInfo ->
-            let
-                descriptionText : Maybe String
-                descriptionText =
-                    ObjectStore.get doubleClickedObjectInfo.objectId internals.objects
-                        |> Maybe.map Object.description
-            in
-            ( game
-            , List.filterMap identity
-                [ Just (unselectObject doubleClickedObjectInfo.objectId)
-                , Maybe.map print descriptionText
-                ]
-            )
+            case ObjectStore.get doubleClickedObjectInfo.objectId internals.objects |> Maybe.map Object.objectType of
+                Just (Object.Door doorInfo) ->
+                    ( game
+                    , List.filterMap identity
+                        [ Just (unselectObject doubleClickedObjectInfo.objectId)
+                        , Just (print "The door is now open.")
+                        ]
+                    )
+
+                _ ->
+                    let
+                        descriptionText : Maybe String
+                        descriptionText =
+                            ObjectStore.get doubleClickedObjectInfo.objectId internals.objects
+                                |> Maybe.map Object.description
+                    in
+                    ( game
+                    , List.filterMap identity
+                        [ Just (unselectObject doubleClickedObjectInfo.objectId)
+                        , Maybe.map print descriptionText
+                        ]
+                    )
 
 
 interpolateObjName : String -> String -> String
@@ -261,12 +271,12 @@ objectIds =
     }
 
 
-createSceneWindow : List (Instruction msg)
-createSceneWindow =
+createSceneWindow : Object -> List (Instruction msg)
+createSceneWindow room =
     [ Instruction.CreateWindow
         { withId = windowIds.scene
         , window =
-            { title = "Entrance"
+            { title = Object.name room
             , closeMsg = Nothing
             }
         , rect = Rect.new ( 128, 61 ) ( 256, 191 )

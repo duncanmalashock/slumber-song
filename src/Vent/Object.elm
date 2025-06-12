@@ -1,4 +1,4 @@
-module Vent.Object exposing (Object, attribute, decoder, description, encode, id, image, immovable, name, null, parent, rect, scripts, setBoolAttribute, setIntAttribute, setStringAttribute)
+module Vent.Object exposing (Object, ObjectType(..), attribute, decoder, description, encode, id, image, immovable, name, null, objectType, parent, rect, scripts, setBoolAttribute, setIntAttribute, setStringAttribute)
 
 import Dict exposing (Dict)
 import Json.Decode as Decode exposing (Decoder)
@@ -32,7 +32,7 @@ type ObjectType
     = World
     | Player
     | Room
-    | Door
+    | Door { locked : Bool, open : Bool, otherDoor : String, toRoom : String }
     | Generic
 
 
@@ -82,28 +82,40 @@ decoder =
 
 objectTypeDecoder : Decoder ObjectType
 objectTypeDecoder =
-    Decode.string
-        |> Decode.andThen
-            (\string ->
-                case string of
-                    "world" ->
-                        Decode.succeed World
-
-                    "player" ->
-                        Decode.succeed Player
-
-                    "room" ->
-                        Decode.succeed Room
-
-                    "door" ->
-                        Decode.succeed Door
-
-                    "generic" ->
-                        Decode.succeed Generic
-
-                    otherValue ->
-                        Decode.fail ("Couldn't decode objectType: " ++ otherValue)
+    Decode.oneOf
+        [ Decode.map4
+            (\locked open otherDoor toRoom ->
+                Door
+                    { locked = locked
+                    , open = open
+                    , otherDoor = otherDoor
+                    , toRoom = toRoom
+                    }
             )
+            (Decode.field "locked" Decode.bool)
+            (Decode.field "open" Decode.bool)
+            (Decode.field "otherDoor" Decode.string)
+            (Decode.field "toRoom" Decode.string)
+        , Decode.string
+            |> Decode.andThen
+                (\typeStr ->
+                    case typeStr of
+                        "world" ->
+                            Decode.succeed World
+
+                        "player" ->
+                            Decode.succeed Player
+
+                        "room" ->
+                            Decode.succeed Room
+
+                        "generic" ->
+                            Decode.succeed Generic
+
+                        unknown ->
+                            Decode.fail ("Unknown string object type: " ++ unknown)
+                )
+        ]
 
 
 encode : Object -> Encode.Value
@@ -180,6 +192,11 @@ parent (Object internals) =
 description : Object -> String
 description (Object internals) =
     internals.description
+
+
+objectType : Object -> ObjectType
+objectType (Object internals) =
+    internals.objectType
 
 
 image : Object -> String
